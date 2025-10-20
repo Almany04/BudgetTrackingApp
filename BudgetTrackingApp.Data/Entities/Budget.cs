@@ -1,27 +1,26 @@
-﻿using BudgetTrackingApp.Shared.Enums;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Transactions;
 
 namespace BudgetTrackingApp.Data.Entities
 {
-    public class Category
+    public class Budget
     {
         [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
         [Key]
         public int? Id { get; private set; }
-        [StringLength(100)]
-        public string? Name { get; private set; }
         [Required]
-        public TransactionType type { get; private set; }
         [ForeignKey(nameof(User))]
-        public int UserId {  get; private set; }
-
-        public User? user { get; private set; } 
+        public int? UserId { get; private set; }
+        
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal LimitAmount {  get; private set; }
+        [Column(TypeName ="decimal(18,2)")]
+        public decimal SpentAmount { get; private set;}
+        public User? user { get; private set; }
     }
 }

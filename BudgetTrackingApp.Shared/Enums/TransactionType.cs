@@ -6,7 +6,8 @@ using System.Threading.Tasks;
 
 namespace BudgetTrackingApp.Shared.Enums
 {
-    internal class TransactionType
+    public enum TransactionType
     {
+        Expense, Income
     }
 }
