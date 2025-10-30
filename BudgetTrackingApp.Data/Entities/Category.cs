@@ -6,22 +6,29 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Transactions;
+
 
 namespace BudgetTrackingApp.Data.Entities
 {
     public class Category
     {
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
-        [Key]
-        public int? Id { get; private set; }
-        [StringLength(100)]
-        public string? Name { get; private set; }
-        [Required]
-        public TransactionType type { get; private set; }
-        [ForeignKey(nameof(User))]
-        public int UserId {  get; private set; }
 
-        public User? user { get; private set; } 
+        public Category()
+        {
+            Id = Guid.NewGuid();
+            Transactions = new HashSet<Transactions>();
+
+        }
+        [Key]
+        public Guid Id { get; set; }
+        [Required]
+        [StringLength(100)]
+        public string Name { get;set; }
+        [Required]
+        public string AppUserId {  get; set; }
+        [ForeignKey("AppUserId")]
+        public virtual AppUser? AppUser { get; set; }
+
+        public virtual ICollection<Transactions> Transactions { get; set; }
     }
 }

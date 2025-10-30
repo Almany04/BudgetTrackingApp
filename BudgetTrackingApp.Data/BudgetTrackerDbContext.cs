@@ -1,4 +1,5 @@
 ﻿using BudgetTrackingApp.Data.Entities;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 using System;
 using System.Collections.Generic;
@@ -8,16 +9,23 @@ using System.Threading.Tasks;
 
 namespace BudgetTrackingApp.Data
 {
-    public class BudgetTrackerDbContext : DbContext
+    public class BudgetTrackerDbContext : IdentityDbContext<AppUser>
     {
-        DbSet<User> Users;
-        DbSet<Transactions> Transactions;
-        DbSet<Category> Categories;
-        DbSet<Budget> Budgets;
-
         public BudgetTrackerDbContext(DbContextOptions<BudgetTrackerDbContext> options):base(options)
         {
 
+        }
+
+
+        public DbSet<Transactions> Transactions { get; set; }
+        public DbSet<Category> Categories { get; set; }
+        public DbSet<Budget> Budgets { get; set; }
+
+
+
+        protected override void OnModelCreating(ModelBuilder builder)
+        {
+            base.OnModelCreating(builder);
         }
     }
 }

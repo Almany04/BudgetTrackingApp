@@ -6,27 +6,34 @@ using System.ComponentModel.DataAnnotations.Schema;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
-using System.Transactions;
 
 namespace BudgetTrackingApp.Data.Entities
 {
     public class Transactions
     {
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+
+        public Transactions()
+        {
+            Id = Guid.NewGuid();
+            TransactionDate = DateTime.UtcNow;
+        }
         [Key]
-        public int Id { get; private set; }
-        [ForeignKey(nameof(User))]
-        public int? UserId {  get; private set; }
-        public int? CategoryId { get; private set; }
-        public decimal? Amount { get; private set; }
-        public TransactionType type{get; private set; }
-        [StringLength(200)]
-        public string? Description {  get; private set; }
-
-        public DateTime? Date { get; set; }
-        public DateTime? CreatedAt { get; set; }
-
-        public bool IsRecurring { get; set; }
-        public User? user { get; private set; }
+        public Guid Id { get; set; }
+        [Required]
+        [Column(TypeName = "decimal(18, 2)")]
+        public decimal Amount { get; set; }
+        [Required]
+        public TransactionType Type {get; set; }
+        [StringLength(500)]
+        public string? Description {  get; set; }
+        [Required]
+        public DateTime TransactionDate { get; set; }
+        [Required]
+        public string AppUserId { get; set; }
+        public Guid CategoryId { get; set; }
+        [ForeignKey("AppUserId")]
+        public virtual AppUser? AppUser { get; set; }
+        [ForeignKey("CategoryId")]
+        public virtual Category? Category { get; set; }
     }
 }

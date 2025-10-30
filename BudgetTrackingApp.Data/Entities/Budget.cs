@@ -10,17 +10,22 @@ namespace BudgetTrackingApp.Data.Entities
 {
     public class Budget
     {
-        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public Budget()
+        {
+            Id= Guid.NewGuid();
+            LimitAmount = 0;
+            SpentAmount = 0;
+        }
         [Key]
-        public int? Id { get; private set; }
-        [Required]
-        [ForeignKey(nameof(User))]
-        public int? UserId { get; private set; }
+        public Guid Id { get; set; }
+        
+        [Required]public string AppUserId { get; set; }
         
         [Column(TypeName = "decimal(18,2)")]
-        public decimal LimitAmount {  get; private set; }
+        public decimal LimitAmount {  get; set; }
         [Column(TypeName ="decimal(18,2)")]
-        public decimal SpentAmount { get; private set;}
-        public User? user { get; private set; }
+        public decimal SpentAmount { get; set;}
+        [ForeignKey("AppUserId")]
+        public virtual AppUser? AppUser { get; set; }
     }
 }
