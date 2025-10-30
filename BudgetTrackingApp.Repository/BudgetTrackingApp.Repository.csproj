@@ -6,4 +6,9 @@
     <Nullable>enable</Nullable>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\BudgetTrackingApp.Data\BudgetTrackingApp.Data.csproj" />
+    <ProjectReference Include="..\BudgetTrackingApp.Shared\BudgetTrackingApp.Shared.csproj" />
+  </ItemGroup>
+
 </Project>

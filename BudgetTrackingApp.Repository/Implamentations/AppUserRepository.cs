@@ -7,7 +7,8 @@ using System.Threading.Tasks;
 
 namespace BudgetTrackingApp.Repository.Implamentations
 {
-    public class TransactionRepository:ITransactionRepository
+    public class AppUserRepository:IAppUserRepository
+
     {
     }
 }

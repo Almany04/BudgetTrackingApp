@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BudgetTrackingApp.Repository.Implamentations
+namespace BudgetTrackingApp.Repository.Interfaces
 {
-    internal interface UserRepository
+    public interface IAppUserRepository
     {
     }
 }

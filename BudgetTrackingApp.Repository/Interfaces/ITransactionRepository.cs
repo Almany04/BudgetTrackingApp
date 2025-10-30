@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace BudgetTrackingApp.Repository.Interfaces
 {
-    internal interface ITransactionRepository
+    public interface ITransactionRepository
     {
     }
 }

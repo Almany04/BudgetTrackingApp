@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\BudgetTrackingApp.Data\BudgetTrackingApp.Data.csproj" />
+    <ProjectReference Include="..\..\BudgetTrackingApp.Repository\BudgetTrackingApp.Repository.csproj" />
     <ProjectReference Include="..\BudgetTrackingApp.Client\BudgetTrackingApp.Client.csproj" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="8.0.20" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" Version="8.0.21" />

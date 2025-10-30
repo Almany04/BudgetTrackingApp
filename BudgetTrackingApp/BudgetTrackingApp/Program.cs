@@ -1,6 +1,8 @@
 using BudgetTrackingApp.Client.Pages;
 using BudgetTrackingApp.Data;
 using BudgetTrackingApp.Data.Entities;
+using BudgetTrackingApp.Repository.Implamentations;
+using BudgetTrackingApp.Repository.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
 
@@ -26,6 +28,8 @@ namespace BudgetTrackingApp
                 options.Password.RequireUppercase = false;
                 options.Password.RequiredLength = 6;
             }).AddEntityFrameworkStores<BudgetTrackerDbContext>();
+
+            builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 
             // Add services to the container.
             builder.Services.AddRazorComponents()
