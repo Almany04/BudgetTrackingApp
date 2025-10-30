@@ -14,10 +14,7 @@ namespace BudgetTrackingApp.Data.Entities
         public DateTime? CreatedAt { get; set; } = DateTime.UtcNow;
         
         public bool IsActive {  get; set; }=true;
-        [Required]
-        public Guid BudgetId { get; set; }
        
-        [ForeignKey("BudgetId")]
         public virtual Budget? Budget { get; set; }
         public virtual List<Transactions>? Transactions { get; set; } = new List<Transactions>();
         public virtual List<Category>? Categories { get; set; }=new List<Category>();

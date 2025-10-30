@@ -19,13 +19,13 @@ namespace BudgetTrackingApp.Data.Entities
         [Key]
         public Guid Id { get; set; }
         
-        [Required]public string AppUserId { get; set; }
+        [Required]
+        public string AppUserId { get; set; }
         
         [Column(TypeName = "decimal(18,2)")]
         public decimal LimitAmount {  get; set; }
         [Column(TypeName ="decimal(18,2)")]
         public decimal SpentAmount { get; set;}
-        [ForeignKey("AppUserId")]
         public virtual AppUser? AppUser { get; set; }
     }
 }

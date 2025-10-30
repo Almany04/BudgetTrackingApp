@@ -26,6 +26,31 @@ namespace BudgetTrackingApp.Data
         protected override void OnModelCreating(ModelBuilder builder)
         {
             base.OnModelCreating(builder);
+
+            builder.Entity<AppUser>(entity => {
+                entity.HasOne(u=> u.Budget)
+                    .WithOne(b=>b.AppUser)
+                    .HasForeignKey<Budget>(b=>b.AppUserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasMany(u => u.Transactions)
+                    .WithOne(t => t.AppUser)
+                    .HasForeignKey(t => t.AppUserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+
+                entity.HasMany(u=> u.Categories)
+                    .WithOne(c=>c.AppUser)
+                    .HasForeignKey(c=>c.AppUserId)
+                    .OnDelete(DeleteBehavior.Cascade);
+            });
+
+            builder.Entity<Category>(entity => {
+                entity.HasMany(c => c.Transactions)
+                .WithOne(t => t.Category)
+                .HasForeignKey(t => t.CategoryId)
+                .OnDelete(DeleteBehavior.Restrict);
+            });
+
         }
     }
 }

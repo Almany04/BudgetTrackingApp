@@ -1,5 +1,8 @@
 using BudgetTrackingApp.Client.Pages;
-using BudgetTrackingApp.Components;
+using BudgetTrackingApp.Data;
+using BudgetTrackingApp.Data.Entities;
+using Microsoft.EntityFrameworkCore;
+
 
 namespace BudgetTrackingApp
 {
@@ -8,7 +11,22 @@ namespace BudgetTrackingApp
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
-           
+
+            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+            builder.Services.AddDbContext<BudgetTrackerDbContext>(options =>
+            options.UseSqlServer(connectionString));
+
+
+            builder.Services.AddIdentityCore<AppUser>(options =>
+            {
+                options.SignIn.RequireConfirmedAccount = false;
+                options.Password.RequireDigit = false;
+                options.Password.RequireLowercase = false;
+                options.Password.RequireNonAlphanumeric = false;
+                options.Password.RequireUppercase = false;
+                options.Password.RequiredLength = 6;
+            }).AddEntityFrameworkStores<BudgetTrackerDbContext>();
+
             // Add services to the container.
             builder.Services.AddRazorComponents()
                 .AddInteractiveServerComponents()
@@ -33,7 +51,7 @@ namespace BudgetTrackingApp
             app.UseStaticFiles();
             app.UseAntiforgery();
 
-            app.MapRazorComponents<App>()
+            app.MapRazorComponents<AppUser>()
                 .AddInteractiveServerRenderMode()
                 .AddInteractiveWebAssemblyRenderMode()
                 .AddAdditionalAssemblies(typeof(Client._Imports).Assembly);
