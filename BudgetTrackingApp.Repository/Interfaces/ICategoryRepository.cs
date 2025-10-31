@@ -9,7 +9,7 @@ namespace BudgetTrackingApp.Repository.Interfaces
 {
     public interface ICategoryRepository
     {
-        Task<IEnumerable<Category>> GetCategoriesByIdAsync(string userId);
+        Task<IEnumerable<Category>> GetCategoriesByUserIdAsync(string userId);
         Task<Category?> GetCategoryByIdAsync(Guid categoryId);
         Task AddCategoryAsync(Category category);
         Task UpdateCategoryAsync(Category category);

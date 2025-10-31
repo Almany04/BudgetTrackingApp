@@ -30,6 +30,7 @@ namespace BudgetTrackingApp
             }).AddEntityFrameworkStores<BudgetTrackerDbContext>();
 
             builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
+            builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
 
             // Add services to the container.
             builder.Services.AddRazorComponents()
