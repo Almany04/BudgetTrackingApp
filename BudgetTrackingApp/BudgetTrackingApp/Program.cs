@@ -36,6 +36,7 @@ namespace BudgetTrackingApp
             builder.Services.AddScoped<IBudgetRepository, BudgetRepository>();
             builder.Services.AddScoped<IUserRepository, UserRepository>();
             builder.Services.AddScoped<ICategoryLogic, CategoryLogic>();
+            builder.Services.AddScoped<ITransactionLogic, TransactionLogic>();
 
             // Add services to the container.
             builder.Services.AddRazorComponents()
