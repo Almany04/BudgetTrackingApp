@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BudgetTrackingApp.Shared.Dtos
+namespace BudgetTrackingApp.Shared.Dtos.Category
 {
     public class CategoryViewDto
     {

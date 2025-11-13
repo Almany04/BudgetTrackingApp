@@ -1,5 +1,5 @@
 ﻿using BudgetTrackingApp.Data.Entities;
-using BudgetTrackingApp.Shared.Dtos;
+using BudgetTrackingApp.Shared.Dtos.Category;
 using System;
 using System.Collections.Generic;
 using System.Linq;
