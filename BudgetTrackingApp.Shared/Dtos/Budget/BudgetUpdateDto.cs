@@ -6,7 +6,8 @@ using System.Threading.Tasks;
 
 namespace BudgetTrackingApp.Shared.Dtos.Budget
 {
-    internal class BudgetUpdateDto
+    public class BudgetUpdateDto
     {
+        public decimal LimitAmount { get; set; }
     }
 }
