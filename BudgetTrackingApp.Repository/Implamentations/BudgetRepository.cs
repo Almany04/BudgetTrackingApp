@@ -18,6 +18,14 @@ namespace BudgetTrackingApp.Repository.Implamentations
         {
             _context = context;
         }
+
+        public async Task AddBudgetAsync(Budget budget)
+        {
+            await _context.Budgets.AddAsync(budget);
+            
+            await _context.SaveChangesAsync();
+        }
+
         public async Task<Budget?> GetBudgetByUserIdAsync(string userId)
         {
             return await _context.Budgets.FirstOrDefaultAsync(b => b.AppUserId == userId);

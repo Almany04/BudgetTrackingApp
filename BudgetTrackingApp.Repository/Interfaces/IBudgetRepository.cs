@@ -11,6 +11,7 @@ namespace BudgetTrackingApp.Repository.Interfaces
     {
         Task<Budget?> GetBudgetByUserIdAsync(string userId);
         Task UpdateBudgetAsync(Budget budget);
+        Task AddBudgetAsync(Budget budget);
 
     }
 }
