@@ -14,7 +14,7 @@ namespace BudgetTrackingApp.Repository.Interfaces
         Task AddCategoryAsync(Category category);
         Task UpdateCategoryAsync(Category category);
         Task DeleteCategoryAsync(Category category);
-        Task<bool> IsCategoryOwnedByUserAsync(Guid category, string  userId);
+        Task<bool> IsCategoryOwnedByUserAsync(Guid categoryId, string  userId);
 
     }
 }

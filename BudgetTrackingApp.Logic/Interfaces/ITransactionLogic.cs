@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BudgetTrackingApp.Logic.Services
+namespace BudgetTrackingApp.Logic.Interfaces
 {
-    public class UserLogic
+    public interface ITransactionLogic
     {
     }
 }

@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace BudgetTrackingApp.Logic.Services
 {
-    internal class TransactionLogic
+    public class TransactionLogic
     {
     }
 }

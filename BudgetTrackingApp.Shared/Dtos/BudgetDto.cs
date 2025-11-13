@@ -6,7 +6,9 @@ using System.Threading.Tasks;
 
 namespace BudgetTrackingApp.Shared.Dtos
 {
-    internal class CategoryDto
+    public class BudgetDto
     {
+        public decimal LimitAmount { get; set; }
+        public decimal SpentAmount { get; set; }
     }
 }

@@ -58,11 +58,17 @@ namespace BudgetTrackingApp.Repository.Implamentations
             return transactions;
         }
 
+        public async Task<bool> HasTransactionsForCategoryAsync(Guid categoryId)
+        {
+            return await _context.Transactions.AnyAsync(t => t.CategoryId == categoryId);
+        }
+
         public async Task<bool> IsTransactionOwnedByIdAsync(Guid transactionId, string userId)
         {
             return await _context.Transactions.AnyAsync(t=>t.Id==transactionId&&t.AppUserId==userId);
         }
 
+        
         public async Task UpdateTransactionAsync(Transactions transaction)
         {
            _context.Transactions.Update(transaction);

@@ -4,9 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace BudgetTrackingApp.Shared.Dtos
+namespace BudgetTrackingApp.Logic.Services
 {
-    internal class UserDto
+    public class BudgetLogic
     {
     }
 }

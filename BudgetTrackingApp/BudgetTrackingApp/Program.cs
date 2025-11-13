@@ -1,6 +1,8 @@
 using BudgetTrackingApp.Client.Pages;
 using BudgetTrackingApp.Data;
 using BudgetTrackingApp.Data.Entities;
+using BudgetTrackingApp.Logic.Interfaces;
+using BudgetTrackingApp.Logic.Services;
 using BudgetTrackingApp.Repository.Implamentations;
 using BudgetTrackingApp.Repository.Interfaces;
 using Microsoft.EntityFrameworkCore;
@@ -33,6 +35,7 @@ namespace BudgetTrackingApp
             builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
             builder.Services.AddScoped<IBudgetRepository, BudgetRepository>();
             builder.Services.AddScoped<IUserRepository, UserRepository>();
+            builder.Services.AddScoped<ICategoryLogic, CategoryLogic>();
 
             // Add services to the container.
             builder.Services.AddRazorComponents()
