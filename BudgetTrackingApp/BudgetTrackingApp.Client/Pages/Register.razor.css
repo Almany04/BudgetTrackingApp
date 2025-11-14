@@ -1,0 +1,13 @@
+﻿.register-card{
+    max-width:500px;
+    margin: 2rem auto;
+    border: none;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.register-title{
+    text-align:center;
+    color:#333;
+    font-weight:300;
+    margin-bottom:1.5rem;
+}

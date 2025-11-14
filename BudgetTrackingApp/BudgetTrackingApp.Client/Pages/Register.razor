@@ -1,0 +1,82 @@
+﻿@page "/register"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@using BudgetTrackingApp.Shared.Dtos.User
+@inject HttpClient Http
+@inject NavigationManager Navigation
+
+
+<PageTitle>Regisztráció</PageTitle>
+
+
+
+<div class="register-card" >
+	<div class="card-body p-4 p-md-5">
+		<h3 class="register-title">Új Fiók Létrehozása</h3>
+		<EditForm Model="registerModel" OnValidSubmit="HandleRegistration" FormName="RegisterForm">
+			<DataAnnotationsValidator/>
+
+			<div class="mb-3">
+				<label class="form-label">Email cím</label>
+				<InputText @bind-Value="registerModel.Email" class="form-control"/>
+				<ValidationMessage For="@(()=>registerModel.Email)" class="text-danger"/>
+			</div>
+
+			<div class="mb-3">
+				<label class="form-label">Jelszó</label>
+				<InputText @bind-Value="registerModel.Password" type="password" class="form-control"/>
+				<ValidationMessage For="@(()=>registerModel.Password)" class="text-danger"/>
+			</div>
+
+			<div class="mb-3">
+				<label class="form-label">Jelszó megerősítése</label>
+				<InputText @bind-Value="registerModel.ConfirmPassword" type="password" class="form-control"/>
+				<ValidationMessage For="(() => registerModel.ConfirmPassword)" class="text-danger"/>
+			</div>
+
+			@if (!string.IsNullOrEmpty(apiErrorMessage))
+			{
+				<div class="alert alert-danger">@apiErrorMessage</div>
+			}
+
+			<div class="d-grid">
+				<button type="submit" class="btn btn-primary btl-lg">Regisztráció</button>
+			</div>
+		</EditForm>
+	</div>
+</div>
+
+
+
+
+
+
+
+@code {
+	private UserRegisterDto registerModel = new UserRegisterDto();
+
+	private string? apiErrorMessage;
+
+	private async Task HandleRegistration()
+	{
+		try
+		{
+			apiErrorMessage = null;
+			var response = await Http.PostAsJsonAsync("api/user/register", registerModel);
+
+			if (response.IsSuccessStatusCode)
+			{
+				Navigation.NavigateTo("/login");
+			}
+			else
+			{
+				string errorContent = await response.Content.ReadAsStringAsync();
+				apiErrorMessage = errorContent.Replace("[\"", "").Replace("\"]", "").Replace("\"", "");
+			}
+		}
+		catch(Exception ex)
+		{
+			apiErrorMessage = $"Hiba történt a regisztáció során: {ex.Message}";
+		}
+	}
+
+}

@@ -1,3 +1,4 @@
+using BudgetTrackingApp.Api.Components;
 using BudgetTrackingApp.Client.Pages;
 using BudgetTrackingApp.Data;
 using BudgetTrackingApp.Data.Entities;
@@ -15,6 +16,7 @@ namespace BudgetTrackingApp
         public static void Main(string[] args)
         {
             var builder = WebApplication.CreateBuilder(args);
+            
 
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
             builder.Services.AddDbContext<BudgetTrackerDbContext>(options =>
@@ -64,7 +66,7 @@ namespace BudgetTrackingApp
             app.UseStaticFiles();
             app.UseAntiforgery();
 
-            app.MapRazorComponents<AppUser>()
+            app.MapRazorComponents<App>()
                 .AddInteractiveServerRenderMode()
                 .AddInteractiveWebAssemblyRenderMode()
                 .AddAdditionalAssemblies(typeof(Client._Imports).Assembly);

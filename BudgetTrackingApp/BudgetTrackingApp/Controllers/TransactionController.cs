@@ -18,13 +18,16 @@ namespace BudgetTrackingApp.Api.Controllers
         }
 
         [HttpGet]
-        public async Task<IActionResult> GetTransactionsAsync()
+        public async Task<IActionResult> GetTransactionsAsync([FromQuery] DateTime? startDate,
+            [FromQuery] DateTime? endDate)
         {
+            
             try
             {
                 string testUserId = "TESZT_USER_ID";
-                DateTime start= DateTime.Now;
-                DateTime end= DateTime.Now;
+                DateTime end = endDate ?? DateTime.Now;
+                DateTime start= startDate ?? end.AddDays(-30);
+               
 
                 var transasctionDto = await _transactionLogic.GetTransactionsByUserIdFilteredAsync(testUserId,start, end);
                 return Ok(transasctionDto);

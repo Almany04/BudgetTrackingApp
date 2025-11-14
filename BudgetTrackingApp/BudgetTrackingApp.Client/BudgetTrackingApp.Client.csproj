@@ -18,4 +18,8 @@
     <Folder Include="Transactions\" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\..\BudgetTrackingApp.Shared\BudgetTrackingApp.Shared.csproj" />
+  </ItemGroup>
+
 </Project>
