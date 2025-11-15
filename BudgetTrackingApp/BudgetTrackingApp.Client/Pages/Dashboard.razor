@@ -1,0 +1,257 @@
+﻿@page "/dashboard"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@attribute [Authorize] // Ez biztosítja, hogy csak bejelentkezett felhasználó érheti el
+
+@using BudgetTrackingApp.Shared.Dtos.Budget
+@using BudgetTrackingApp.Shared.Dtos.Transactions
+@using BudgetTrackingApp.Shared.Dtos.Category
+@using BudgetTrackingApp.Shared.Enums
+@using Microsoft.AspNetCore.Authorization
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+
+<PageTitle>Vezérlőpult</PageTitle>
+
+<MudGrid Spacing="4">
+    
+    <MudItem xs="12" md="4">
+        <MudStack Spacing="4">
+            
+            <MudCard Elevation="3">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Havi Keret</MudText>
+                    </CardHeaderContent>
+                    <CardHeaderActions>
+                        <MudIconButton Icon="@Icons.Material.Filled.Settings" Href="/budget" />
+                    </CardHeaderActions>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (budget == null)
+                    {
+                        <MudProgressCircular Indeterminate="true" />
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.h5">@budget.SpentAmount.ToString("C0")</MudText>
+                        <MudText Typo="Typo.body2" Class="mud-text-secondary">Felhasználva a @budget.LimitAmount.ToString("C0") keretből</MudText>
+                        <MudProgressLinear Color="@GetProgressColor()" Size="Size.Large" Value="budgetPercentage" Class="my-2" />
+                        <MudText Align="Align.End" Typo="Typo.caption">@budgetPercentage.ToString("F0")%</MudText>
+                    }
+                </MudCardContent>
+            </MudCard>
+
+            <MudCard Elevation="3">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Gyors Rögzítés</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <EditForm Model="newTransaction" OnValidSubmit="HandleCreateTransaction">
+                        <DataAnnotationsValidator />
+                        <MudStack Spacing="3">
+                            <MudTextField Label="Összeg"
+                                          @bind-Value="newTransaction.Amount"
+                                          For="@(() => newTransaction.Amount)"
+                                          InputType="InputType.Number"
+                                          Adornment="Adornment.End"
+                                          AdornmentText="Ft" />
+
+                            <MudSelect Label="Típus" @bind-Value="newTransaction.Type">
+                                <MudSelectItem Value="TransactionType.Expense">Kiadás</MudSelectItem>
+                                <MudSelectItem Value="TransactionType.Income">Bevétel</MudSelectItem>
+                            </MudSelect>
+
+                            <MudSelect Label="Kategória"
+                                       @bind-Value="newTransaction.CategoryId"
+                                       For="@(() => newTransaction.CategoryId)"
+                                       Disabled="@(categories == null)">
+                                @if (categories != null)
+                                {
+                                    @foreach (var category in categories)
+                                    {
+                                        <MudSelectItem Value="category.Id">@category.Name</MudSelectItem>
+                                    }
+                                }
+                            </MudSelect>
+
+                            <MudDatePicker Label="Dátum" @bind-Date="transactionDate" />
+
+                            <MudTextField Label="Leírás (opcionális)"
+                                          @bind-Value="newTransaction.Description"
+                                          Lines="2" />
+                            
+                            <MudButton ButtonType="ButtonType.Submit" 
+                                       Variant="Variant.Filled" 
+                                       Color="Color.Primary"
+                                       FullWidth="true"
+                                       Disabled="@isProcessingTransaction">
+                                Mentés
+                            </MudButton>
+                        </MudStack>
+                    </EditForm>
+                </MudCardContent>
+            </MudCard>
+
+        </MudStack>
+    </MudItem>
+
+    <MudItem xs="12" md="8">
+        <MudCard Elevation="3">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h6">Legutóbbi Tranzakciók</MudText>
+                </CardHeaderContent>
+                <CardHeaderActions>
+                    <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadDataAsync" />
+                </CardHeaderActions>
+            </MudCardHeader>
+            <MudCardContent>
+                <MudTable Items="transactions"
+                          Hover="true"
+                          Breakpoint="Breakpoint.Sm"
+                          Loading="@(transactions == null)"
+                          LoadingProgressColor="Color.Info"
+                          FixedHeader="true"
+                          Height="calc(100vh - 300px)">
+                    <HeaderContent>
+                        <MudTh>Dátum</MudTh>
+                        <MudTh>Kategória</MudTh>
+                        <MudTh>Leírás</MudTh>
+                        <MudTh Style="text-align: right">Összeg</MudTh>
+                    </HeaderContent>
+                    <RowTemplate>
+                        <MudTd DataLabel="Dátum">@context.TransactionDate.ToString("yyyy.MM.dd")</MudTd>
+                        <MudTd DataLabel="Kategória">@context.CategoryName</MudTd>
+                        <MudTd DataLabel="Leírás">@context.Description</MudTd>
+                        <MudTd DataLabel="Összeg" Style="text-align: right">
+                            <MudText Color="@(context.Type == TransactionType.Expense ? Color.Error : Color.Success)">
+                                @(context.Type == TransactionType.Expense ? "-" : "+") @context.Amount.ToString("C0")
+                            </MudText>
+                        </MudTd>
+                    </RowTemplate>
+                    <NoRecordsContent>
+                        <MudText>Nincsenek tranzakciók ebben az időszakban.</MudText>
+                    </NoRecordsContent>
+                    <LoadingContent>
+                        <MudText>Tranzakciók betöltése...</MudText>
+                    </LoadingContent>
+                </MudTable>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+</MudGrid>
+
+@code {
+    private BudgetViewDto? budget;
+    private IEnumerable<TransactionViewDto>? transactions;
+    private IEnumerable<CategoryViewDto>? categories;
+    private TransactionCreateDto newTransaction = new();
+    
+    private DateTime? transactionDate = DateTime.Today;
+    private bool isProcessingTransaction = false;
+    private double budgetPercentage = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadDataAsync();
+    }
+
+    private async Task LoadDataAsync()
+    {
+        // Párhuzamosan töltjük az adatokat
+        await Task.WhenAll(LoadBudgetAsync(), LoadTransactionsAsync(), LoadCategoriesAsync());
+        StateHasChanged(); // Jelezzük a UI-nak, hogy frissüljön
+    }
+
+    private async Task LoadBudgetAsync()
+    {
+        try
+        {
+            budget = await Http.GetFromJsonAsync<BudgetViewDto>("api/budget");
+            if (budget != null && budget.LimitAmount > 0)
+            {
+                budgetPercentage = (double)(budget.SpentAmount / budget.LimitAmount) * 100;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Hiba a budget betöltésekor: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task LoadTransactionsAsync()
+    {
+        try
+        {
+            // Utolsó 30 nap tranzakciói
+            var endDate = DateTime.Now;
+            var startDate = endDate.AddDays(-30);
+            var url = $"api/transaction?startDate={startDate:yyyy-MM-dd}&endDate={endDate:yyyy-MM-dd}";
+            transactions = await Http.GetFromJsonAsync<IEnumerable<TransactionViewDto>>(url);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Hiba a tranzakciók betöltésekor: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task LoadCategoriesAsync()
+    {
+        try
+        {
+            categories = await Http.GetFromJsonAsync<IEnumerable<CategoryViewDto>>("api/categories");
+            // Beállítjuk az alapértelmezett kategóriát a legördülőhöz
+            if (categories?.Any() == true && newTransaction.CategoryId == Guid.Empty)
+            {
+                newTransaction.CategoryId = categories.First().Id;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Hiba a kategóriák betöltésekor: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task HandleCreateTransaction()
+    {
+        isProcessingTransaction = true;
+        try
+        {
+            newTransaction.TransactionDate = transactionDate ?? DateTime.Today;
+            var response = await Http.PostAsJsonAsync("api/transaction", newTransaction);
+
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Tranzakció sikeresen rögzítve!", Severity.Success);
+                newTransaction = new() { CategoryId = categories?.First().Id ?? Guid.Empty }; // Űrlap ürítése
+                transactionDate = DateTime.Today;
+                
+                // Frissítjük a lista és a budget nézetet
+                await LoadBudgetAsync();
+                await LoadTransactionsAsync();
+            }
+            else
+            {
+                Snackbar.Add($"Hiba a mentés során: {await response.Content.ReadAsStringAsync()}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Váratlan hiba: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isProcessingTransaction = false;
+        }
+    }
+
+    private Color GetProgressColor()
+    {
+        if (budgetPercentage > 90) return Color.Error;
+        if (budgetPercentage > 75) return Color.Warning;
+        return Color.Primary;
+    }
+}

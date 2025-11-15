@@ -7,6 +7,7 @@ using BudgetTrackingApp.Logic.Services;
 using BudgetTrackingApp.Repository.Implamentations;
 using BudgetTrackingApp.Repository.Interfaces;
 using Microsoft.EntityFrameworkCore;
+using MudBlazor.Services;
 
 
 namespace BudgetTrackingApp
@@ -42,6 +43,7 @@ namespace BudgetTrackingApp
             builder.Services.AddScoped<IBudgetLogic, BudgetLogic>();
             builder.Services.AddScoped<IUserLogic, UserLogic>();
 
+            builder.Services.AddMudServices();
             // Add services to the container.
             builder.Services.AddRazorComponents()
                 .AddInteractiveServerComponents()

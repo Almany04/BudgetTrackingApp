@@ -4,6 +4,7 @@ using BudgetTrackingApp.Shared.Dtos.Category;
 using BudgetTrackingApp.Shared.Dtos.Transactions;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace BudgetTrackingApp.Api.Controllers
 {
@@ -17,6 +18,15 @@ namespace BudgetTrackingApp.Api.Controllers
             _transactionLogic = transactionLogic;
         }
 
+        private string GetUserId()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+            if (userId == null)
+            {
+                throw new Exception("Felhasználó ID nem található a tokenben. ");
+            }
+            return userId;
+        }
         [HttpGet]
         public async Task<IActionResult> GetTransactionsAsync([FromQuery] DateTime? startDate,
             [FromQuery] DateTime? endDate)
@@ -24,7 +34,7 @@ namespace BudgetTrackingApp.Api.Controllers
             
             try
             {
-                string testUserId = "TESZT_USER_ID";
+                string testUserId = GetUserId();
                 DateTime end = endDate ?? DateTime.Now;
                 DateTime start= startDate ?? end.AddDays(-30);
                
@@ -42,7 +52,7 @@ namespace BudgetTrackingApp.Api.Controllers
         {
             try
             {
-                string testUserId = "TESZT_USER_ID";
+                string testUserId = GetUserId();
                 await _transactionLogic.CreateTransactionAsync(transactionCreateDto, testUserId);
                 return StatusCode(201);
             }

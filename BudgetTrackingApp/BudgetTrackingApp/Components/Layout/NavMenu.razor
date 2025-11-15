@@ -1,30 +1,23 @@
-﻿<div class="top-row ps-3 navbar navbar-dark">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="">BudgetTrackingApp</a>
-    </div>
-</div>
+﻿
+<MudNavMenu>
+    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Home">Főoldal</MudNavLink>
+    
+    <AuthorizeView>
+        <Authorized>
+            <MudNavLink Href="dashboard" Icon="@Icons.Material.Filled.Dashboard">Vezérlőpult</MudNavLink>
+            <MudNavLink Href="transactions" Icon="@Icons.Material.Filled.ListAlt">Tranzakciók</MudNavLink>
+            <MudNavLink Href="categories" Icon="@Icons.Material.Filled.Category">Kategóriák</MudNavLink>
+            
+            <MudNavGroup Title="Beállítások" Icon="@Icons.Material.Filled.Settings" Expanded="false">
+                <MudNavLink Href="budget" Icon="@Icons.Material.Filled.AccountBalanceWallet">Budget</MudNavLink>
+            </MudNavGroup>
 
-<input type="checkbox" title="Navigation menu" class="navbar-toggler" />
+            <MudNavLink Href="logout" Icon="@Icons.Material.Filled.Logout">Kijelentkezés</MudNavLink>
+        </Authorized>
+        <NotAuthorized>
+            <MudNavLink Href="login" Icon="@Icons.Material.Filled.Login">Bejelentkezés</MudNavLink>
+            <MudNavLink Href="register" Icon="@Icons.Material.Filled.AppRegistration">Regisztráció</MudNavLink>
+        </NotAuthorized>
+    </AuthorizeView>
 
-<div class="nav-scrollable" onclick="document.querySelector('.navbar-toggler').click()">
-    <nav class="flex-column">
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="" Match="NavLinkMatch.All">
-                <span class="bi bi-house-door-fill-nav-menu" aria-hidden="true"></span> Home
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="counter">
-                <span class="bi bi-plus-square-fill-nav-menu" aria-hidden="true"></span> Counter
-            </NavLink>
-        </div>
-
-        <div class="nav-item px-3">
-            <NavLink class="nav-link" href="register">
-                <span class="bi bi-list-nested-nav-menu" aria-hidden="true"></span> Regisztráció
-            </NavLink>
-        </div>
-    </nav>
-</div>
-
+</MudNavMenu>

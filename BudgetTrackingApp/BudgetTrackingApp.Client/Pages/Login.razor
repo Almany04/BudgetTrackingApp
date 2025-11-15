@@ -1,0 +1,109 @@
+﻿@page "/login"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+
+@using BudgetTrackingApp.Shared.Dtos.User
+@using BudgetTrackingApp.Client.Services
+@inject HttpClient Http
+@inject NavigationManager Navigation
+@inject CustomAuthenticationStateProvider AuthStateProvider
+@inject ISnackbar Snackbar
+
+<PageTitle>Bejelentkezés</PageTitle>
+
+<MudGrid Justify="Justify.Center" Class="mt-10">
+    <MudItem xs="12" sm="8" md="6" lg="4">
+        <EditForm Model="loginModel" OnValidSubmit="HandleLogin" FormName="LoginForm">
+            <DataAnnotationsValidator />
+
+            <MudCard Elevation="25">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h5" Align="Align.Center">Bejelentkezés</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+
+                    <MudTextField Label="Email cím"
+                                  Class="mb-3"
+                                  @bind-Value="loginModel.Email"
+                                  For="@(() => loginModel.Email)"
+                                  InputType="InputType.Email" />
+
+                    <MudTextField Label="Jelszó"
+                                  Class="mb-3"
+                                  @bind-Value="loginModel.Password"
+                                  For="@(() => loginModel.Password)"
+                                  InputType="InputType.Password" />
+
+                    @if (!string.IsNullOrEmpty(apiErrorMessage))
+                    {
+                        <MudAlert Severity="Severity.Error" Class="mb-3">@apiErrorMessage</MudAlert>
+                    }
+                </MudCardContent>
+                <MudCardActions>
+                    <MudButton ButtonType="ButtonType.Submit"
+                               Variant="Variant.Filled"
+                               Color="Color.Primary"
+                               Disabled="@isProcessing"
+                               FullWidth="true"
+                               Class="mx-2 mb-2">
+                        @if (isProcessing)
+                        {
+                            <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+                        }
+                        else
+                        {
+                            <span>Bejelentkezés</span>
+                        }
+                    </MudButton>
+                </MudCardActions>
+            </MudCard>
+        </EditForm>
+    </MudItem>
+</MudGrid>
+
+
+@code {
+    private UserLoginDto loginModel = new UserLoginDto();
+    private string? apiErrorMessage;
+    private bool isProcessing = false;
+
+    private async Task HandleLogin()
+    {
+        isProcessing = true;
+        apiErrorMessage = null;
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/user/login", loginModel);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var responseDto = await response.Content.ReadFromJsonAsync<UserLoginResponseDto>();
+                if (responseDto != null)
+                {
+                    // Itt hívjuk meg az új szervizt, ami elmenti az adatokat és értesíti a Blazor-t!
+                    await AuthStateProvider.LoginAsync(responseDto);
+                    Snackbar.Add("Sikeres bejelentkezés!", Severity.Success);
+                    Navigation.NavigateTo("/dashboard", forceLoad: true); // forceLoad: true kell, hogy az egész layout újra töltődjön
+                }
+                else
+                {
+                    apiErrorMessage = "Hiba a válasz feldolgozása közben.";
+                }
+            }
+            else
+            {
+                string errorContent = await response.Content.ReadAsStringAsync();
+                apiErrorMessage = errorContent.Replace("[\"", "").Replace("\"]", "").Replace("\"", "");
+            }
+        }
+        catch (Exception ex)
+        {
+            apiErrorMessage = $"Hiba történt a bejelentkezés során: {ex.Message}";
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+}
