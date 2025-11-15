@@ -1,6 +1,4 @@
 using BudgetTrackingApp.Api.Components;
-// Ez a 'using' felesleges, ahogy megbeszéltük, kivettem:
-// using BudgetTrackingApp.Client.Pages; 
 using BudgetTrackingApp.Data;
 using BudgetTrackingApp.Data.Entities;
 using BudgetTrackingApp.Logic.Interfaces;
@@ -10,6 +8,7 @@ using BudgetTrackingApp.Repository.Interfaces;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
+using System.Security.Claims; // Ezt az importot is hozzáadtam a biztonság kedvéért
 
 namespace BudgetTrackingApp
 {
@@ -19,12 +18,11 @@ namespace BudgetTrackingApp
         {
             var builder = WebApplication.CreateBuilder(args);
 
-
             var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
             builder.Services.AddDbContext<BudgetTrackerDbContext>(options =>
                 options.UseSqlServer(connectionString));
 
-
+            // ------ AUTHENTIKÁCIÓS SZOLGÁLTATÁSOK ------
             builder.Services.AddIdentity<AppUser, IdentityRole>(options =>
             {
                 options.SignIn.RequireConfirmedAccount = false;
@@ -36,8 +34,10 @@ namespace BudgetTrackingApp
             })
             .AddEntityFrameworkStores<BudgetTrackerDbContext>();
 
+            // Autorizáció regisztrálása
             builder.Services.AddAuthorization();
 
+            // Cookie beállítások API-hoz (401-es hiba átirányítás helyett)
             builder.Services.ConfigureApplicationCookie(options =>
             {
                 options.Events.OnRedirectToLogin = context =>
@@ -51,7 +51,9 @@ namespace BudgetTrackingApp
                     return Task.CompletedTask;
                 };
             });
+            // ------ AUTHENTIKÁCIÓ VÉGE ------
 
+            // ------ SZERVIZEK ÉS REPOZITÓRIUMOK ------
             builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
             builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
             builder.Services.AddScoped<IBudgetRepository, BudgetRepository>();
@@ -61,22 +63,27 @@ namespace BudgetTrackingApp
             builder.Services.AddScoped<IBudgetLogic, BudgetLogic>();
             builder.Services.AddScoped<IUserLogic, UserLogic>();
 
-            builder.Services.AddMudServices();
+            // ------ UI ÉS API SZOLGÁLTATÁSOK ------
+            builder.Services.AddMudServices(); // MudBlazor szervizek
 
-            // Add services to the container.
+            // API Kontrollerek szervizeinek regisztrálása (EZ VOLT A HIBA)
+            builder.Services.AddControllers();
+
+            // Blazor komponensek regisztrálása
             builder.Services.AddRazorComponents()
                 .AddInteractiveServerComponents()
                 .AddInteractiveWebAssemblyComponents();
 
-            // ----------------------------------------
-            // EZ A SOR HIÁNYZOTT! 
-            // Ez regisztrálja az API kontrollerek futtatásához szükséges szervizeket.
-            builder.Services.AddControllers();
-            // ----------------------------------------
+            // --------------------------------------------------
+            //          SZOLGÁLTATÁSOK REGISZTRÁLÁSA VÉGE
+            // --------------------------------------------------
 
             var app = builder.Build();
 
-            // Configure the HTTP request pipeline.
+            // --------------------------------------------------
+            //          HTTP KÉRÉS PIPELINE BEÁLLÍTÁSA
+            // --------------------------------------------------
+
             if (app.Environment.IsDevelopment())
             {
                 app.UseWebAssemblyDebugging();
@@ -88,18 +95,20 @@ namespace BudgetTrackingApp
             }
 
             app.UseHttpsRedirection();
-
             app.UseStaticFiles();
             app.UseAntiforgery();
 
+            // Fontos a sorrend!
             app.UseAuthentication();
             app.UseAuthorization();
 
+            // Blazor komponensek "bekötése"
             app.MapRazorComponents<App>()
                 .AddInteractiveServerRenderMode()
                 .AddInteractiveWebAssemblyRenderMode()
                 .AddAdditionalAssemblies(typeof(Client._Imports).Assembly);
 
+            // API Kontrollerek "bekötése" (ez keresi az /api/user/login-t stb.)
             app.MapControllers();
 
             app.Run();
