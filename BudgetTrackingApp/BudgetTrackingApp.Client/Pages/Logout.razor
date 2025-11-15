@@ -2,11 +2,22 @@
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @inject CustomAuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
-
+@inject HttpClient Http 
 @code {
     protected override async Task OnInitializedAsync()
     {
+        try
+        {
+            
+            await Http.PostAsync("api/user/logout", null);
+        }
+        catch (Exception)
+        {
+            
+        }
+        
         await AuthStateProvider.LogoutAsync();
+        
         Navigation.NavigateTo("/", forceLoad: true);
     }
 }

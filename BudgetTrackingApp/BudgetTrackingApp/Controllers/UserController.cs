@@ -64,5 +64,19 @@ namespace BudgetTrackingApp.Api.Controllers
                 return BadRequest(ex.Message);
             }
         }
+        [HttpPost("logout")]
+        [Authorize] 
+        public async Task<IActionResult> UserLogoutAsync()
+        {
+            try
+            {
+                await _signInManager.SignOutAsync(); 
+                return Ok();
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
     }
 }
