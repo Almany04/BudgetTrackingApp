@@ -1,0 +1,172 @@
+﻿@using BudgetTrackingApp.Shared.Dtos.Transactions
+@using BudgetTrackingApp.Shared.Dtos.Category
+@using BudgetTrackingApp.Shared.Enums
+@using MudBlazor
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+
+<EditForm Model="TransactionModel" OnValidSubmit="HandleSave">
+    <DataAnnotationsValidator />
+    <MudDialog>
+        <TitleContent>
+            <MudText Typo="Typo.h6">@TitleText</MudText>
+        </TitleContent>
+        <DialogContent>
+            <MudStack Spacing="3" Class="mt-3">
+                <MudTextField Label="Összeg"
+                              @bind-Value="TransactionModel.Amount"
+                              For="@(() => TransactionModel.Amount)"
+                              InputType="InputType.Number"
+                              Adornment="Adornment.End"
+                              AdornmentText="Ft"
+                              AutoFocus="true" />
+
+                <MudSelect Label="Típus" @bind-Value="TransactionModel.Type" For="@(() => TransactionModel.Type)">
+                    <MudSelectItem Value="TransactionType.Expense">Kiadás</MudSelectItem>
+                    <MudSelectItem Value="TransactionType.Income">Bevétel</MudSelectItem>
+                </MudSelect>
+
+                <MudSelect Label="Kategória"
+                           @bind-Value="TransactionModel.CategoryId"
+                           For="@(() => TransactionModel.CategoryId)"
+                           Disabled="@(categories == null)"
+                           Placeholder="@(categories == null ? "Kategóriák töltése..." : "Válassz kategóriát")">
+
+                    @if (categories != null)
+                    {
+                        @foreach (var category in categories)
+                        {
+                            <MudSelectItem Value="category.Id">@category.Name</MudSelectItem>
+                        }
+                    }
+                </MudSelect>
+
+                <MudDatePicker Label="Dátum" @bind-Date="transactionDate" Editable="true" />
+
+                <MudTextField Label="Leírás (opcionális)"
+                              @bind-Value="TransactionModel.Description"
+                              For="@(() => TransactionModel.Description)"
+                              Lines="2" />
+            </MudStack>
+        </DialogContent>
+        <DialogActions>
+            <MudButton OnClick="Cancel">Mégse</MudButton>
+            <MudButton ButtonType="ButtonType.Submit"
+                       Color="Color.Primary"
+                       Variant="Variant.Filled"
+                       Disabled="@(isProcessing || categories == null)">
+                @if (isProcessing)
+                {
+                    <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+                }
+                else
+                {
+                    <span>Mentés</span>
+                }
+            </MudButton>
+        </DialogActions>
+    </MudDialog>
+</EditForm>
+
+@code {
+    [CascadingParameter]
+    IMudDialogInstance MudDialog { get; set; }
+
+    [Parameter]
+    public TransactionUpdateDto TransactionModel { get; set; } = new();
+
+    [Parameter]
+    public Guid? TransactionId { get; set; } // Ha ez null, akkor "Create", egyébként "Update"
+
+    private string TitleText => TransactionId == null ? "Új Tranzakció" : "Tranzakció Szerkesztése";
+    private List<CategoryViewDto>? categories;
+    private bool isProcessing = false;
+    private DateTime? transactionDate;
+
+    protected override async Task OnInitializedAsync()
+    {
+        transactionDate = TransactionModel.TransactionDate;
+        if (transactionDate.Value.Year == 1) // Ha a dátum nincs beállítva (pl. új DTO)
+        {
+            transactionDate = DateTime.Today;
+        }
+        await LoadCategoriesAsync();
+    }
+
+    private async Task LoadCategoriesAsync()
+    {
+        try
+        {
+            categories = await Http.GetFromJsonAsync<List<CategoryViewDto>>("api/categories");
+            
+            // Ha ÚJ tranzakció, és még nincs kategória beállítva, válasszuk az elsőt
+            if (TransactionId == null && TransactionModel.CategoryId == Guid.Empty && categories?.Any() == true)
+            {
+                TransactionModel.CategoryId = categories.First().Id;
+            }
+            
+            // Ha SZERKESZTÉS, de a CategoryId nem jött át (az 1. lépésben lévő API hiba miatt)
+            if (TransactionId != null && TransactionModel.CategoryId == Guid.Empty && categories?.Any() == true)
+            {
+                // Ideiglenes megoldás: válasszuk az első kategóriát.
+                // A felhasználónak manuálisan kell kiválasztania a helyeset.
+                TransactionModel.CategoryId = categories.First().Id;
+                Snackbar.Add("Figyelem: A kategóriát újra ki kell választani!", Severity.Warning);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Hiba a kategóriák betöltésekor: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task HandleSave()
+    {
+        isProcessing = true;
+        try
+        {
+            TransactionModel.TransactionDate = transactionDate ?? DateTime.Today;
+
+            HttpResponseMessage response;
+            if (TransactionId == null)
+            {
+                // Létrehozás (POST)
+                var createDto = new TransactionCreateDto
+                {
+                    Amount = TransactionModel.Amount,
+                    Type = TransactionModel.Type,
+                    Description = TransactionModel.Description,
+                    TransactionDate = TransactionModel.TransactionDate,
+                    CategoryId = TransactionModel.CategoryId
+                };
+                response = await Http.PostAsJsonAsync("api/transaction", createDto);
+            }
+            else
+            {
+                // Frissítés (PUT)
+                response = await Http.PutAsJsonAsync($"api/transaction/{TransactionId}", TransactionModel);
+            }
+
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Tranzakció mentve!", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+            else
+            {
+                var error = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Hiba mentés közben: {error}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Váratlan hiba: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isProcessing = false;
+        }
+    }
+
+    void Cancel() => MudDialog.Cancel();
+}

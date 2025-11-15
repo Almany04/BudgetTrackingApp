@@ -112,19 +112,67 @@
 
     private async Task OpenTransactionDialog(TransactionViewDto? transaction)
     {
-        // A TransactionDialog.razor fájlt a következő lépésben hozzuk létre
-        // var dialog = DialogService.Show<BudgetTrackingApp.Client.Shared.TransactionDialog>("Tranzakció");
-        // var result = await dialog.Result;
+        var parameters = new DialogParameters();
+        string title;
 
-        // TODO: A dialógus ablak megírása után ezt a részt be kell fejezni
+        if (transaction == null)
+        {
+            // ÚJ LÉTREHOZÁSA
+            title = "Új Tranzakció";
+            parameters.Add("TransactionModel", new TransactionUpdateDto
+            {
+                TransactionDate = DateTime.Today,
+                Type = TransactionType.Expense // Alapértelmezett
+            });
+            parameters.Add("TransactionId", null);
+        }
+        else
+        {
+            // SZERKESZTÉS
+            title = "Tranzakció Szerkesztése";
 
-        Snackbar.Add("Szerkesztés funkció még nincs kész.", Severity.Info);
+            try
+            {
+                // Itt hívjuk az 1. lépésben létrehozott GET api/transaction/{id} végpontot
+                // Ez TransactionViewDto-t ad vissza, mert a Logic-ot nem módosítottuk.
+                var transactionFromApi = await Http.GetFromJsonAsync<TransactionViewDto>($"api/transaction/{transaction.Id}");
 
-        // Ideiglenes: frissítsünk, ha a dialógus bezárult (mintha mentettünk volna)
-        // if (result != null && !result.Canceled)
-        // {
-        //    await LoadTransactionsAsync();
-        // }
+                if (transactionFromApi == null)
+                {
+                    Snackbar.Add("Hiba a tranzakció betöltésekor.", Severity.Error);
+                    return;
+                }
+
+                // Átalakítjuk a modellt, amit a dialógus vár (TransactionUpdateDto)
+                // A CategoryId-t sajnos nem tudjuk, ezért lesz a 2. lépésben lévő figyelmeztetés
+                var transactionToEdit = new TransactionUpdateDto
+                {
+                    Amount = transactionFromApi.Amount,
+                    Description = transactionFromApi.Description,
+                    TransactionDate = transactionFromApi.TransactionDate,
+                    Type = transactionFromApi.Type,
+                    CategoryId = Guid.Empty // Ezt a dialógus felül fogja írni az első elérhető kategóriával
+                };
+
+                parameters.Add("TransactionModel", transactionToEdit);
+                parameters.Add("TransactionId", transaction.Id);
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Hiba a szerkesztés előkészítésekor: {ex.Message}", Severity.Error);
+                return;
+            }
+        }
+
+        // A dialógus fájlra a teljes névterével kell hivatkozni
+        var dialog = DialogService.Show<BudgetTrackingApp.Client.Shared.TransactionDialog>(title, parameters);
+        var result = await dialog.Result;
+
+        // Ha a dialógus "Ok"-val zárult be (mentés történt)
+        if (result != null && !result.Canceled)
+        {
+            await LoadTransactionsAsync(); // Frissítjük a táblázatot
+        }
     }
 
     private async Task DeleteTransaction(TransactionViewDto transaction)

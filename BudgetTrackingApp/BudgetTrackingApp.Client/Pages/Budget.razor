@@ -1,7 +1,6 @@
 ﻿@page "/budget"
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @attribute [Authorize]
-
 @using BudgetTrackingApp.Shared.Dtos.Budget
 @inject HttpClient Http
 @inject ISnackbar Snackbar

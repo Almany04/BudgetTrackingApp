@@ -16,13 +16,14 @@ namespace BudgetTrackingApp.Logic.Services
         private readonly IUserRepository _userRepository;
         private readonly ICategoryRepository _categoryRepository;
         private readonly IBudgetRepository _budgetRepository;
+        private readonly SignInManager<AppUser> _signInManager;
 
-        public UserLogic(IUserRepository userRepository, ICategoryRepository categoryRepository, IBudgetRepository budgetRepository)
+        public UserLogic(IUserRepository userRepository, ICategoryRepository categoryRepository, IBudgetRepository budgetRepository, SignInManager<AppUser> signInManager)
         {
-            _userRepository=userRepository;
-            _categoryRepository=categoryRepository;
-            _budgetRepository=budgetRepository;
-
+            _userRepository = userRepository;
+            _categoryRepository = categoryRepository;
+            _budgetRepository = budgetRepository;
+            _signInManager = signInManager;
         }
         public async Task<UserLoginResponseDto> LoginUserAsync(UserLoginDto userLoginDto)
         {
@@ -31,12 +32,13 @@ namespace BudgetTrackingApp.Logic.Services
             {
                 throw new Exception("Hibás email cím vagy jelszó!");
             }
-            
-            var isPasswordCorrect= await _userRepository.CheckPasswordAsync(user,userLoginDto.Password);
-            if (isPasswordCorrect==false)
+
+            var result = await _signInManager.CheckPasswordSignInAsync(user, userLoginDto.Password, lockoutOnFailure: false);
+            if (!result.Succeeded)
             {
                 throw new Exception("Hibás email cím vagy jelszó!");
             }
+
             return new UserLoginResponseDto
             {
                 UserId = user.Id,

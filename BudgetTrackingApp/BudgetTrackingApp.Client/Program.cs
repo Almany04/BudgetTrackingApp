@@ -10,21 +10,18 @@ namespace BudgetTrackingApp.Client
         static async Task Main(string[] args)
         {
             var builder = WebAssemblyHostBuilder.CreateDefault(args);
+
             builder.Services.AddScoped(sp => new HttpClient { BaseAddress = new Uri(builder.HostEnvironment.BaseAddress) });
 
-           
+            // ------ SZÜKSÉGES KLIENS SZERVIZEK ------
+
             builder.Services.AddMudServices();
-
-           
             builder.Services.AddAuthorizationCore();
-
-            
             builder.Services.AddScoped<CustomAuthenticationStateProvider>();
-
-            
             builder.Services.AddScoped<AuthenticationStateProvider>(provider =>
                 provider.GetRequiredService<CustomAuthenticationStateProvider>());
 
+            // ------ SZERVIZEK VÉGE ------
 
             await builder.Build().RunAsync();
         }

@@ -1,7 +1,9 @@
-﻿using BudgetTrackingApp.Logic.Interfaces;
+﻿using BudgetTrackingApp.Data.Entities;
+using BudgetTrackingApp.Logic.Interfaces;
 using BudgetTrackingApp.Shared.Dtos.User;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 
 namespace BudgetTrackingApp.Api.Controllers
@@ -11,9 +13,14 @@ namespace BudgetTrackingApp.Api.Controllers
     public class UserController : ControllerBase
     {
         private readonly IUserLogic _userLogic;
-        public UserController(IUserLogic userLogic)
+        private readonly SignInManager<AppUser> _signInManager; 
+        private readonly UserManager<AppUser> _userManager;
+        public UserController(IUserLogic userLogic, SignInManager<AppUser> signInManager,
+                            UserManager<AppUser> userManager)
         {
             _userLogic = userLogic;
+            _signInManager = signInManager;
+            _userManager = userManager;
         }
        
         [HttpPost("register")]
@@ -41,7 +48,15 @@ namespace BudgetTrackingApp.Api.Controllers
         {
             try
             {
-                var responseDto=await _userLogic.LoginUserAsync(userLoginDto);
+                // A UserLogic leellenőrzi a jelszót és visszaadja a DTO-t
+                var responseDto = await _userLogic.LoginUserAsync(userLoginDto);
+
+                // Most TÉNYLEGESEN bejelentkeztetjük a felhasználót a szerveren,
+                // ami beállítja az authentikációs SÜTIT.
+                var user = await _userManager.FindByEmailAsync(userLoginDto.Email);
+                await _signInManager.SignInAsync(user, isPersistent: false); // <-- EZ A KULCSOR!
+
+                // Visszaadjuk a DTO-t a kliensnek, hogy a localStorage-ba is bekerüljön
                 return Ok(responseDto);
             }
             catch (Exception ex)
