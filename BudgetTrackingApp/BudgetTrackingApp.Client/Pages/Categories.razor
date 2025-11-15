@@ -1,0 +1,146 @@
+﻿@page "/categories"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@attribute [Authorize]
+
+@using BudgetTrackingApp.Shared.Dtos.Category
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Kategóriák Kezelése</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
+    <MudPaper Elevation="3" Class="pa-4">
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
+            <MudText Typo="Typo.h5">Kategóriák</MudText>
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="() => OpenCategoryDialog(null)">
+                Új Kategória
+            </MudButton>
+        </MudStack>
+
+        <MudTable Items="categories"
+                  Hover="true"
+                  Breakpoint="Breakpoint.Sm"
+                  Loading="@(categories == null)"
+                  LoadingProgressColor="Color.Info"
+                  FixedHeader="true"
+                  Height="calc(100vh - 250px)">
+            <HeaderContent>
+                <MudTh>Név</MudTh>
+                <MudTh Style="text-align: right">Műveletek</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Név">@context.Name</MudTd>
+                <MudTd DataLabel="Műveletek" Style="text-align: right">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                   Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Size="Size.Small"
+                                   OnClick="() => OpenCategoryDialog(context)"
+                                   Class="mr-2" />
+
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                   Variant="Variant.Filled"
+                                   Color="Color.Error"
+                                   Size="Size.Small"
+                                   OnClick="() => DeleteCategory(context)" />
+                </MudTd>
+            </RowTemplate>
+            <NoRecordsContent>
+                <MudText>Nincsenek kategóriák rögzítve.</MudText>
+            </NoRecordsContent>
+            <LoadingContent>
+                <MudText>Kategóriák betöltése...</MudText>
+            </LoadingContent>
+        </MudTable>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private List<CategoryViewDto>? categories;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadCategoriesAsync();
+    }
+
+    private async Task LoadCategoriesAsync()
+    {
+        try
+        {
+            categories = null; // Töltés jelzése
+            var result = await Http.GetFromJsonAsync<List<CategoryViewDto>>("api/categories");
+            categories = result ?? new List<CategoryViewDto>();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Hiba a kategóriák betöltésekor: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task OpenCategoryDialog(CategoryViewDto? category)
+    {
+        var parameters = new DialogParameters();
+        string title;
+
+        if (category == null)
+        {
+            // Új kategória létrehozása
+            title = "Új Kategória";
+            parameters.Add("CategoryModel", new CategoryCreateDto());
+        }
+        else
+        {
+            // Meglévő szerkesztése
+            title = "Kategória Szerkesztése";
+            parameters.Add("CategoryModel", new CategoryUpdateDto { Name = category.Name });
+            parameters.Add("CategoryId", category.Id);
+        }
+
+        var dialog = DialogService.Show<BudgetTrackingApp.Client.Shared.CategoryDialog>(title, parameters);
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled)
+        {
+            
+            Snackbar.Add("Kategória sikeresen mentve!", Severity.Success);
+            await LoadCategoriesAsync();
+        }
+    }
+
+    private async Task DeleteCategory(CategoryViewDto category)
+    {
+       
+        var result = await DialogService.ShowMessageBox(
+            "Törlés Megerősítése",
+            $"Biztosan törölni szeretnéd a '{category.Name}' kategóriát? Ezt a művelet nem vonható vissza.",
+            yesText: "Törlés",
+            cancelText: "Mégse"
+        );
+
+        if (result == true)
+        {
+            try
+            {
+                var response = await Http.DeleteAsync($"api/categories/{category.Id}");
+                if (response.IsSuccessStatusCode)
+                {
+                    Snackbar.Add("Kategória törölve!", Severity.Success);
+                    await LoadCategoriesAsync();
+                }
+                else
+                {
+                    Snackbar.Add($"Hiba a törlés során: {await response.Content.ReadAsStringAsync()}", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Váratlan hiba: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+    }
+}

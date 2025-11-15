@@ -1,12 +1,12 @@
 ﻿@page "/dashboard"
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
-@attribute [Authorize] // Ez biztosítja, hogy csak bejelentkezett felhasználó érheti el
+@attribute [Authorize] 
 
 @using BudgetTrackingApp.Shared.Dtos.Budget
 @using BudgetTrackingApp.Shared.Dtos.Transactions
 @using BudgetTrackingApp.Shared.Dtos.Category
 @using BudgetTrackingApp.Shared.Enums
-@using Microsoft.AspNetCore.Authorization
+
 @inject HttpClient Http
 @inject ISnackbar Snackbar
 
@@ -161,9 +161,9 @@
 
     private async Task LoadDataAsync()
     {
-        // Párhuzamosan töltjük az adatokat
+        
         await Task.WhenAll(LoadBudgetAsync(), LoadTransactionsAsync(), LoadCategoriesAsync());
-        StateHasChanged(); // Jelezzük a UI-nak, hogy frissüljön
+        StateHasChanged(); 
     }
 
     private async Task LoadBudgetAsync()
@@ -203,7 +203,7 @@
         try
         {
             categories = await Http.GetFromJsonAsync<IEnumerable<CategoryViewDto>>("api/categories");
-            // Beállítjuk az alapértelmezett kategóriát a legördülőhöz
+            
             if (categories?.Any() == true && newTransaction.CategoryId == Guid.Empty)
             {
                 newTransaction.CategoryId = categories.First().Id;
@@ -226,10 +226,10 @@
             if (response.IsSuccessStatusCode)
             {
                 Snackbar.Add("Tranzakció sikeresen rögzítve!", Severity.Success);
-                newTransaction = new() { CategoryId = categories?.First().Id ?? Guid.Empty }; // Űrlap ürítése
+                newTransaction = new() { CategoryId = categories?.First().Id ?? Guid.Empty }; 
                 transactionDate = DateTime.Today;
                 
-                // Frissítjük a lista és a budget nézetet
+                
                 await LoadBudgetAsync();
                 await LoadTransactionsAsync();
             }

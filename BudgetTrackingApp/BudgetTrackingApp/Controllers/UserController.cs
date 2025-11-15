@@ -1,5 +1,6 @@
 ﻿using BudgetTrackingApp.Logic.Interfaces;
 using BudgetTrackingApp.Shared.Dtos.User;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
@@ -14,7 +15,9 @@ namespace BudgetTrackingApp.Api.Controllers
         {
             _userLogic = userLogic;
         }
+       
         [HttpPost("register")]
+        [AllowAnonymous]
         public async Task<IActionResult> UserRegisterAsync([FromBody]UserRegisterDto userRegisterDto)
         {
             try
@@ -33,6 +36,7 @@ namespace BudgetTrackingApp.Api.Controllers
         }
 
         [HttpPost("login")]
+        [AllowAnonymous]
         public async Task<IActionResult> UserLoginAsync([FromBody]UserLoginDto userLoginDto)
         {
             try

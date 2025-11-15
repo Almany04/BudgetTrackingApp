@@ -55,5 +55,35 @@ namespace BudgetTrackingApp.Api.Controllers
                 return BadRequest(ex.Message);
             }
         }
+        [HttpPut("{id}")]
+        public async Task<IActionResult> UpdateCategory(Guid id, [FromBody] CategoryUpdateDto categoryUpdateDto)
+        {
+            try
+            {
+                string userId = GetUserId();
+                await _categoryLogic.UpdateCategoryAsync(id, categoryUpdateDto, userId);
+                return Ok(); 
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpDelete("{id}")]
+        public async Task<IActionResult> DeleteCategory(Guid id)
+        {
+            try
+            {
+                string userId = GetUserId();
+                await _categoryLogic.DeleteCategoryAsync(id, userId);
+                return NoContent(); 
+            }
+            catch (Exception ex)
+            {
+                
+                return BadRequest(ex.Message);
+            }
+        }
     }
 }

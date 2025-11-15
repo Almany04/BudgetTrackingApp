@@ -1,0 +1,163 @@
+﻿@page "/transactions"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@attribute [Authorize]
+
+@using BudgetTrackingApp.Shared.Dtos.Transactions
+@using BudgetTrackingApp.Shared.Enums
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Tranzakciók</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
+    <MudPaper Elevation="3" Class="pa-4">
+        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
+            <MudText Typo="Typo.h5">Tranzakciók</MudText>
+            <MudButton Variant="Variant.Filled"
+                       Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Add"
+                       OnClick="() => OpenTransactionDialog(null)">
+                Új Tranzakció
+            </MudButton>
+        </MudStack>
+
+        <MudToolBar Dense="true" Class="mb-2">
+            <MudDateRangePicker @bind-DateRange="dateRange"
+                                Label="Szűrés dátumra"
+                                PickerVariant="PickerVariant.Dialog" />
+            <MudSpacer />
+            <MudButton Variant="Variant.Filled" OnClick="LoadTransactionsAsync">Szűrés</MudButton>
+        </MudToolBar>
+
+        <MudTable Items="transactions"
+                  Hover="true"
+                  Breakpoint="Breakpoint.Sm"
+                  Loading="@isLoading"
+                  LoadingProgressColor="Color.Info"
+                  FixedHeader="true"
+                  Height="calc(100vh - 320px)">
+            <HeaderContent>
+                <MudTh>Dátum</MudTh>
+                <MudTh>Kategória</MudTh>
+                <MudTh>Leírás</MudTh>
+                <MudTh Style="text-align: right">Összeg</MudTh>
+                <MudTh Style="text-align: right">Műveletek</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Dátum">@context.TransactionDate.ToString("yyyy.MM.dd")</MudTd>
+                <MudTd DataLabel="Kategória">@context.CategoryName</MudTd>
+                <MudTd DataLabel="Leírás">@context.Description</MudTd>
+                <MudTd DataLabel="Összeg" Style="text-align: right">
+                    <MudText Color="@(context.Type == TransactionType.Expense ? Color.Error : Color.Success)">
+                        @(context.Type == TransactionType.Expense ? "-" : "+") @context.Amount.ToString("C0")
+                    </MudText>
+                </MudTd>
+                <MudTd DataLabel="Műveletek" Style="text-align: right">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                   Variant="Variant.Filled"
+                                   Color="Color.Primary"
+                                   Size="Size.Small"
+                                   OnClick="() => OpenTransactionDialog(context)"
+                                   Class="mr-2" />
+
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                   Variant="Variant.Filled"
+                                   Color="Color.Error"
+                                   Size="Size.Small"
+                                   OnClick="() => DeleteTransaction(context)" />
+                </MudTd>
+            </RowTemplate>
+            <NoRecordsContent>
+                <MudText>Nincsenek tranzakciók a megadott időszakban.</MudText>
+            </NoRecordsContent>
+            <LoadingContent>
+                <MudText>Tranzakciók betöltése...</MudText>
+            </LoadingContent>
+        </MudTable>
+    </MudPaper>
+</MudContainer>
+
+@code {
+    private List<TransactionViewDto>? transactions;
+    private bool isLoading = true;
+    private DateRange dateRange = new DateRange(DateTime.Now.AddDays(-30), DateTime.Now);
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadTransactionsAsync();
+    }
+
+    private async Task LoadTransactionsAsync()
+    {
+        isLoading = true;
+        try
+        {
+            var start = dateRange.Start?.ToString("yyyy-MM-dd");
+            var end = dateRange.End?.ToString("yyyy-MM-dd");
+            var url = $"api/transaction?startDate={start}&endDate={end}";
+
+            var result = await Http.GetFromJsonAsync<List<TransactionViewDto>>(url);
+            transactions = result ?? new List<TransactionViewDto>();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Hiba a tranzakciók betöltésekor: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task OpenTransactionDialog(TransactionViewDto? transaction)
+    {
+        // A TransactionDialog.razor fájlt a következő lépésben hozzuk létre
+        // var dialog = DialogService.Show<BudgetTrackingApp.Client.Shared.TransactionDialog>("Tranzakció");
+        // var result = await dialog.Result;
+
+        // TODO: A dialógus ablak megírása után ezt a részt be kell fejezni
+
+        Snackbar.Add("Szerkesztés funkció még nincs kész.", Severity.Info);
+
+        // Ideiglenes: frissítsünk, ha a dialógus bezárult (mintha mentettünk volna)
+        // if (result != null && !result.Canceled)
+        // {
+        //    await LoadTransactionsAsync();
+        // }
+    }
+
+    private async Task DeleteTransaction(TransactionViewDto transaction)
+    {
+        // A ShowMessageBox egy sokkal tisztább módja a megerősítés kérésének
+        var result = await DialogService.ShowMessageBox(
+            "Törlés Megerősítése",
+            $"Biztosan törölni szeretnéd ezt a tranzakciót? ({transaction.Amount.ToString("C0")})",
+            yesText: "Törlés",
+            cancelText: "Mégse"
+        );
+
+        // A result itt egy 'bool?' (nullable boolean).
+        // 'true' ha a 'yesText'-re kattintott, 'null' ha a 'cancelText'-re vagy mellé.
+        if (result == true)
+        {
+            try
+            {
+                var response = await Http.DeleteAsync($"api/transaction/{transaction.Id}");
+                if (response.IsSuccessStatusCode)
+                {
+                    Snackbar.Add("Tranzakció törölve!", Severity.Success);
+                    await LoadTransactionsAsync();
+                }
+                else
+                {
+                    Snackbar.Add($"Hiba a törlés során: {await response.Content.ReadAsStringAsync()}", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Váratlan hiba: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}

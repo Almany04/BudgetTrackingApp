@@ -1,0 +1,103 @@
+﻿@page "/budget"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@attribute [Authorize]
+
+@using BudgetTrackingApp.Shared.Dtos.Budget
+@inject HttpClient Http
+@inject ISnackbar Snackbar
+
+<PageTitle>Budget Beállítása</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Small" Class="mt-10">
+    <EditForm Model="budgetModel" OnValidSubmit="HandleSaveBudget">
+        <DataAnnotationsValidator />
+        <MudCard Elevation="3">
+            <MudCardHeader>
+                <CardHeaderContent>
+                    <MudText Typo="Typo.h5">Havi Keret Beállítása</MudText>
+                </CardHeaderContent>
+            </MudCardHeader>
+            <MudCardContent>
+                @if (isLoading)
+                {
+                    <MudProgressCircular Indeterminate="true" />
+                }
+                else
+                {
+                    <MudTextField Label="Havi keretösszeg"
+                                  @bind-Value="budgetModel.LimitAmount"
+                                  For="@(() => budgetModel.LimitAmount)"
+                                  InputType="InputType.Number"
+                                  Adornment="Adornment.End"
+                                  AdornmentText="Ft"
+                                  HelperText="Add meg a teljes havi keretedet." />
+                }
+            </MudCardContent>
+            <MudCardActions>
+                <MudButton ButtonType="ButtonType.Submit"
+                           Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           Disabled="@isLoading"
+                           Class="mx-2 mb-2">
+                    Mentés
+                </MudButton>
+            </MudCardActions>
+        </MudCard>
+    </EditForm>
+</MudContainer>
+
+@code {
+    private BudgetUpdateDto budgetModel = new();
+    private bool isLoading = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadBudgetAsync();
+    }
+
+    private async Task LoadBudgetAsync()
+    {
+        isLoading = true;
+        try
+        {
+            var currentBudget = await Http.GetFromJsonAsync<BudgetViewDto>("api/budget");
+            if (currentBudget != null)
+            {
+                budgetModel.LimitAmount = currentBudget.LimitAmount;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Hiba a keret betöltésekor: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private async Task HandleSaveBudget()
+    {
+        isLoading = true;
+        try
+        {
+            var response = await Http.PutAsJsonAsync("api/budget", budgetModel);
+            if (response.IsSuccessStatusCode)
+            {
+                Snackbar.Add("Budget sikeresen frissítve!", Severity.Success);
+            }
+            else
+            {
+                Snackbar.Add($"Hiba mentés közben: {await response.Content.ReadAsStringAsync()}", Severity.Error);
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Váratlan hiba: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+}
