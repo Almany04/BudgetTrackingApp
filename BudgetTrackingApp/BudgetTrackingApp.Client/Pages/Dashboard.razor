@@ -1,11 +1,12 @@
 ﻿@page "/dashboard"
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
-@attribute [Authorize] 
+@attribute [Authorize]
 
 @using BudgetTrackingApp.Shared.Dtos.Budget
 @using BudgetTrackingApp.Shared.Dtos.Transactions
 @using BudgetTrackingApp.Shared.Dtos.Category
 @using BudgetTrackingApp.Shared.Enums
+@using MudBlazor.Charts @* <-- ÚJ IMPORT A DIAGRAMHOZ *@
 
 @inject HttpClient Http
 @inject ISnackbar Snackbar
@@ -13,10 +14,10 @@
 <PageTitle>Vezérlőpult</PageTitle>
 
 <MudGrid Spacing="4">
-    
+
     <MudItem xs="12" md="4">
         <MudStack Spacing="4">
-            
+
             <MudCard Elevation="3">
                 <MudCardHeader>
                     <CardHeaderContent>
@@ -41,6 +42,33 @@
                 </MudCardContent>
             </MudCard>
 
+            <MudCard Elevation="3">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Kiadások Megoszlása (30 nap)</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (transactions == null)
+                    {
+                        <MudProgressCircular Indeterminate="true" />
+                    }
+                    else if (!chartData.Any())
+                    {
+                        <MudText>Nincs kiadási adat a diagramhoz.</MudText>
+                    }
+                    else
+                    {
+                        <MudChart ChartType="ChartType.Donut" InputData="chartData" InputLabels="chartLabels" Height="250px" />
+                    }
+                </MudCardContent>
+            </MudCard>
+
+        </MudStack>
+    </MudItem>
+
+    <MudItem xs="12" md="8">
+        <MudStack Spacing="4">
             <MudCard Elevation="3">
                 <MudCardHeader>
                     <CardHeaderContent>
@@ -81,9 +109,9 @@
                             <MudTextField Label="Leírás (opcionális)"
                                           @bind-Value="newTransaction.Description"
                                           Lines="2" />
-                            
-                            <MudButton ButtonType="ButtonType.Submit" 
-                                       Variant="Variant.Filled" 
+
+                            <MudButton ButtonType="ButtonType.Submit"
+                                       Variant="Variant.Filled"
                                        Color="Color.Primary"
                                        FullWidth="true"
                                        Disabled="@isProcessingTransaction">
@@ -94,52 +122,49 @@
                 </MudCardContent>
             </MudCard>
 
+            <MudCard Elevation="3">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Legutóbbi Tranzakciók</MudText>
+                    </CardHeaderContent>
+                    <CardHeaderActions>
+                        <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadDataAsync" />
+                    </CardHeaderActions>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudTable Items="transactions"
+                              Hover="true"
+                              Breakpoint="Breakpoint.Sm"
+                              Loading="@(transactions == null)"
+                              LoadingProgressColor="Color.Info"
+                              FixedHeader="true"
+                              Height="calc(100vh - 300px)">
+                        <HeaderContent>
+                            <MudTh>Dátum</MudTh>
+                            <MudTh>Kategória</MudTh>
+                            <MudTh>Leírás</MudTh>
+                            <MudTh Style="text-align: right">Összeg</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Dátum">@context.TransactionDate.ToString("yyyy.MM.dd")</MudTd>
+                            <MudTd DataLabel="Kategória">@context.CategoryName</MudTd>
+                            <MudTd DataLabel="Leírás">@context.Description</MudTd>
+                            <MudTd DataLabel="Összeg" Style="text-align: right">
+                                <MudText Color="@(context.Type == TransactionType.Expense ? Color.Error : Color.Success)">
+                                    @(context.Type == TransactionType.Expense ? "-" : "+") @context.Amount.ToString("C0")
+                                </MudText>
+                            </MudTd>
+                        </RowTemplate>
+                        <NoRecordsContent>
+                            <MudText>Nincsenek tranzakciók ebben az időszakban.</MudText>
+                        </NoRecordsContent>
+                        <LoadingContent>
+                            <MudText>Tranzakciók betöltése...</MudText>
+                        </LoadingContent>
+                    </MudTable>
+                </MudCardContent>
+            </MudCard>
         </MudStack>
-    </MudItem>
-
-    <MudItem xs="12" md="8">
-        <MudCard Elevation="3">
-            <MudCardHeader>
-                <CardHeaderContent>
-                    <MudText Typo="Typo.h6">Legutóbbi Tranzakciók</MudText>
-                </CardHeaderContent>
-                <CardHeaderActions>
-                    <MudIconButton Icon="@Icons.Material.Filled.Refresh" OnClick="LoadDataAsync" />
-                </CardHeaderActions>
-            </MudCardHeader>
-            <MudCardContent>
-                <MudTable Items="transactions"
-                          Hover="true"
-                          Breakpoint="Breakpoint.Sm"
-                          Loading="@(transactions == null)"
-                          LoadingProgressColor="Color.Info"
-                          FixedHeader="true"
-                          Height="calc(100vh - 300px)">
-                    <HeaderContent>
-                        <MudTh>Dátum</MudTh>
-                        <MudTh>Kategória</MudTh>
-                        <MudTh>Leírás</MudTh>
-                        <MudTh Style="text-align: right">Összeg</MudTh>
-                    </HeaderContent>
-                    <RowTemplate>
-                        <MudTd DataLabel="Dátum">@context.TransactionDate.ToString("yyyy.MM.dd")</MudTd>
-                        <MudTd DataLabel="Kategória">@context.CategoryName</MudTd>
-                        <MudTd DataLabel="Leírás">@context.Description</MudTd>
-                        <MudTd DataLabel="Összeg" Style="text-align: right">
-                            <MudText Color="@(context.Type == TransactionType.Expense ? Color.Error : Color.Success)">
-                                @(context.Type == TransactionType.Expense ? "-" : "+") @context.Amount.ToString("C0")
-                            </MudText>
-                        </MudTd>
-                    </RowTemplate>
-                    <NoRecordsContent>
-                        <MudText>Nincsenek tranzakciók ebben az időszakban.</MudText>
-                    </NoRecordsContent>
-                    <LoadingContent>
-                        <MudText>Tranzakciók betöltése...</MudText>
-                    </LoadingContent>
-                </MudTable>
-            </MudCardContent>
-        </MudCard>
     </MudItem>
 
 </MudGrid>
@@ -149,10 +174,14 @@
     private IEnumerable<TransactionViewDto>? transactions;
     private IEnumerable<CategoryViewDto>? categories;
     private TransactionCreateDto newTransaction = new();
-    
+
     private DateTime? transactionDate = DateTime.Today;
     private bool isProcessingTransaction = false;
     private double budgetPercentage = 0;
+
+    // Új mezők a diagramhoz
+    private double[] chartData = Array.Empty<double>();
+    private string[] chartLabels = Array.Empty<string>();
 
     protected override async Task OnInitializedAsync()
     {
@@ -161,9 +190,8 @@
 
     private async Task LoadDataAsync()
     {
-        
         await Task.WhenAll(LoadBudgetAsync(), LoadTransactionsAsync(), LoadCategoriesAsync());
-        StateHasChanged(); 
+        StateHasChanged();
     }
 
     private async Task LoadBudgetAsync()
@@ -186,11 +214,13 @@
     {
         try
         {
-            // Utolsó 30 nap tranzakciói
             var endDate = DateTime.Now;
             var startDate = endDate.AddDays(-30);
             var url = $"api/transaction?startDate={startDate:yyyy-MM-dd}&endDate={endDate:yyyy-MM-dd}";
             transactions = await Http.GetFromJsonAsync<IEnumerable<TransactionViewDto>>(url);
+
+            // Diagram adatainak feldolgozása
+            ProcessChartData();
         }
         catch (Exception ex)
         {
@@ -198,12 +228,31 @@
         }
     }
 
+    // ÚJ METÓDUS a diagram adatok feldolgozásához
+    private void ProcessChartData()
+    {
+        if (transactions == null) return;
+
+        var expenseGroups = transactions
+            .Where(t => t.Type == TransactionType.Expense)
+            .GroupBy(t => t.CategoryName)
+            .Select(g => new
+            {
+                Category = g.Key,
+                Total = (double)g.Sum(t => t.Amount)
+            })
+            .OrderByDescending(x => x.Total)
+            .ToList();
+
+        chartData = expenseGroups.Select(g => g.Total).ToArray();
+        chartLabels = expenseGroups.Select(g => g.Category).ToArray();
+    }
+
     private async Task LoadCategoriesAsync()
     {
         try
         {
             categories = await Http.GetFromJsonAsync<IEnumerable<CategoryViewDto>>("api/categories");
-            
             if (categories?.Any() == true && newTransaction.CategoryId == Guid.Empty)
             {
                 newTransaction.CategoryId = categories.First().Id;
@@ -226,10 +275,9 @@
             if (response.IsSuccessStatusCode)
             {
                 Snackbar.Add("Tranzakció sikeresen rögzítve!", Severity.Success);
-                newTransaction = new() { CategoryId = categories?.First().Id ?? Guid.Empty }; 
+                newTransaction = new() { CategoryId = categories?.First().Id ?? Guid.Empty };
                 transactionDate = DateTime.Today;
-                
-                
+
                 await LoadBudgetAsync();
                 await LoadTransactionsAsync();
             }

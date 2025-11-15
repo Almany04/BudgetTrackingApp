@@ -40,7 +40,8 @@ namespace BudgetTrackingApp.Logic.Services
                 Type = transactiondto.Type,
                 Description= transactiondto.Description,
                 CategoryId= transactiondto.CategoryId,
-                AppUserId=userId
+                AppUserId=userId,
+                
             };
             await _transactionRepository.AddTransactionAsync(newTransaction);
 
@@ -94,7 +95,8 @@ namespace BudgetTrackingApp.Logic.Services
                 Description = entity.Description,
                 TransactionDate = entity.TransactionDate,
                 Type = entity.Type,
-                CategoryName=entity.Category?.Name??"Ismeretlen"
+                CategoryName=entity.Category?.Name??"Ismeretlen",
+                CategoryId = entity.CategoryId
             };
         }
 
@@ -108,7 +110,8 @@ namespace BudgetTrackingApp.Logic.Services
                 TransactionDate = entity.TransactionDate,
                 Description = entity.Description,
                 CategoryName=entity.Category?.Name ?? "Ismeretlen",
-                Type = entity.Type
+                Type = entity.Type,
+                CategoryId = entity.CategoryId
             });
 
             return transactionDto;

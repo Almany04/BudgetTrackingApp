@@ -30,13 +30,33 @@
             <MudButton Variant="Variant.Filled" OnClick="LoadTransactionsAsync">Szűrés</MudButton>
         </MudToolBar>
 
+        @if (transactions != null)
+        {
+            <MudPaper Outlined="true" Class="pa-3 my-2">
+                <MudGrid Spacing="3" Justify="Justify.SpaceEvenly">
+                    <MudItem xs="4">
+                        <MudText Align="Align.Center" Typo="Typo.caption">Bevétel</MudText>
+                        <MudText Align="Align.Center" Typo="Typo.h6" Color="Color.Success">@totalIncome.ToString("C0")</MudText>
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudText Align="Align.Center" Typo="Typo.caption">Kiadás</MudText>
+                        <MudText Align="Align.Center" Typo="Typo.h6" Color="Color.Error">@totalExpense.ToString("C0")</MudText>
+                    </MudItem>
+                    <MudItem xs="4">
+                        <MudText Align="Align.Center" Typo="Typo.caption">Egyenleg</MudText>
+                        <MudText Align="Align.Center" Typo="Typo.h6" Color="@(balance >= 0 ? Color.Primary : Color.Error)">@balance.ToString("C0")</MudText>
+                    </MudItem>
+                </MudGrid>
+            </MudPaper>
+        }
         <MudTable Items="transactions"
                   Hover="true"
                   Breakpoint="Breakpoint.Sm"
                   Loading="@isLoading"
                   LoadingProgressColor="Color.Info"
                   FixedHeader="true"
-                  Height="calc(100vh - 320px)">
+                  Height="calc(100vh - 420px)">
+            @* <-- A magasságot csökkentettem az összegző miatt *@
             <HeaderContent>
                 <MudTh>Dátum</MudTh>
                 <MudTh>Kategória</MudTh>
@@ -83,6 +103,11 @@
     private bool isLoading = true;
     private DateRange dateRange = new DateRange(DateTime.Now.AddDays(-30), DateTime.Now);
 
+    // Új mezők az összegzéshez
+    private decimal totalIncome = 0;
+    private decimal totalExpense = 0;
+    private decimal balance = 0;
+
     protected override async Task OnInitializedAsync()
     {
         await LoadTransactionsAsync();
@@ -99,6 +124,9 @@
 
             var result = await Http.GetFromJsonAsync<List<TransactionViewDto>>(url);
             transactions = result ?? new List<TransactionViewDto>();
+
+            // Összesítők számítása
+            CalculateSummary();
         }
         catch (Exception ex)
         {
@@ -108,6 +136,15 @@
         {
             isLoading = false;
         }
+    }
+
+    private void CalculateSummary()
+    {
+        if (transactions == null) return;
+
+        totalIncome = transactions.Where(t => t.Type == TransactionType.Income).Sum(t => t.Amount);
+        totalExpense = transactions.Where(t => t.Type == TransactionType.Expense).Sum(t => t.Amount);
+        balance = totalIncome - totalExpense;
     }
 
     private async Task OpenTransactionDialog(TransactionViewDto? transaction)
@@ -128,40 +165,21 @@
         }
         else
         {
-            // SZERKESZTÉS
+            // SZERKESZTÉS (JAVÍTVA)
             title = "Tranzakció Szerkesztése";
 
-            try
+            // A 'transaction' objektum már tartalmazza a CategoryId-t, nincs szükség új API hívásra
+            var transactionToEdit = new TransactionUpdateDto
             {
-                // Itt hívjuk az 1. lépésben létrehozott GET api/transaction/{id} végpontot
-                // Ez TransactionViewDto-t ad vissza, mert a Logic-ot nem módosítottuk.
-                var transactionFromApi = await Http.GetFromJsonAsync<TransactionViewDto>($"api/transaction/{transaction.Id}");
+                Amount = transaction.Amount,
+                Description = transaction.Description,
+                TransactionDate = transaction.TransactionDate,
+                Type = transaction.Type,
+                CategoryId = transaction.CategoryId // <-- EZ A JAVÍTÁS!
+            };
 
-                if (transactionFromApi == null)
-                {
-                    Snackbar.Add("Hiba a tranzakció betöltésekor.", Severity.Error);
-                    return;
-                }
-
-                // Átalakítjuk a modellt, amit a dialógus vár (TransactionUpdateDto)
-                // A CategoryId-t sajnos nem tudjuk, ezért lesz a 2. lépésben lévő figyelmeztetés
-                var transactionToEdit = new TransactionUpdateDto
-                {
-                    Amount = transactionFromApi.Amount,
-                    Description = transactionFromApi.Description,
-                    TransactionDate = transactionFromApi.TransactionDate,
-                    Type = transactionFromApi.Type,
-                    CategoryId = Guid.Empty // Ezt a dialógus felül fogja írni az első elérhető kategóriával
-                };
-
-                parameters.Add("TransactionModel", transactionToEdit);
-                parameters.Add("TransactionId", transaction.Id);
-            }
-            catch (Exception ex)
-            {
-                Snackbar.Add($"Hiba a szerkesztés előkészítésekor: {ex.Message}", Severity.Error);
-                return;
-            }
+            parameters.Add("TransactionModel", transactionToEdit);
+            parameters.Add("TransactionId", transaction.Id);
         }
 
         // A dialógus fájlra a teljes névterével kell hivatkozni
@@ -171,22 +189,18 @@
         // Ha a dialógus "Ok"-val zárult be (mentés történt)
         if (result != null && !result.Canceled)
         {
-            await LoadTransactionsAsync(); // Frissítjük a táblázatot
+            await LoadTransactionsAsync(); // Frissítjük a táblázatot és az összegzőt
         }
     }
 
     private async Task DeleteTransaction(TransactionViewDto transaction)
     {
-        // A ShowMessageBox egy sokkal tisztább módja a megerősítés kérésének
         var result = await DialogService.ShowMessageBox(
             "Törlés Megerősítése",
             $"Biztosan törölni szeretnéd ezt a tranzakciót? ({transaction.Amount.ToString("C0")})",
             yesText: "Törlés",
             cancelText: "Mégse"
         );
-
-        // A result itt egy 'bool?' (nullable boolean).
-        // 'true' ha a 'yesText'-re kattintott, 'null' ha a 'cancelText'-re vagy mellé.
         if (result == true)
         {
             try

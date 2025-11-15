@@ -1,0 +1,21 @@
+﻿{
+    "name": "Budget Tracking App",
+    "short_name": "BudgetApp",
+    "start_url": "/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#052767",
+    "description": "Személyes költségvetés-kezelő alkalmazás.",
+    "icons": [
+        {
+            "src": "favicon.png",
+            "type": "image/png",
+            "sizes": "192x192"
+        },
+        {
+            "src": "favicon.png",
+            "type": "image/png",
+            "sizes": "512x512"
+        }
+    ]
+}

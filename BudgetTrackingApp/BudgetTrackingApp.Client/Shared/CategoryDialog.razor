@@ -1,16 +1,19 @@
 ﻿@using BudgetTrackingApp.Shared.Dtos.Category
 @using MudBlazor
+@using Microsoft.AspNetCore.Components.Forms 
 @inject HttpClient Http
 @inject ISnackbar Snackbar
 
 
 <EditForm Model="CategoryModel" OnValidSubmit="HandleSave">
     <DataAnnotationsValidator />
+
+   
+    <ValidationSummary />
+
     <MudDialog>
         <DialogContent>
 
-           
-           
             @if (CategoryModel is CategoryCreateDto createModel)
             {
                 <MudTextField Label="Kategória Név"
@@ -31,17 +34,17 @@
         </DialogContent>
         <DialogActions>
             <MudButton OnClick="Cancel">Mégse</MudButton>
-            <MudButton ButtonType="ButtonType.Submit" @* <-- Ez a lényeg! *@
+            <MudButton ButtonType="ButtonType.Submit"
                        Color="Color.Primary"
                        Variant="Variant.Filled"
                        Disabled="isProcessing">
                 @if (isProcessing)
                 {
-                        <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+                    <MudProgressCircular Indeterminate="true" Size="Size.Small" />
                 }
                 else
                 {
-                        <span>Mentés</span>
+                    <span>Mentés</span>
                 }
             </MudButton>
         </DialogActions>
@@ -58,23 +61,20 @@
     public Guid? CategoryId { get; set; }
 
     private bool isProcessing = false;
-
-   
     private async Task HandleSave()
     {
         isProcessing = true;
         try
         {
             HttpResponseMessage response;
-
             if (CategoryId == null && CategoryModel is CategoryCreateDto createDto)
             {
-                
+
                 response = await Http.PostAsJsonAsync("api/categories", createDto);
             }
             else if (CategoryId != null && CategoryModel is CategoryUpdateDto updateDto)
             {
-               
+
                 response = await Http.PutAsJsonAsync($"api/categories/{CategoryId}", updateDto);
             }
             else
