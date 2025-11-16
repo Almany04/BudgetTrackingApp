@@ -1,24 +1,19 @@
 ﻿@inherits LayoutComponentBase
 
 
-<MudThemeProvider />
-<MudDialogProvider />
-<MudSnackbarProvider />
-<MudPopoverProvider />
-
 <MudLayout>
     <MudAppBar Elevation="1">
         <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
+        <MudText Typo="Typo.h6">Budget Tracker</MudText>
         <MudSpacer />
-        <a href="https://learn.microsoft.com/aspnet/core/" target="_blank" style="color: inherit; text-decoration: none;">About</a>
     </MudAppBar>
 
     <MudDrawer @bind-Open="_drawerOpen" Elevation="1">
         <MudDrawerHeader>
             <MudText Typo="Typo.h6">BudgetTrackingApp</MudText>
         </MudDrawerHeader>
-        
-        <NavMenu /> 
+
+        <NavMenu />
     </MudDrawer>
 
     <MudMainContent>

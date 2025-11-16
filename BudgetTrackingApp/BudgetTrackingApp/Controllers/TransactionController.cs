@@ -33,15 +33,15 @@ namespace BudgetTrackingApp.Api.Controllers
         public async Task<IActionResult> GetTransactionsAsync([FromQuery] DateTime? startDate,
             [FromQuery] DateTime? endDate)
         {
-            
+
             try
             {
                 string testUserId = GetUserId();
                 DateTime end = endDate ?? DateTime.Now;
-                DateTime start= startDate ?? end.AddDays(-30);
-               
+                DateTime start = startDate ?? end.AddDays(-30);
 
-                var transasctionDto = await _transactionLogic.GetTransactionsByUserIdFilteredAsync(testUserId,start, end);
+
+                var transasctionDto = await _transactionLogic.GetTransactionsByUserIdFilteredAsync(testUserId, start, end);
                 return Ok(transasctionDto);
             }
             catch (Exception ex)
@@ -50,7 +50,7 @@ namespace BudgetTrackingApp.Api.Controllers
             }
         }
         [HttpPost]
-        public async Task<IActionResult> CreateTransactionsAsync([FromBody]TransactionCreateDto transactionCreateDto)
+        public async Task<IActionResult> CreateTransactionsAsync([FromBody] TransactionCreateDto transactionCreateDto)
         {
             try
             {
@@ -70,31 +70,11 @@ namespace BudgetTrackingApp.Api.Controllers
             {
                 string userId = GetUserId();
 
-                // FIGYELEM: A TransactionLogic.GetTransactionByIdAsync metódusod
-                // TransactionViewDto-t ad vissza, amiben nincs CategoryId.
-                // A szerkesztéshez viszont szükségünk van rá.
-                // Ezt a Logic rétegben javítani kellene, de egyelőre
-                // tegyük fel, hogy a logic-od visszaadja, amire szükség van.
-                // A HELYES MEGOLDÁSHOZ módosítanod kell a ITransactionLogic-ot és a TransactionLogic-ot,
-                // hogy pl. egy GetTransactionForUpdateAsync metódusod legyen, ami TransactionUpdateDto-t ad vissza.
-
-                // Átmeneti megoldás (ezt cseréld le, miután a Logic-ot javítottad!):
                 var entity = await _transactionLogic.GetTransactionByIdAsync(id, userId);
                 if (entity == null)
                 {
                     return NotFound("A tranzakció nem található.");
                 }
-
-                // Mivel a GetTransactionByIdAsync nem adja vissza a CategoryId-t,
-                // most manuálisan kellene kikeresnünk. Ez nem szép, de működni fog.
-                // (Jobb lenne a Logic-ot módosítani!)
-
-                // Mivel a logic jelenleg nem adja vissza a CategoryId-t,
-                // a kliens oldalon (4. lépés) hibát fogunk kapni.
-                // Muszáj a LOGIC réteget javítani.
-
-                // Futtassuk le mégis, de tudjuk, hogy a szerkesztésnél a kategória nem fog betöltődni.
-                // A 3. lépésben ezt a kliens oldalon kezeljük.
 
                 return Ok(entity);
             }
@@ -136,4 +116,3 @@ namespace BudgetTrackingApp.Api.Controllers
         }
     }
 }
-

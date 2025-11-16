@@ -16,7 +16,7 @@
             <MudButton Variant="Variant.Filled"
                        Color="Color.Primary"
                        StartIcon="@Icons.Material.Filled.Add"
-                       OnClick="() => OpenCategoryDialog(null)">
+                       OnClick="OpenCreateDialog">
                 Új Kategória
             </MudButton>
         </MudStack>
@@ -39,14 +39,14 @@
                                    Variant="Variant.Filled"
                                    Color="Color.Primary"
                                    Size="Size.Small"
-                                   OnClick="() => OpenCategoryDialog(context)"
+                                   OnClick="@(() => OpenEditDialog(context))"
                                    Class="mr-2" />
 
                     <MudIconButton Icon="@Icons.Material.Filled.Delete"
                                    Variant="Variant.Filled"
                                    Color="Color.Error"
                                    Size="Size.Small"
-                                   OnClick="() => DeleteCategory(context)" />
+                                   OnClick="@(() => DeleteCategory(context))" />
                 </MudTd>
             </RowTemplate>
             <NoRecordsContent>
@@ -71,52 +71,78 @@
     {
         try
         {
-            categories = null; // Töltés jelzése
+            categories = null;
             var result = await Http.GetFromJsonAsync<List<CategoryViewDto>>("api/categories");
             categories = result ?? new List<CategoryViewDto>();
         }
         catch (Exception ex)
         {
             Snackbar.Add($"Hiba a kategóriák betöltésekor: {ex.Message}", Severity.Error);
+            categories = new List<CategoryViewDto>();
         }
     }
 
-    private async Task OpenCategoryDialog(CategoryViewDto? category)
+    private async Task OpenCreateDialog()
     {
-        var parameters = new DialogParameters();
-        string title;
-
-        if (category == null)
+        var parameters = new DialogParameters
         {
-            // Új kategória létrehozása
-            title = "Új Kategória";
-            parameters.Add("CategoryModel", new CategoryCreateDto());
-        }
-        else
-        {
-            // Meglévő szerkesztése
-            title = "Kategória Szerkesztése";
-            parameters.Add("CategoryModel", new CategoryUpdateDto { Name = category.Name });
-            parameters.Add("CategoryId", category.Id);
-        }
+            { "CategoryModel", new CategoryCreateDto() },
+            { "CategoryId", null }
+        };
 
-        var dialog = DialogService.Show<BudgetTrackingApp.Client.Shared.CategoryDialog>(title, parameters);
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<BudgetTrackingApp.Client.Shared.CategoryDialog>(
+            "Új Kategória",
+            parameters,
+            options);
+
         var result = await dialog.Result;
 
         if (result != null && !result.Canceled)
         {
-            
-            Snackbar.Add("Kategória sikeresen mentve!", Severity.Success);
+            await LoadCategoriesAsync();
+        }
+    }
+
+    private async Task OpenEditDialog(CategoryViewDto category)
+    {
+        var parameters = new DialogParameters
+        {
+            { "CategoryModel", new CategoryUpdateDto { Name = category.Name } },
+            { "CategoryId", category.Id }
+        };
+
+        var options = new DialogOptions
+        {
+            CloseButton = true,
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true
+        };
+
+        var dialog = await DialogService.ShowAsync<BudgetTrackingApp.Client.Shared.CategoryDialog>(
+            "Kategória Szerkesztése",
+            parameters,
+            options);
+
+        var result = await dialog.Result;
+
+        if (result != null && !result.Canceled)
+        {
             await LoadCategoriesAsync();
         }
     }
 
     private async Task DeleteCategory(CategoryViewDto category)
     {
-       
         var result = await DialogService.ShowMessageBox(
             "Törlés Megerősítése",
-            $"Biztosan törölni szeretnéd a '{category.Name}' kategóriát? Ezt a művelet nem vonható vissza.",
+            $"Biztosan törölni szeretnéd a '{category.Name}' kategóriát? Ezt a műveletet nem lehet visszavonni.",
             yesText: "Törlés",
             cancelText: "Mégse"
         );
@@ -133,7 +159,8 @@
                 }
                 else
                 {
-                    Snackbar.Add($"Hiba a törlés során: {await response.Content.ReadAsStringAsync()}", Severity.Error);
+                    var errorMsg = await response.Content.ReadAsStringAsync();
+                    Snackbar.Add($"Hiba a törlés során: {errorMsg}", Severity.Error);
                 }
             }
             catch (Exception ex)
@@ -141,6 +168,5 @@
                 Snackbar.Add($"Váratlan hiba: {ex.Message}", Severity.Error);
             }
         }
-    }
     }
 }

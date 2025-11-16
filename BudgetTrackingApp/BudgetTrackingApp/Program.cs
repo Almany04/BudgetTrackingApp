@@ -1,14 +1,16 @@
 using BudgetTrackingApp.Api.Components;
+using BudgetTrackingApp.Api.Services;
 using BudgetTrackingApp.Data;
 using BudgetTrackingApp.Data.Entities;
 using BudgetTrackingApp.Logic.Interfaces;
 using BudgetTrackingApp.Logic.Services;
 using BudgetTrackingApp.Repository.Implamentations;
 using BudgetTrackingApp.Repository.Interfaces;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using MudBlazor.Services;
-using System.Security.Claims; // Ezt az importot is hozzáadtam a biztonság kedvéért
+using System.Security.Claims;
 
 namespace BudgetTrackingApp
 {
@@ -16,73 +18,65 @@ namespace BudgetTrackingApp
     {
         public static void Main(string[] args)
         {
+
             var builder = WebApplication.CreateBuilder(args);
 
-            var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-            builder.Services.AddDbContext<BudgetTrackerDbContext>(options =>
-                options.UseSqlServer(connectionString));
+            builder.Services.AddRazorComponents()
+                .AddInteractiveWebAssemblyComponents();
 
-            // ------ AUTHENTIKÁCIÓS SZOLGÁLTATÁSOK ------
+            builder.Services.AddControllers();
+            builder.Services.AddMudServices();
+
+            builder.Services.AddHttpContextAccessor();
+            builder.Services.AddScoped<AuthenticationStateProvider, ServerAuthenticationStateProvider>();
+            builder.Services.AddCascadingAuthenticationState();
+
+            builder.Services.AddDbContext<BudgetTrackerDbContext>(options =>
+                options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+
             builder.Services.AddIdentity<AppUser, IdentityRole>(options =>
             {
-                options.SignIn.RequireConfirmedAccount = false;
-                options.Password.RequireDigit = false;
-                options.Password.RequireLowercase = false;
+                options.Password.RequireDigit = true;
+                options.Password.RequireLowercase = true;
+                options.Password.RequireUppercase = true;
                 options.Password.RequireNonAlphanumeric = false;
-                options.Password.RequireUppercase = false;
                 options.Password.RequiredLength = 6;
             })
-            .AddEntityFrameworkStores<BudgetTrackerDbContext>();
+            .AddEntityFrameworkStores<BudgetTrackerDbContext>()
+            .AddDefaultTokenProviders();
 
-            // Autorizáció regisztrálása
-            builder.Services.AddAuthorization();
-
-            // Cookie beállítások API-hoz (401-es hiba átirányítás helyett)
             builder.Services.ConfigureApplicationCookie(options =>
             {
+                options.Cookie.HttpOnly = true;
+                options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+                options.Cookie.SameSite = SameSiteMode.Strict;
+                options.ExpireTimeSpan = TimeSpan.FromDays(7);
+                options.SlidingExpiration = true;
                 options.Events.OnRedirectToLogin = context =>
                 {
-                    context.Response.StatusCode = 401; // Unauthorized
+                    context.Response.StatusCode = StatusCodes.Status401Unauthorized;
                     return Task.CompletedTask;
                 };
                 options.Events.OnRedirectToAccessDenied = context =>
                 {
-                    context.Response.StatusCode = 403; // Forbidden
+                    context.Response.StatusCode = StatusCodes.Status403Forbidden;
                     return Task.CompletedTask;
                 };
             });
-            // ------ AUTHENTIKÁCIÓ VÉGE ------
 
-            // ------ SZERVIZEK ÉS REPOZITÓRIUMOK ------
+            builder.Services.AddScoped<IUserRepository, UserRepository>();
+            builder.Services.AddScoped<IBudgetRepository, BudgetRepository>();
             builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
             builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
-            builder.Services.AddScoped<IBudgetRepository, BudgetRepository>();
-            builder.Services.AddScoped<IUserRepository, UserRepository>();
+
+            builder.Services.AddScoped<IUserLogic, UserLogic>();
+            builder.Services.AddScoped<IBudgetLogic, BudgetLogic>();
             builder.Services.AddScoped<ICategoryLogic, CategoryLogic>();
             builder.Services.AddScoped<ITransactionLogic, TransactionLogic>();
-            builder.Services.AddScoped<IBudgetLogic, BudgetLogic>();
-            builder.Services.AddScoped<IUserLogic, UserLogic>();
 
-            // ------ UI ÉS API SZOLGÁLTATÁSOK ------
-            builder.Services.AddMudServices(); // MudBlazor szervizek
-
-            // API Kontrollerek szervizeinek regisztrálása (EZ VOLT A HIBA)
-            builder.Services.AddControllers();
-
-            // Blazor komponensek regisztrálása
-            builder.Services.AddRazorComponents()
-                .AddInteractiveServerComponents()
-                .AddInteractiveWebAssemblyComponents();
-
-            // --------------------------------------------------
-            //          SZOLGÁLTATÁSOK REGISZTRÁLÁSA VÉGE
-            // --------------------------------------------------
+            builder.Services.AddAntiforgery();
 
             var app = builder.Build();
-
-            // --------------------------------------------------
-            //          HTTP KÉRÉS PIPELINE BEÁLLÍTÁSA
-            // --------------------------------------------------
 
             if (app.Environment.IsDevelopment())
             {
@@ -90,7 +84,7 @@ namespace BudgetTrackingApp
             }
             else
             {
-                app.UseExceptionHandler("/Error");
+                app.UseExceptionHandler("/Error", createScopeForErrors: true);
                 app.UseHsts();
             }
 
@@ -98,18 +92,13 @@ namespace BudgetTrackingApp
             app.UseStaticFiles();
             app.UseAntiforgery();
 
-            // Fontos a sorrend!
             app.UseAuthentication();
             app.UseAuthorization();
 
-            // Blazor komponensek "bekötése"
-            app.MapRazorComponents<App>()
-                .AddInteractiveServerRenderMode()
-                .AddInteractiveWebAssemblyRenderMode()
-                .AddAdditionalAssemblies(typeof(Client._Imports).Assembly);
-
-            // API Kontrollerek "bekötése" (ez keresi az /api/user/login-t stb.)
             app.MapControllers();
+            app.MapRazorComponents<App>()
+                .AddInteractiveWebAssemblyRenderMode()
+                .AddAdditionalAssemblies(typeof(BudgetTrackingApp.Client._Imports).Assembly);
 
             app.Run();
         }

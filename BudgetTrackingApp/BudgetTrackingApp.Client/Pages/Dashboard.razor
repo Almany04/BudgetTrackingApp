@@ -6,7 +6,7 @@
 @using BudgetTrackingApp.Shared.Dtos.Transactions
 @using BudgetTrackingApp.Shared.Dtos.Category
 @using BudgetTrackingApp.Shared.Enums
-@using MudBlazor.Charts @* <-- ÚJ IMPORT A DIAGRAMHOZ *@
+@using MudBlazor.Charts
 
 @inject HttpClient Http
 @inject ISnackbar Snackbar
@@ -104,7 +104,10 @@
                                 }
                             </MudSelect>
 
-                            <MudDatePicker Label="Dátum" @bind-Date="transactionDate" />
+                            <MudDatePicker Label="Dátum"
+                                           @bind-Date="transactionDate"
+                                           Editable="true"
+                                           For="@(() => transactionDate)" />
 
                             <MudTextField Label="Leírás (opcionális)"
                                           @bind-Value="newTransaction.Description"
@@ -179,7 +182,6 @@
     private bool isProcessingTransaction = false;
     private double budgetPercentage = 0;
 
-    // Új mezők a diagramhoz
     private double[] chartData = Array.Empty<double>();
     private string[] chartLabels = Array.Empty<string>();
 
@@ -219,7 +221,6 @@
             var url = $"api/transaction?startDate={startDate:yyyy-MM-dd}&endDate={endDate:yyyy-MM-dd}";
             transactions = await Http.GetFromJsonAsync<IEnumerable<TransactionViewDto>>(url);
 
-            // Diagram adatainak feldolgozása
             ProcessChartData();
         }
         catch (Exception ex)
@@ -228,7 +229,6 @@
         }
     }
 
-    // ÚJ METÓDUS a diagram adatok feldolgozásához
     private void ProcessChartData()
     {
         if (transactions == null) return;

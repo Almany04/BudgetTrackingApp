@@ -31,7 +31,6 @@
                            For="@(() => TransactionModel.CategoryId)"
                            Disabled="@(categories == null)"
                            Placeholder="@(categories == null ? "Kategóriák töltése..." : "Válassz kategóriát")">
-
                     @if (categories != null)
                     {
                         @foreach (var category in categories)
@@ -76,7 +75,7 @@
     public TransactionUpdateDto TransactionModel { get; set; } = new();
 
     [Parameter]
-    public Guid? TransactionId { get; set; } // Ha ez null, akkor "Create", egyébként "Update"
+    public Guid? TransactionId { get; set; }
 
     private string TitleText => TransactionId == null ? "Új Tranzakció" : "Tranzakció Szerkesztése";
     private List<CategoryViewDto>? categories;
@@ -86,7 +85,7 @@
     protected override async Task OnInitializedAsync()
     {
         transactionDate = TransactionModel.TransactionDate;
-        if (transactionDate.Value.Year == 1) // Ha a dátum nincs beállítva (pl. új DTO)
+        if (transactionDate.Value.Year == 1)
         {
             transactionDate = DateTime.Today;
         }
@@ -98,20 +97,10 @@
         try
         {
             categories = await Http.GetFromJsonAsync<List<CategoryViewDto>>("api/categories");
-            
-            // Ha ÚJ tranzakció, és még nincs kategória beállítva, válasszuk az elsőt
+
             if (TransactionId == null && TransactionModel.CategoryId == Guid.Empty && categories?.Any() == true)
             {
                 TransactionModel.CategoryId = categories.First().Id;
-            }
-            
-            // Ha SZERKESZTÉS, de a CategoryId nem jött át (az 1. lépésben lévő API hiba miatt)
-            if (TransactionId != null && TransactionModel.CategoryId == Guid.Empty && categories?.Any() == true)
-            {
-                // Ideiglenes megoldás: válasszuk az első kategóriát.
-                // A felhasználónak manuálisan kell kiválasztania a helyeset.
-                TransactionModel.CategoryId = categories.First().Id;
-                Snackbar.Add("Figyelem: A kategóriát újra ki kell választani!", Severity.Warning);
             }
         }
         catch (Exception ex)
@@ -130,7 +119,6 @@
             HttpResponseMessage response;
             if (TransactionId == null)
             {
-                // Létrehozás (POST)
                 var createDto = new TransactionCreateDto
                 {
                     Amount = TransactionModel.Amount,
@@ -143,7 +131,6 @@
             }
             else
             {
-                // Frissítés (PUT)
                 response = await Http.PutAsJsonAsync($"api/transaction/{TransactionId}", TransactionModel);
             }
 

@@ -6,14 +6,14 @@ using Microsoft.JSInterop;
 
 namespace BudgetTrackingApp.Client.Services
 {
-  
+
     public class CustomAuthenticationStateProvider : AuthenticationStateProvider
     {
         private readonly IJSRuntime _jsRuntime;
         private ClaimsPrincipal _anonymous = new ClaimsPrincipal(new ClaimsIdentity());
 
-        
-        private const string UserSessionStorageKey = "userSession";
+        // JAVÍTÁS: Átnevezve, és a tároló is változik
+        private const string UserSessionKey = "userSession";
 
         public CustomAuthenticationStateProvider(IJSRuntime jsRuntime)
         {
@@ -24,7 +24,8 @@ namespace BudgetTrackingApp.Client.Services
         {
             try
             {
-                var userSessionJson = await _jsRuntime.InvokeAsync<string>("localStorage.getItem", UserSessionStorageKey);
+                // JAVÍTÁS: localStorage -> sessionStorage
+                var userSessionJson = await _jsRuntime.InvokeAsync<string>("sessionStorage.getItem", UserSessionKey);
 
                 if (string.IsNullOrWhiteSpace(userSessionJson))
                 {
@@ -38,7 +39,7 @@ namespace BudgetTrackingApp.Client.Services
                     return new AuthenticationState(_anonymous);
                 }
 
-               
+
                 var claims = new[]
                 {
                     new Claim(ClaimTypes.NameIdentifier, userDto.UserId),
@@ -59,7 +60,8 @@ namespace BudgetTrackingApp.Client.Services
         public async Task LoginAsync(UserLoginResponseDto userDto)
         {
             var userSessionJson = JsonSerializer.Serialize(userDto);
-            await _jsRuntime.InvokeVoidAsync("localStorage.setItem", UserSessionStorageKey, userSessionJson);
+            // JAVÍTÁS: localStorage -> sessionStorage
+            await _jsRuntime.InvokeVoidAsync("sessionStorage.setItem", UserSessionKey, userSessionJson);
 
             var claims = new[]
             {
@@ -70,15 +72,14 @@ namespace BudgetTrackingApp.Client.Services
             var identity = new ClaimsIdentity(claims, "CustomAuth");
             var user = new ClaimsPrincipal(identity);
 
-            // Értesítjük a Blazor-t, hogy a felhasználó állapota megváltozott (bejelentkezett)
             NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(user)));
         }
 
         public async Task LogoutAsync()
         {
-            await _jsRuntime.InvokeVoidAsync("localStorage.removeItem", UserSessionStorageKey);
+            // JAVÍTÁS: localStorage -> sessionStorage
+            await _jsRuntime.InvokeVoidAsync("sessionStorage.removeItem", UserSessionKey);
 
-            // Értesítjük a Blazor-t, hogy a felhasználó kijelentkezett
             NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(_anonymous)));
         }
     }

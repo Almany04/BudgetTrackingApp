@@ -49,6 +49,7 @@
                 </MudGrid>
             </MudPaper>
         }
+
         <MudTable Items="transactions"
                   Hover="true"
                   Breakpoint="Breakpoint.Sm"
@@ -56,7 +57,6 @@
                   LoadingProgressColor="Color.Info"
                   FixedHeader="true"
                   Height="calc(100vh - 420px)">
-            @* <-- A magasságot csökkentettem az összegző miatt *@
             <HeaderContent>
                 <MudTh>Dátum</MudTh>
                 <MudTh>Kategória</MudTh>
@@ -102,8 +102,6 @@
     private List<TransactionViewDto>? transactions;
     private bool isLoading = true;
     private DateRange dateRange = new DateRange(DateTime.Now.AddDays(-30), DateTime.Now);
-
-    // Új mezők az összegzéshez
     private decimal totalIncome = 0;
     private decimal totalExpense = 0;
     private decimal balance = 0;
@@ -125,7 +123,6 @@
             var result = await Http.GetFromJsonAsync<List<TransactionViewDto>>(url);
             transactions = result ?? new List<TransactionViewDto>();
 
-            // Összesítők számítása
             CalculateSummary();
         }
         catch (Exception ex)
@@ -154,42 +151,36 @@
 
         if (transaction == null)
         {
-            // ÚJ LÉTREHOZÁSA
             title = "Új Tranzakció";
             parameters.Add("TransactionModel", new TransactionUpdateDto
             {
                 TransactionDate = DateTime.Today,
-                Type = TransactionType.Expense // Alapértelmezett
+                Type = TransactionType.Expense
             });
             parameters.Add("TransactionId", null);
         }
         else
         {
-            // SZERKESZTÉS (JAVÍTVA)
             title = "Tranzakció Szerkesztése";
-
-            // A 'transaction' objektum már tartalmazza a CategoryId-t, nincs szükség új API hívásra
             var transactionToEdit = new TransactionUpdateDto
             {
                 Amount = transaction.Amount,
                 Description = transaction.Description,
                 TransactionDate = transaction.TransactionDate,
                 Type = transaction.Type,
-                CategoryId = transaction.CategoryId // <-- EZ A JAVÍTÁS!
+                CategoryId = transaction.CategoryId
             };
 
             parameters.Add("TransactionModel", transactionToEdit);
             parameters.Add("TransactionId", transaction.Id);
         }
 
-        // A dialógus fájlra a teljes névterével kell hivatkozni
         var dialog = DialogService.Show<BudgetTrackingApp.Client.Shared.TransactionDialog>(title, parameters);
         var result = await dialog.Result;
 
-        // Ha a dialógus "Ok"-val zárult be (mentés történt)
         if (result != null && !result.Canceled)
         {
-            await LoadTransactionsAsync(); // Frissítjük a táblázatot és az összegzőt
+            await LoadTransactionsAsync();
         }
     }
 
@@ -201,6 +192,7 @@
             yesText: "Törlés",
             cancelText: "Mégse"
         );
+
         if (result == true)
         {
             try

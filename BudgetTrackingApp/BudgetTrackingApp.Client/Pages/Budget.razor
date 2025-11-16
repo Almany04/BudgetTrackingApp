@@ -38,7 +38,14 @@
                            Color="Color.Primary"
                            Disabled="@isLoading"
                            Class="mx-2 mb-2">
-                    Mentés
+                    @if (isLoading)
+                    {
+                        <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+                    }
+                    else
+                    {
+                        <span>Mentés</span>
+                    }
                 </MudButton>
             </MudCardActions>
         </MudCard>
@@ -87,7 +94,8 @@
             }
             else
             {
-                Snackbar.Add($"Hiba mentés közben: {await response.Content.ReadAsStringAsync()}", Severity.Error);
+                var errorMsg = await response.Content.ReadAsStringAsync();
+                Snackbar.Add($"Hiba mentés közben: {errorMsg}", Severity.Error);
             }
         }
         catch (Exception ex)
