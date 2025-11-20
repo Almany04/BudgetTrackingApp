@@ -6,57 +6,73 @@
 @inject NavigationManager Navigation
 @inject NotificationService NotificationService
 
-<PageTitle>Regisztráció</PageTitle>
+<PageTitle>Register - UniBudget</PageTitle>
 
-<RadzenTemplateForm TItem="UserRegisterDto" Data="@registerModel" Submit="@HandleRegistration">
-    <RadzenCard>
-        <RadzenText TextStyle="TextStyle.H5" TextAlign="TextAlign.Center" Class="rz-mb-4">Új Fiók Létrehozása</RadzenText>
+<div class="animate-in" style="width: 100%; max-width: 420px;">
 
-        <RadzenStack Spacing="3">
-            <RadzenFormField Text="Email cím" Variant="Variant.Outlined">
-                <RadzenTextBox @bind-Value="registerModel.Email" Name="Email" style="width: 100%;" />
-            </RadzenFormField>
-            <RadzenRequiredValidator Component="Email" Text="Email kötelező" />
-            <RadzenEmailValidator Component="Email" Text="Érvénytelen email formátum" />
+    <div style="text-align: center; margin-bottom: 2rem;">
+        <RadzenText TextStyle="TextStyle.H3" Style="color: white; font-weight: 800; margin: 0; letter-spacing: -1px;">Join UniBudget</RadzenText>
+        <RadzenText TextStyle="TextStyle.Body1" Style="color: var(--text-secondary); margin-top: 0.5rem;">Start tracking your finances today.</RadzenText>
+    </div>
 
-            <RadzenFormField Text="Jelszó" Variant="Variant.Outlined">
-                <RadzenPassword @bind-Value="registerModel.Password" Name="Password" style="width: 100%;" />
-            </RadzenFormField>
-            <RadzenRequiredValidator Component="Password" Text="Jelszó kötelező" />
+    <RadzenCard Class="xtract-card" Style="padding: 2.5rem;">
+        <RadzenTemplateForm TItem="UserRegisterDto" Data="@registerModel" Submit="@HandleRegistration">
+            <RadzenStack Spacing="1.5rem">
 
-            <RadzenFormField Text="Jelszó megerősítése" Variant="Variant.Outlined">
-                <RadzenPassword @bind-Value="registerModel.ConfirmPassword" Name="ConfirmPassword" style="width: 100%;" />
-            </RadzenFormField>
-            <RadzenCompareValidator Component="ConfirmPassword" Value="@registerModel.Password" Text="A jelszavak nem egyeznek" Operator="CompareOperator.Equal" />
+                <RadzenStack Gap="0.5rem">
+                    <RadzenText TextStyle="TextStyle.Subtitle2" Style="color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Email</RadzenText>
+                    <RadzenTextBox @bind-Value="registerModel.Email" Name="Email" Style="width: 100%;" Placeholder="you@example.com" />
+                    <RadzenRequiredValidator Component="Email" Text="Email is required" />
+                    <RadzenEmailValidator Component="Email" Text="Invalid email address" />
+                </RadzenStack>
 
-            @if (!string.IsNullOrEmpty(apiErrorMessage))
-            {
-                <RadzenAlert AlertStyle="AlertStyle.Danger" ShowIcon="true" Variant="Variant.Flat" Shade="Shade.Lighter">
-                    @apiErrorMessage
-                </RadzenAlert>
-            }
+                <RadzenStack Gap="0.5rem">
+                    <RadzenText TextStyle="TextStyle.Subtitle2" Style="color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Password</RadzenText>
+                    <RadzenPassword @bind-Value="registerModel.Password" Name="Password" Style="width: 100%;" />
+                    <RadzenRequiredValidator Component="Password" Text="Password is required" />
+                </RadzenStack>
 
-            <RadzenButton ButtonType="ButtonType.Submit" Text="Regisztráció" ButtonStyle="ButtonStyle.Primary" />
+                <RadzenStack Gap="0.5rem">
+                    <RadzenText TextStyle="TextStyle.Subtitle2" Style="color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Confirm Password</RadzenText>
+                    <RadzenPassword @bind-Value="registerModel.ConfirmPassword" Name="ConfirmPassword" Style="width: 100%;" />
+                    <RadzenCompareValidator Component="ConfirmPassword" Value="@registerModel.Password" Text="Passwords do not match" Operator="CompareOperator.Equal" />
+                </RadzenStack>
 
-            <RadzenLink Path="login" Text="Már van fiókod? Jelentkezz be!" TextAlign="TextAlign.Center" />
-        </RadzenStack>
+                @if (!string.IsNullOrEmpty(apiErrorMessage))
+                {
+                    <div style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; padding: 0.8rem; border-radius: 8px; font-size: 0.9rem; text-align: center;">
+                        @apiErrorMessage
+                    </div>
+                }
+
+                <RadzenButton ButtonType="ButtonType.Submit" Text="Create Account" Class="rz-button-primary" Style="width: 100%; height: 48px;" IsBusy="@isProcessing" />
+
+                <div style="text-align: center; margin-top: 0.5rem;">
+                    <span style="color: var(--text-secondary); font-size: 0.9rem;">Already have an account?</span>
+                    <RadzenLink Path="login" Text="Log In" Style="color: #8b5cf6; font-weight: 600; margin-left: 5px; text-decoration: none;" />
+                </div>
+
+            </RadzenStack>
+        </RadzenTemplateForm>
     </RadzenCard>
-</RadzenTemplateForm>
+</div>
 
 @code {
     private UserRegisterDto registerModel = new UserRegisterDto();
     private string? apiErrorMessage;
+    private bool isProcessing = false;
 
     private async Task HandleRegistration(UserRegisterDto args)
     {
+        isProcessing = true;
+        apiErrorMessage = null;
         try
         {
-            apiErrorMessage = null;
             var response = await Http.PostAsJsonAsync("api/user/register", registerModel);
 
             if (response.IsSuccessStatusCode)
             {
-                NotificationService.Notify(NotificationSeverity.Success, "Siker", "Regisztráció sikeres! Jelentkezz be.");
+                NotificationService.Notify(NotificationSeverity.Success, "Success", "Registration successful! Please log in.");
                 Navigation.NavigateTo("/login");
             }
             else
@@ -67,7 +83,11 @@
         }
         catch (Exception ex)
         {
-            apiErrorMessage = $"Hiba történt: {ex.Message}";
+            apiErrorMessage = $"Error: {ex.Message}";
+        }
+        finally
+        {
+            isProcessing = false;
         }
     }
 }

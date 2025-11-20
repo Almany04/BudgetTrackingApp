@@ -1,10 +1,11 @@
 ﻿using BudgetTrackingApp.Logic.Interfaces;
 using BudgetTrackingApp.Repository.Interfaces;
 using BudgetTrackingApp.Shared.Enums;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
+using Microsoft.Extensions.Configuration;
+using System.Net.Http.Json;
+using System.Text;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace BudgetTrackingApp.Logic.Services
 {
@@ -12,74 +13,124 @@ namespace BudgetTrackingApp.Logic.Services
     {
         private readonly ITransactionRepository _transactionRepository;
         private readonly IBudgetRepository _budgetRepository;
+        private readonly string _apiKey;
+        private readonly HttpClient _httpClient;
 
-        public AiSuggestionLogic(ITransactionRepository transactionRepository, IBudgetRepository budgetRepository)
+        public AiSuggestionLogic(
+            ITransactionRepository transactionRepository,
+            IBudgetRepository budgetRepository,
+            IConfiguration configuration)
         {
             _transactionRepository = transactionRepository;
             _budgetRepository = budgetRepository;
+            _apiKey = configuration["Gemini:ApiKey"] ?? throw new Exception("Gemini API Key missing!");
+            _httpClient = new HttpClient();
         }
 
         public async Task<List<string>> GenerateSuggestionsAsync(string userId)
         {
-            var suggestions = new List<string>();
-
             // 1. Fetch Data
             var endDate = DateTime.Now;
             var startDate = endDate.AddDays(-30);
             var transactions = await _transactionRepository.GetTransactionsByUserIdFilteredAsync(userId, startDate, endDate);
             var budget = await _budgetRepository.GetBudgetByUserIdAsync(userId);
 
-            if (budget == null) return new List<string> { "Állítsd be a havi keretedet a pontosabb tanácsokért!" };
+            if (transactions == null || !transactions.Any())
+                return new List<string> { "🤖 AI: I need more data! Add some transactions first." };
 
             var expenses = transactions.Where(t => t.Type == TransactionType.Expense).ToList();
             var totalSpent = expenses.Sum(t => t.Amount);
+            var budgetLimit = budget?.LimitAmount ?? 0;
 
-            // 2. "AI" Rules Engine
-
-            // Budget Health Check
-            if (totalSpent > budget.LimitAmount)
-            {
-                suggestions.Add($"⚠️ FIGYELEM: Túllépted a havi keretedet {totalSpent - budget.LimitAmount:C0} összeggel! Próbálj meg visszafogni a nem létfontosságú kiadásokat.");
-            }
-            else if (totalSpent > budget.LimitAmount * 0.8m)
-            {
-                suggestions.Add("⚠️ Közeledsz a havi limitedhez (80%+). Legyél óvatos a hónap hátralévő részében.");
-            }
-            else
-            {
-                suggestions.Add("✅ Jól állsz a havi kereteddel. Így tovább!");
-            }
-
-            // Category Analysis
-            var expensesByCategory = expenses
-                .GroupBy(t => t.Category?.Name ?? "Egyéb")
-                .Select(g => new { Category = g.Key, Total = g.Sum(t => t.Amount) })
-                .OrderByDescending(x => x.Total)
+            var categorySummary = expenses
+                .GroupBy(t => t.Category?.Name ?? "Unknown")
+                .Select(g => $"{g.Key}: {g.Sum(t => t.Amount):C0}")
                 .ToList();
 
-            if (expensesByCategory.Any())
-            {
-                var topCategory = expensesByCategory.First();
-                suggestions.Add($"💡 Tudtad? A legtöbbet '{topCategory.Category}' kategóriában költötted ({topCategory.Total:C0}).");
+            // 2. Build Prompt for Gemini 2.5 Pro (Thinking Model)
+            var promptText = $@"
+                You are an expert personal finance advisor. Analyze this user's monthly spending data carefully.
+                
+                Data:
+                - Total Monthly Budget Limit: {budgetLimit:C0}
+                - Total Spent So Far: {totalSpent:C0}
+                - Spending Breakdown by Category: {string.Join(", ", categorySummary)}
+                - Current Date: {DateTime.Now:yyyy-MM-dd}
 
-                if (topCategory.Total > totalSpent * 0.4m)
+                Task:
+                Provide exactly 3 distinct, high-quality, and actionable financial tips.
+                - Use your reasoning capabilities to detect subtle spending habits.
+                - If they are over budget, be stern but helpful.
+                - If they are under budget, suggest saving strategies or investment ideas.
+
+                Format:
+                Return ONLY the 3 tips separated by newlines. Do not use introductory text.
+                Start each tip with an emoji suitable for the advice.";
+
+            // 3. Call Gemini 2.5 Pro API
+            try
+            {
+                // CHANGED: Updated to 'gemini-2.5-pro'
+                var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key={_apiKey}";
+
+                var requestBody = new
                 {
-                    suggestions.Add($"📉 A kiadásaid 40%-a egyetlen kategóriába ({topCategory.Category}) megy. Érdemes lenne átvizsgálni ezeket a tételeket.");
+                    contents = new[]
+                    {
+                        new { parts = new[] { new { text = promptText } } }
+                    }
+                };
+
+                var response = await _httpClient.PostAsJsonAsync(url, requestBody);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var error = await response.Content.ReadAsStringAsync();
+                    throw new Exception($"Gemini API Error: {response.StatusCode} - {error}");
                 }
-            }
 
-            // Transaction Frequency
-            if (expenses.Count > 20)
+                var result = await response.Content.ReadFromJsonAsync<GeminiResponse>();
+
+                // 4. Parse Response
+                var responseText = result?.Candidates?.FirstOrDefault()?.Content?.Parts?.FirstOrDefault()?.Text;
+
+                if (string.IsNullOrEmpty(responseText)) return new List<string> { "🤖 AI: Could not generate advice this time." };
+
+                var suggestions = responseText
+                    .Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Where(s => s.Length > 10)
+                    .Take(3)
+                    .Select(s => s.Trim())
+                    .ToList();
+
+                return suggestions;
+            }
+            catch (Exception ex)
             {
-                suggestions.Add("🔄 Sok apró tranzakciód volt ebben a hónapban. A sok kicsi sokra megy!");
+                return new List<string> { $"⚠️ AI Unavailable: {ex.Message}" };
             }
+        }
 
-            if (suggestions.Count == 0)
-            {
-                suggestions.Add("🤖 Nincs elég adat a részletes elemzéshez. Rögzíts több tranzakciót!");
-            }
-
-            return suggestions;
+        // --- DTOs ---
+        private class GeminiResponse
+        {
+            [JsonPropertyName("candidates")]
+            public List<Candidate>? Candidates { get; set; }
+        }
+        private class Candidate
+        {
+            [JsonPropertyName("content")]
+            public Content? Content { get; set; }
+        }
+        private class Content
+        {
+            [JsonPropertyName("parts")]
+            public List<Part>? Parts { get; set; }
+        }
+        private class Part
+        {
+            [JsonPropertyName("text")]
+            public string? Text { get; set; }
         }
     }
 }

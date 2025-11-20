@@ -1,0 +1,143 @@
+﻿@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+
+:root {
+    --bg-root: #050508;
+    --text-primary: #ffffff;
+    --text-secondary: #d1d5db;
+    --accent-glow: #7c3aed;
+    /* Radzen Overrides */
+    --rz-text-font-family: 'Inter', sans-serif;
+    --rz-body-background-color: transparent !important;
+    --rz-header-background-color: transparent !important;
+    --rz-sidebar-background-color: rgba(15, 15, 20, 0.7) !important;
+    --rz-primary: #8b5cf6;
+    --rz-secondary: #9ca3af;
+    --rz-text-color: #ffffff !important;
+    --rz-base-background-color: #1e1e24;
+    --rz-border-radius: 12px;
+}
+
+html, body {
+    background-color: var(--bg-root);
+    color: var(--text-primary);
+    font-family: 'Inter', sans-serif;
+    height: 100%;
+    margin: 0;
+    overflow-x: hidden;
+}
+
+/* --- Space Background --- */
+.ambient-glow {
+    position: fixed;
+    top: -20%;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 100vw;
+    height: 80vh;
+    background: radial-gradient(circle, rgba(124, 58, 237, 0.25) 0%, rgba(5, 5, 8, 0) 70%);
+    pointer-events: none;
+    z-index: -1;
+}
+
+/* --- Layout Transparency --- */
+.rz-layout {
+    background-color: transparent !important;
+}
+
+.rz-header {
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1) !important;
+    backdrop-filter: blur(8px);
+}
+
+.rz-sidebar {
+    border-right: 1px solid rgba(255, 255, 255, 0.1) !important;
+    backdrop-filter: blur(12px);
+}
+
+/* --- Cards --- */
+.xtract-card, .rz-card {
+    background-color: rgba(25, 25, 30, 0.6) !important;
+    backdrop-filter: blur(16px) !important;
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid rgba(255, 255, 255, 0.1) !important;
+    border-radius: 16px !important;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.4) !important;
+    color: white !important;
+}
+
+/* --- Inputs (UPDATED) --- */
+/* Added .rz-password here to fix the invisible password text */
+.rz-textbox, .rz-password, .rz-dropdown, .rz-numeric, .rz-textarea, .rz-calendar .rz-inputtext {
+    background-color: rgba(0, 0, 0, 0.4) !important;
+    border: 1px solid rgba(255, 255, 255, 0.15) !important;
+    color: white !important;
+    border-radius: 8px !important;
+    height: 40px;
+}
+
+    .rz-textbox:focus, .rz-password:focus, .rz-dropdown:focus-within {
+        border-color: #8b5cf6 !important;
+        box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.25) !important;
+        background-color: rgba(0, 0, 0, 0.6) !important;
+        color: white !important;
+    }
+
+/* --- AUTOFILL FIX (CRITICAL) --- */
+/* This forces browser autofill to be dark instead of white/yellow */
+input:-webkit-autofill,
+input:-webkit-autofill:hover,
+input:-webkit-autofill:focus,
+input:-webkit-autofill:active {
+    -webkit-box-shadow: 0 0 0 30px #131318 inset !important;
+    -webkit-text-fill-color: white !important;
+    transition: background-color 5000s ease-in-out 0s;
+}
+
+/* --- Typography --- */
+.text-gradient {
+    background: linear-gradient(to right, #ffffff, #a78bfa);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+h1, h2, h3, h4, h5, h6,
+.rz-text-h1, .rz-text-h2, .rz-text-h3, .rz-text-h4, .rz-text-h5, .rz-text-h6 {
+    color: white !important;
+    font-weight: 700 !important;
+}
+
+p, span, label, .rz-text-body1, .rz-text-body2 {
+    color: var(--text-secondary);
+}
+
+/* --- Buttons --- */
+.rz-button-primary {
+    background: linear-gradient(135deg, #8b5cf6 0%, #7c3aed 100%) !important;
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3) !important;
+    border: none !important;
+    color: white !important;
+}
+
+/* --- Menu --- */
+.rz-panel-menu {
+    background-color: transparent !important;
+    border: none !important;
+}
+
+.rz-navigation-item-wrapper {
+    background-color: transparent !important;
+    color: #9ca3af !important;
+    margin: 4px 12px !important;
+    border-radius: 8px !important;
+}
+
+    .rz-navigation-item-wrapper:hover {
+        background-color: rgba(255, 255, 255, 0.08) !important;
+        color: white !important;
+    }
+
+.rz-navigation-item-wrapper-active {
+    background-color: rgba(139, 92, 246, 0.2) !important;
+    color: #a78bfa !important;
+    border-left: 3px solid #a78bfa;
+}

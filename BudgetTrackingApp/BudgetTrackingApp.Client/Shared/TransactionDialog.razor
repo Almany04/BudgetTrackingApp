@@ -1,58 +1,61 @@
 ﻿@inject HttpClient Http
 @inject DialogService DialogService
 @inject NotificationService NotificationService
+@using BudgetTrackingApp.Shared.Dtos.Transactions
+@using BudgetTrackingApp.Shared.Dtos.Category
+@using BudgetTrackingApp.Shared.Enums
 
 <RadzenTemplateForm TItem="TransactionUpdateDto" Data="@TransactionModel" Submit="@(args => OnSubmit(args))">
     <RadzenStack Spacing="1.5rem">
 
         <RadzenRow>
             <RadzenColumn Size="12" SizeMD="6">
-                <RadzenFormField Text="Típus" Variant="Variant.Outlined" Style="width: 100%">
+                <RadzenFormField Text="Type" Variant="Variant.Outlined" Style="width: 100%">
                     <RadzenDropDown @bind-Value="TransactionModel.Type"
                                     Data="@(Enum.GetValues(typeof(TransactionType)))"
                                     Name="Type" />
                 </RadzenFormField>
             </RadzenColumn>
             <RadzenColumn Size="12" SizeMD="6">
-                <RadzenFormField Text="Összeg (HUF)" Variant="Variant.Outlined" Style="width: 100%">
+                <RadzenFormField Text="Amount (HUF)" Variant="Variant.Outlined" Style="width: 100%">
                     <RadzenNumeric @bind-Value="TransactionModel.Amount" Name="Amount" Min="1" />
                 </RadzenFormField>
-                <RadzenRequiredValidator Component="Amount" Text="Az összeg megadása kötelező!" />
-                <RadzenNumericRangeValidator Component="Amount" Min="1" Text="Az összegnek nagyobbnak kell lennie 0-nál!" />
+                <RadzenRequiredValidator Component="Amount" Text="Amount is required!" />
+                <RadzenNumericRangeValidator Component="Amount" Min="1" Text="Amount must be greater than 0!" />
             </RadzenColumn>
         </RadzenRow>
 
-        <RadzenFormField Text="Kategória" Variant="Variant.Outlined">
+        <RadzenFormField Text="Category" Variant="Variant.Outlined">
             <RadzenDropDown @bind-Value="TransactionModel.CategoryId"
                             Data="@categories"
                             TextProperty="Name"
                             ValueProperty="Id"
                             Name="CategoryId"
-                            Placeholder="Válassz kategóriát..."
+                            Placeholder="Select a category..."
                             AllowClear="true"
                             Style="width: 100%" />
         </RadzenFormField>
-        <RadzenRequiredValidator Component="CategoryId" Text="Kategória kiválasztása kötelező!" DefaultValue="Guid.Empty" />
+        <RadzenRequiredValidator Component="CategoryId" Text="Category selection is required!" DefaultValue="Guid.Empty" />
 
-        <RadzenFormField Text="Dátum" Variant="Variant.Outlined">
+        <RadzenFormField Text="Date" Variant="Variant.Outlined">
             <RadzenDatePicker @bind-Value="TransactionModel.TransactionDate" Name="TransactionDate" DateFormat="yyyy.MM.dd" Style="width: 100%" />
         </RadzenFormField>
-        <RadzenRequiredValidator Component="TransactionDate" Text="Dátum megadása kötelező!" />
+        <RadzenRequiredValidator Component="TransactionDate" Text="Date is required!" />
 
-        <RadzenFormField Text="Megjegyzés / Leírás" Variant="Variant.Outlined">
+        <RadzenFormField Text="Description / Note" Variant="Variant.Outlined">
             <RadzenTextArea @bind-Value="TransactionModel.Description" Rows="3" Name="Description" Style="width: 100%" />
         </RadzenFormField>
 
         <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="1rem" Class="rz-mt-2">
-            <RadzenButton ButtonType="ButtonType.Submit" Text="Mentés" Icon="save" ButtonStyle="ButtonStyle.Primary" Disabled="@isProcessing" IsBusy="@isProcessing" />
-            <RadzenButton Text="Mégse" ButtonStyle="ButtonStyle.Light" Click="@(() => DialogService.Close(false))" Disabled="@isProcessing" />
+            <RadzenButton ButtonType="ButtonType.Submit" Text="Save" Icon="save" ButtonStyle="ButtonStyle.Primary" Disabled="@isProcessing" IsBusy="@isProcessing" />
+            <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Light" Click="@(() => DialogService.Close(false))" Disabled="@isProcessing" />
         </RadzenStack>
     </RadzenStack>
 </RadzenTemplateForm>
 
 @code {
+    // (Code remains largely the same, check error messages below)
     [Parameter] public Guid? TransactionId { get; set; }
-
     public TransactionUpdateDto TransactionModel { get; set; } = new() { TransactionDate = DateTime.Today };
     private IEnumerable<CategoryViewDto>? categories;
     private bool isProcessing = false;
@@ -60,10 +63,8 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadCategoriesAsync();
-
         if (TransactionId != null)
         {
-            // Meglévő betöltése
             try
             {
                 var t = await Http.GetFromJsonAsync<TransactionViewDto>($"api/transaction/{TransactionId}");
@@ -81,27 +82,21 @@
             }
             catch
             {
-                NotificationService.Notify(NotificationSeverity.Error, "Hiba", "Nem sikerült betölteni az adatokat.");
+                NotificationService.Notify(NotificationSeverity.Error, "Error", "Failed to load transaction data.");
                 DialogService.Close(false);
             }
         }
         else if (categories?.Any() == true)
         {
-            // Alapértelmezett kategória beállítása újra
             TransactionModel.CategoryId = categories.First().Id;
         }
     }
 
     private async Task LoadCategoriesAsync()
     {
-        try
-        {
-            categories = await Http.GetFromJsonAsync<List<CategoryViewDto>>("api/categories");
-        }
-        catch { }
+        try { categories = await Http.GetFromJsonAsync<List<CategoryViewDto>>("api/categories"); } catch { }
     }
 
-    // JAVÍTVA: A paraméter (args) hozzáadása kötelező az EventCallback<T> miatt
     private async Task OnSubmit(TransactionUpdateDto args)
     {
         isProcessing = true;
@@ -110,7 +105,6 @@
             HttpResponseMessage response;
             if (TransactionId == null)
             {
-                // Új létrehozása
                 var createDto = new TransactionCreateDto
                 {
                     Amount = TransactionModel.Amount,
@@ -123,24 +117,23 @@
             }
             else
             {
-                // Szerkesztés
                 response = await Http.PutAsJsonAsync($"api/transaction/{TransactionId}", TransactionModel);
             }
 
             if (response.IsSuccessStatusCode)
             {
-                NotificationService.Notify(NotificationSeverity.Success, "Siker", "Mentés sikeres!");
-                DialogService.Close(true); // Siker jelzése a szülőnek
+                NotificationService.Notify(NotificationSeverity.Success, "Success", "Transaction saved successfully!");
+                DialogService.Close(true);
             }
             else
             {
                 var errorMsg = await response.Content.ReadAsStringAsync();
-                NotificationService.Notify(NotificationSeverity.Error, "Hiba", errorMsg);
+                NotificationService.Notify(NotificationSeverity.Error, "Error", errorMsg);
             }
         }
         catch (Exception ex)
         {
-            NotificationService.Notify(NotificationSeverity.Error, "Hiba", ex.Message);
+            NotificationService.Notify(NotificationSeverity.Error, "Error", ex.Message);
         }
         finally
         {

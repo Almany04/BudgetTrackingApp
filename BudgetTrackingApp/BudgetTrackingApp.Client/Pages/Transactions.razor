@@ -3,23 +3,25 @@
 @inject HttpClient Http
 @inject DialogService DialogService
 @inject NotificationService NotificationService
+@using BudgetTrackingApp.Shared.Dtos.Transactions
+@using BudgetTrackingApp.Shared.Enums
 
-<PageTitle>Tranzakciók</PageTitle>
+<PageTitle>Transactions</PageTitle>
 
 <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" Class="rz-mb-4">
-    <RadzenText TextStyle="TextStyle.H4" Class="rz-m-0">Tranzakciók</RadzenText>
-    <RadzenButton Text="Új Hozzáadása" Icon="add_circle" ButtonStyle="ButtonStyle.Primary" Click="@(args => OpenTransactionDialog(null))" />
+    <RadzenText TextStyle="TextStyle.H4" Class="rz-m-0" Style="color: white;">Transactions</RadzenText>
+    <RadzenButton Text="Add New" Icon="add_circle" ButtonStyle="ButtonStyle.Primary" Click="@(args => OpenTransactionDialog(null))" />
 </RadzenStack>
 
-<RadzenCard Class="rz-mb-4">
+<RadzenCard Class="xtract-card rz-mb-4">
     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End" Gap="1rem" Wrap="FlexWrap.Wrap">
-        <RadzenFormField Text="Kezdő dátum" Variant="Variant.Outlined">
+        <RadzenFormField Text="Start Date" Variant="Variant.Outlined" Style="color: white;">
             <RadzenDatePicker @bind-Value="startDate" DateFormat="yyyy.MM.dd" />
         </RadzenFormField>
-        <RadzenFormField Text="Végdátum" Variant="Variant.Outlined">
+        <RadzenFormField Text="End Date" Variant="Variant.Outlined">
             <RadzenDatePicker @bind-Value="endDate" DateFormat="yyyy.MM.dd" />
         </RadzenFormField>
-        <RadzenButton Text="Listázás" Click="@(args => LoadTransactionsAsync())" Icon="refresh" ButtonStyle="ButtonStyle.Secondary" />
+        <RadzenButton Text="Refresh List" Click="@(args => LoadTransactionsAsync())" Icon="refresh" ButtonStyle="ButtonStyle.Secondary" />
     </RadzenStack>
 </RadzenCard>
 
@@ -27,27 +29,27 @@
                 AllowPaging="true" PageSize="10"
                 AllowSorting="true"
                 AllowFiltering="true" FilterMode="FilterMode.Simple"
-                IsLoading="@isLoading" EmptyText="Nincs megjeleníthető tranzakció.">
+                IsLoading="@isLoading" EmptyText="No transactions found.">
     <Columns>
-        <RadzenDataGridColumn TItem="TransactionViewDto" Property="TransactionDate" Title="Dátum" Width="120px">
+        <RadzenDataGridColumn TItem="TransactionViewDto" Property="TransactionDate" Title="Date" Width="120px">
             <Template Context="data">
-                @data.TransactionDate.ToString("yyyy.MM.dd")
+                <span style="color: var(--text-secondary);">@data.TransactionDate.ToString("yyyy.MM.dd")</span>
             </Template>
         </RadzenDataGridColumn>
 
-        <RadzenDataGridColumn TItem="TransactionViewDto" Property="CategoryName" Title="Kategória" Width="150px" />
+        <RadzenDataGridColumn TItem="TransactionViewDto" Property="CategoryName" Title="Category" Width="150px" />
 
-        <RadzenDataGridColumn TItem="TransactionViewDto" Property="Description" Title="Leírás" />
+        <RadzenDataGridColumn TItem="TransactionViewDto" Property="Description" Title="Description" />
 
-        <RadzenDataGridColumn TItem="TransactionViewDto" Property="Amount" Title="Összeg" TextAlign="TextAlign.Right" Width="140px">
+        <RadzenDataGridColumn TItem="TransactionViewDto" Property="Amount" Title="Amount" TextAlign="TextAlign.Right" Width="140px">
             <Template Context="data">
-                <RadzenText TextStyle="TextStyle.Body1" Style="@(data.Type == TransactionType.Expense ? "color: var(--rz-danger)" : "color: var(--rz-success); font-weight:bold;")">
+                <RadzenText TextStyle="TextStyle.Body1" Style="@(data.Type == TransactionType.Expense ? "color: #ef4444;" : "color: #22c55e; font-weight:bold;")">
                     @(data.Type == TransactionType.Expense ? "-" : "+") @data.Amount.ToString("C0")
                 </RadzenText>
             </Template>
         </RadzenDataGridColumn>
 
-        <RadzenDataGridColumn TItem="TransactionViewDto" Title="Műveletek" TextAlign="TextAlign.Center" Width="120px" Sortable="false" Filterable="false">
+        <RadzenDataGridColumn TItem="TransactionViewDto" Title="Actions" TextAlign="TextAlign.Center" Width="120px" Sortable="false" Filterable="false">
             <Template Context="data">
                 <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => OpenTransactionDialog(data))" Class="rz-mr-1" />
                 <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => DeleteTransaction(data))" />
@@ -57,6 +59,7 @@
 </RadzenDataGrid>
 
 @code {
+    // Logic remains the same, but ensure confirmation text is translated
     private IEnumerable<TransactionViewDto>? transactions;
     private bool isLoading = false;
     private DateTime? startDate = DateTime.Now.AddDays(-30);
@@ -75,12 +78,11 @@
             var start = startDate?.ToString("yyyy-MM-dd");
             var end = endDate?.ToString("yyyy-MM-dd");
             var url = $"api/transaction?startDate={start}&endDate={end}";
-
             transactions = await Http.GetFromJsonAsync<List<TransactionViewDto>>(url);
         }
         catch (Exception ex)
         {
-            NotificationService.Notify(NotificationSeverity.Error, "Hiba", $"Adatok betöltése sikertelen: {ex.Message}");
+            NotificationService.Notify(NotificationSeverity.Error, "Error", $"Failed to load data: {ex.Message}");
         }
         finally
         {
@@ -91,9 +93,9 @@
     private async Task OpenTransactionDialog(TransactionViewDto? transaction)
     {
         var result = await DialogService.OpenAsync<BudgetTrackingApp.Client.Shared.TransactionDialog>(
-            transaction == null ? "Új Tranzakció" : "Tranzakció Szerkesztése",
+            transaction == null ? "New Transaction" : "Edit Transaction",
             new Dictionary<string, object> { { "TransactionId", transaction?.Id } },
-            new DialogOptions() { Width = "500px", Height = "auto", Draggable = true, Resizable = false }
+            new DialogOptions() { Width = "500px", Height = "auto", Draggable = true, Resizable = false, CssClass = "xtract-card" }
         );
 
         if (result == true)
@@ -104,8 +106,8 @@
 
     private async Task DeleteTransaction(TransactionViewDto transaction)
     {
-        var confirm = await DialogService.Confirm($"Biztosan törölni szeretnéd ezt a tételt?", "Törlés megerősítése",
-            new ConfirmOptions() { OkButtonText = "Igen", CancelButtonText = "Nem" });
+        var confirm = await DialogService.Confirm("Are you sure you want to delete this item?", "Confirm Delete",
+            new ConfirmOptions() { OkButtonText = "Yes", CancelButtonText = "No", CssClass = "xtract-card" });
 
         if (confirm == true)
         {
@@ -114,13 +116,13 @@
                 var response = await Http.DeleteAsync($"api/transaction/{transaction.Id}");
                 if (response.IsSuccessStatusCode)
                 {
-                    NotificationService.Notify(NotificationSeverity.Success, "Siker", "Tranzakció törölve!");
+                    NotificationService.Notify(NotificationSeverity.Success, "Success", "Transaction deleted!");
                     await LoadTransactionsAsync();
                 }
             }
             catch (Exception ex)
             {
-                NotificationService.Notify(NotificationSeverity.Error, "Hiba", ex.Message);
+                NotificationService.Notify(NotificationSeverity.Error, "Error", ex.Message);
             }
         }
     }

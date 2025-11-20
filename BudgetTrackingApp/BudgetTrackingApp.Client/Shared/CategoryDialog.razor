@@ -5,7 +5,7 @@
 
 <RadzenTemplateForm TItem="object" Data="@CategoryModel" Submit="@OnSubmit">
     <RadzenStack Spacing="3">
-        <RadzenFormField Text="Kategória Név" Variant="Variant.Outlined">
+        <RadzenFormField Text="Category Name" Variant="Variant.Outlined">
             @if (CategoryModel is CategoryCreateDto createModel)
             {
                 <RadzenTextBox @bind-Value="createModel.Name" Name="Name" style="width: 100%;" />
@@ -15,11 +15,11 @@
                 <RadzenTextBox @bind-Value="updateModel.Name" Name="Name" style="width: 100%;" />
             }
         </RadzenFormField>
-        <RadzenRequiredValidator Component="Name" Text="Név megadása kötelező" />
+        <RadzenRequiredValidator Component="Name" Text="Name is required" />
 
         <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="1rem" Class="rz-mt-4">
-            <RadzenButton ButtonType="ButtonType.Submit" Text="Mentés" ButtonStyle="ButtonStyle.Primary" Disabled="@isProcessing" IsBusy="@isProcessing" />
-            <RadzenButton Text="Mégse" ButtonStyle="ButtonStyle.Light" Click="@(() => DialogService.Close(false))" />
+            <RadzenButton ButtonType="ButtonType.Submit" Text="Save" ButtonStyle="ButtonStyle.Primary" Disabled="@isProcessing" IsBusy="@isProcessing" />
+            <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Light" Click="@(() => DialogService.Close(false))" />
         </RadzenStack>
     </RadzenStack>
 </RadzenTemplateForm>
@@ -27,10 +27,8 @@
 @code {
     [Parameter] public object CategoryModel { get; set; } = new();
     [Parameter] public Guid? CategoryId { get; set; }
-
     private bool isProcessing = false;
 
-    // Külön metódus a submit eseményhez a biztos működésért
     private async Task OnSubmit(object args)
     {
         await HandleSave();
@@ -52,23 +50,23 @@
             }
             else
             {
-                throw new InvalidOperationException("Érvénytelen modell.");
+                throw new InvalidOperationException("Invalid model.");
             }
 
             if (response.IsSuccessStatusCode)
             {
-                NotificationService.Notify(NotificationSeverity.Success, "Siker", "Mentés sikeres!");
+                NotificationService.Notify(NotificationSeverity.Success, "Success", "Category saved!");
                 DialogService.Close(true);
             }
             else
             {
                 var error = await response.Content.ReadAsStringAsync();
-                NotificationService.Notify(NotificationSeverity.Error, "Hiba", error);
+                NotificationService.Notify(NotificationSeverity.Error, "Error", error);
             }
         }
         catch (Exception ex)
         {
-            NotificationService.Notify(NotificationSeverity.Error, "Hiba", ex.Message);
+            NotificationService.Notify(NotificationSeverity.Error, "Error", ex.Message);
         }
         finally
         {

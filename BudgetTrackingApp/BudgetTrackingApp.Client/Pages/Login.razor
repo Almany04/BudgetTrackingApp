@@ -1,20 +1,24 @@
 ﻿@page "/login"
 @layout BudgetTrackingApp.Client.Shared.AuthLayout
 @using Microsoft.AspNetCore.Authorization
+@using BudgetTrackingApp.Shared.Dtos.User
 @attribute [AllowAnonymous]
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
 @inject NotificationService NotificationService
 
-<PageTitle>Login</PageTitle>
+<PageTitle>Login - UniBudget</PageTitle>
 
 <div class="animate-in" style="width: 100%; max-width: 420px;">
 
     <div style="text-align: center; margin-bottom: 2.5rem;">
-        <RadzenIcon Icon="fingerprint" Style="font-size: 3rem; color: #a78bfa; margin-bottom: 1rem; filter: drop-shadow(0 0 10px rgba(139, 92, 246, 0.5));" />
-        <RadzenText TextStyle="TextStyle.H3" Style="color: white; font-weight: 800; margin: 0;">Welcome Back</RadzenText>
-        <RadzenText TextStyle="TextStyle.Body1" Style="color: var(--text-secondary);">Sign in to continue to XTRACT.</RadzenText>
+        <div style="width: 64px; height: 64px; background: linear-gradient(135deg, #8b5cf6, #4f46e5); border-radius: 16px; display: flex; align-items: center; justify-content: center; margin: 0 auto 1.5rem auto; box-shadow: 0 4px 20px rgba(139, 92, 246, 0.5);">
+            <RadzenIcon Icon="account_balance_wallet" Style="font-size: 2.5rem; color: white;" />
+        </div>
+
+        <RadzenText TextStyle="TextStyle.H3" Style="color: white; font-weight: 800; margin: 0; letter-spacing: -1px;">UniBudget</RadzenText>
+        <RadzenText TextStyle="TextStyle.Body1" Style="color: var(--text-secondary); margin-top: 0.5rem;">Welcome back! Please sign in.</RadzenText>
     </div>
 
     <RadzenCard Class="xtract-card" Style="padding: 2.5rem;">
@@ -22,15 +26,14 @@
             <RadzenStack Gap="1.5rem">
 
                 <RadzenStack Gap="0.5rem">
-                    <RadzenText TextStyle="TextStyle.Subtitle2" Style="color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px;">Email</RadzenText>
+                    <RadzenText TextStyle="TextStyle.Subtitle2" Style="color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Email</RadzenText>
                     <RadzenTextBox @bind-Value="loginModel.Email" Name="Email" Style="width: 100%;" Placeholder="you@example.com" />
                     <RadzenRequiredValidator Component="Email" Text="Email is required" />
                 </RadzenStack>
 
                 <RadzenStack Gap="0.5rem">
                     <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
-                        <RadzenText TextStyle="TextStyle.Subtitle2" Style="color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px;">Password</RadzenText>
-                        <a href="#" style="font-size: 0.8rem; color: #a78bfa; text-decoration: none;">Forgot?</a>
+                        <RadzenText TextStyle="TextStyle.Subtitle2" Style="color: var(--text-secondary); font-size: 0.75rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 700;">Password</RadzenText>
                     </RadzenStack>
                     <RadzenPassword @bind-Value="loginModel.Password" Name="Password" Style="width: 100%;" Placeholder="••••••••" />
                     <RadzenRequiredValidator Component="Password" Text="Password is required" />
@@ -38,7 +41,7 @@
 
                 @if (!string.IsNullOrEmpty(apiErrorMessage))
                 {
-                    <div style="background: rgba(239, 68, 68, 0.1); border: 1px solid #ef4444; color: #ef4444; padding: 0.8rem; border-radius: 8px; font-size: 0.9rem; text-align: center;">
+                    <div style="background: rgba(239, 68, 68, 0.15); border: 1px solid rgba(239, 68, 68, 0.3); color: #fca5a5; padding: 0.8rem; border-radius: 8px; font-size: 0.9rem; text-align: center;">
                         @apiErrorMessage
                     </div>
                 }
@@ -47,7 +50,7 @@
 
                 <div style="text-align: center; margin-top: 1rem;">
                     <span style="color: var(--text-secondary); font-size: 0.9rem;">Don't have an account?</span>
-                    <RadzenLink Path="register" Text="Create Account" Style="color: white; font-weight: 600; margin-left: 5px; text-decoration: none;" />
+                    <RadzenLink Path="register" Text="Create Account" Style="color: #8b5cf6; font-weight: 600; margin-left: 5px; text-decoration: none;" />
                 </div>
 
             </RadzenStack>

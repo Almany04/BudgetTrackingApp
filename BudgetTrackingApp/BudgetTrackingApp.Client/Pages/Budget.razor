@@ -5,13 +5,13 @@
 @inject HttpClient Http
 @inject NotificationService NotificationService
 
-<PageTitle>Budget Beállítása</PageTitle>
+<PageTitle>Budget Plan</PageTitle>
 
 <RadzenRow JustifyContent="JustifyContent.Center" Class="rz-mt-4">
     <RadzenColumn Size="12" SizeMD="6">
         <RadzenTemplateForm TItem="BudgetUpdateDto" Data="@budgetModel" Submit="@HandleSaveBudget">
-            <RadzenCard>
-                <RadzenText TextStyle="TextStyle.H5" Class="rz-mb-4">Havi Keret Beállítása</RadzenText>
+            <RadzenCard Class="xtract-card">
+                <RadzenText TextStyle="TextStyle.H5" Class="rz-mb-4" Style="color: white;">Monthly Budget Settings</RadzenText>
 
                 @if (isLoading)
                 {
@@ -20,17 +20,17 @@
                 else
                 {
                     <RadzenStack Spacing="3">
-                        <RadzenFormField Text="Havi keretösszeg (HUF)" Variant="Variant.Outlined">
+                        <RadzenFormField Text="Monthly Limit (HUF)" Variant="Variant.Outlined">
                             <RadzenNumeric @bind-Value="budgetModel.LimitAmount" Name="LimitAmount" style="width: 100%;" />
                         </RadzenFormField>
-                        <RadzenRequiredValidator Component="LimitAmount" Text="Az összeg kötelező" />
-                        <RadzenNumericRangeValidator Component="LimitAmount" Min="0" Text="Az összeg nem lehet negatív" />
+                        <RadzenRequiredValidator Component="LimitAmount" Text="Amount is required" />
+                        <RadzenNumericRangeValidator Component="LimitAmount" Min="0" Text="Amount cannot be negative" />
 
-                        <RadzenText TextStyle="TextStyle.Body2" Class="rz-color-secondary">
-                            Add meg a teljes havi keretedet.
+                        <RadzenText TextStyle="TextStyle.Body2" Style="color: var(--text-secondary);">
+                            Set your total spending limit for the month to enable AI tracking.
                         </RadzenText>
 
-                        <RadzenButton ButtonType="ButtonType.Submit" Text="Mentés" ButtonStyle="ButtonStyle.Primary" Disabled="@isSaving" IsBusy="@isSaving" />
+                        <RadzenButton ButtonType="ButtonType.Submit" Text="Save Budget" ButtonStyle="ButtonStyle.Primary" Disabled="@isSaving" IsBusy="@isSaving" />
                     </RadzenStack>
                 }
             </RadzenCard>
@@ -61,7 +61,7 @@
         }
         catch (Exception ex)
         {
-            NotificationService.Notify(NotificationSeverity.Error, "Hiba", $"Hiba a keret betöltésekor: {ex.Message}");
+            NotificationService.Notify(NotificationSeverity.Error, "Error", $"Failed to load budget: {ex.Message}");
         }
         finally
         {
@@ -77,17 +77,17 @@
             var response = await Http.PutAsJsonAsync("api/budget", budgetModel);
             if (response.IsSuccessStatusCode)
             {
-                NotificationService.Notify(NotificationSeverity.Success, "Siker", "Budget sikeresen frissítve!");
+                NotificationService.Notify(NotificationSeverity.Success, "Success", "Budget updated successfully!");
             }
             else
             {
                 var errorMsg = await response.Content.ReadAsStringAsync();
-                NotificationService.Notify(NotificationSeverity.Error, "Hiba", $"Hiba mentés közben: {errorMsg}");
+                NotificationService.Notify(NotificationSeverity.Error, "Error", $"Failed to save: {errorMsg}");
             }
         }
         catch (Exception ex)
         {
-            NotificationService.Notify(NotificationSeverity.Error, "Hiba", ex.Message);
+            NotificationService.Notify(NotificationSeverity.Error, "Error", ex.Message);
         }
         finally
         {

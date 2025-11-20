@@ -3,19 +3,20 @@
 @inject HttpClient Http
 @inject DialogService DialogService
 @inject NotificationService NotificationService
+@using BudgetTrackingApp.Shared.Dtos.Category
 
-<PageTitle>Kategóriák Kezelése</PageTitle>
+<PageTitle>Categories</PageTitle>
 
 <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" Class="rz-mb-4">
-    <RadzenText TextStyle="TextStyle.H5" Class="rz-m-0">Kategóriák</RadzenText>
-    <RadzenButton Text="Új Kategória" Icon="add" ButtonStyle="ButtonStyle.Primary" Click="@(args => OpenCreateDialog())" />
+    <RadzenText TextStyle="TextStyle.H5" Class="rz-m-0" Style="color: white;">Categories</RadzenText>
+    <RadzenButton Text="New Category" Icon="add" ButtonStyle="ButtonStyle.Primary" Click="@(args => OpenCreateDialog())" />
 </RadzenStack>
 
-<RadzenDataGrid Data="@categories" TItem="CategoryViewDto" AllowPaging="true" PageSize="10" AllowSorting="true" IsLoading="@isLoading" EmptyText="Nincs megjeleníthető adat.">
+<RadzenDataGrid Data="@categories" TItem="CategoryViewDto" AllowPaging="true" PageSize="10" AllowSorting="true" IsLoading="@isLoading" EmptyText="No categories found.">
     <Columns>
-        <RadzenDataGridColumn TItem="CategoryViewDto" Property="Name" Title="Név" />
+        <RadzenDataGridColumn TItem="CategoryViewDto" Property="Name" Title="Name" />
 
-        <RadzenDataGridColumn TItem="CategoryViewDto" Title="Műveletek" TextAlign="TextAlign.Center" Width="120px">
+        <RadzenDataGridColumn TItem="CategoryViewDto" Title="Actions" TextAlign="TextAlign.Center" Width="120px">
             <Template Context="data">
                 <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small" Click="@(args => OpenEditDialog(data))" Class="rz-mr-1" />
                 <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" Click="@(args => DeleteCategory(data))" />
@@ -42,7 +43,7 @@
         }
         catch (Exception ex)
         {
-            NotificationService.Notify(NotificationSeverity.Error, "Hiba", $"Adatok betöltése sikertelen: {ex.Message}");
+            NotificationService.Notify(NotificationSeverity.Error, "Error", $"Failed to load data: {ex.Message}");
         }
         finally
         {
@@ -53,11 +54,10 @@
     private async Task OpenCreateDialog()
     {
         var result = await DialogService.OpenAsync<BudgetTrackingApp.Client.Shared.CategoryDialog>(
-            "Új Kategória",
+            "New Category",
             new Dictionary<string, object> { { "CategoryModel", new CategoryCreateDto() }, { "CategoryId", null } },
-            new DialogOptions() { Width = "400px", Height = "auto" }
+            new DialogOptions() { Width = "400px", Height = "auto", CssClass = "xtract-card" }
         );
-
         if (result == true)
         {
             await LoadCategoriesAsync();
@@ -67,9 +67,9 @@
     private async Task OpenEditDialog(CategoryViewDto category)
     {
         var result = await DialogService.OpenAsync<BudgetTrackingApp.Client.Shared.CategoryDialog>(
-            "Kategória Szerkesztése",
+            "Edit Category",
             new Dictionary<string, object> { { "CategoryModel", new CategoryUpdateDto { Name = category.Name } }, { "CategoryId", category.Id } },
-            new DialogOptions() { Width = "400px", Height = "auto" }
+            new DialogOptions() { Width = "400px", Height = "auto", CssClass = "xtract-card" }
         );
 
         if (result == true)
@@ -80,7 +80,7 @@
 
     private async Task DeleteCategory(CategoryViewDto category)
     {
-        var confirm = await DialogService.Confirm($"Biztosan törölni szeretnéd a '{category.Name}' kategóriát?", "Törlés", new ConfirmOptions() { OkButtonText = "Igen", CancelButtonText = "Nem" });
+        var confirm = await DialogService.Confirm($"Are you sure you want to delete '{category.Name}'?", "Delete Category", new ConfirmOptions() { OkButtonText = "Yes", CancelButtonText = "No", CssClass = "xtract-card" });
         if (confirm == true)
         {
             try
@@ -88,18 +88,18 @@
                 var response = await Http.DeleteAsync($"api/categories/{category.Id}");
                 if (response.IsSuccessStatusCode)
                 {
-                    NotificationService.Notify(NotificationSeverity.Success, "Siker", "Kategória törölve!");
+                    NotificationService.Notify(NotificationSeverity.Success, "Success", "Category deleted!");
                     await LoadCategoriesAsync();
                 }
                 else
                 {
                     var errorMsg = await response.Content.ReadAsStringAsync();
-                    NotificationService.Notify(NotificationSeverity.Error, "Hiba", errorMsg);
+                    NotificationService.Notify(NotificationSeverity.Error, "Error", errorMsg);
                 }
             }
             catch (Exception ex)
             {
-                NotificationService.Notify(NotificationSeverity.Error, "Hiba", ex.Message);
+                NotificationService.Notify(NotificationSeverity.Error, "Error", ex.Message);
             }
         }
     }

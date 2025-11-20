@@ -1,6 +1,5 @@
 ﻿@inherits LayoutComponentBase
 @inject NavigationManager Navigation
-@inject AuthenticationStateProvider AuthStateProvider
 @using Radzen
 @using Radzen.Blazor
 
@@ -8,49 +7,52 @@
 
 <div class="ambient-glow"></div>
 
-<RadzenLayout Style="height: 100vh; background: transparent;">
+<RadzenLayout Style="height: 100vh; width: 100%; overflow: hidden;">
 
-    <RadzenHeader Style="height: 70px; padding: 0 1.5rem;">
+    <RadzenHeader Style="height: 70px; padding: 0 1rem; z-index: 2;">
         <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem" Style="height: 100%;">
-            <RadzenSidebarToggle Click="@(() => sidebarExpanded = !sidebarExpanded)" Style="background: transparent; color: white; border: 1px solid rgba(255,255,255,0.1);" />
+            <RadzenSidebarToggle Click="@(() => sidebarExpanded = !sidebarExpanded)" Style="background: transparent; color: white;" />
 
-            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center">
-                <div style="width: 32px; height: 32px; background: linear-gradient(135deg, #8b5cf6, #6366f1); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
-                    <RadzenIcon Icon="pie_chart" Style="color: white; font-size: 1.2rem;" />
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.8rem" AlignItems="AlignItems.Center">
+                <div style="width: 36px; height: 36px; background: linear-gradient(135deg, #8b5cf6, #4f46e5); border-radius: 10px; display: flex; align-items: center; justify-content: center; box-shadow: 0 4px 15px rgba(139, 92, 246, 0.4);">
+                    <RadzenIcon Icon="account_balance_wallet" Style="color: white; font-size: 1.2rem;" />
                 </div>
-                <span class="text-gradient" style="font-weight: 800; font-size: 1.4rem; letter-spacing: -0.5px;">XTRACT</span>
+                <span class="text-gradient" style="font-weight: 800; font-size: 1.4rem; letter-spacing: -0.5px; font-family: 'Inter', sans-serif;">UniBudget</span>
             </RadzenStack>
         </RadzenStack>
     </RadzenHeader>
 
-    <RadzenSidebar @bind-Expanded="@sidebarExpanded" Style="width: 260px; padding: 1.5rem 0; z-index: 10;">
-        <RadzenPanelMenu>
-            <AuthorizeView>
-                <Authorized>
-                    <RadzenText TextStyle="TextStyle.Caption" Style="padding-left: 1.5rem; margin-bottom: 0.5rem; color: var(--text-muted); font-weight: 700; letter-spacing: 1px;">MAIN MENU</RadzenText>
+    <RadzenSidebar @bind-Expanded="@sidebarExpanded" Style="width: 260px; z-index: 1;">
+        <RadzenStack Class="rz-py-4" Gap="0">
+            <RadzenText TextStyle="TextStyle.Caption" Style="padding-left: 1.5rem; margin-bottom: 1rem; color: var(--text-secondary); font-weight: 700; letter-spacing: 1px; opacity: 0.7;">MAIN MENU</RadzenText>
 
-                    <RadzenPanelMenuItem Text="Dashboard" Path="dashboard" Icon="dashboard" />
-                    <RadzenPanelMenuItem Text="Transactions" Path="transactions" Icon="receipt_long" />
-                    <RadzenPanelMenuItem Text="Categories" Path="categories" Icon="category" />
-                    <RadzenPanelMenuItem Text="Budget Plan" Path="budget" Icon="account_balance_wallet" />
+            <RadzenPanelMenu Multiple="false">
+                <AuthorizeView>
+                    <Authorized>
+                        <RadzenPanelMenuItem Text="Dashboard" Path="dashboard" Icon="dashboard" />
+                        <RadzenPanelMenuItem Text="Transactions" Path="transactions" Icon="receipt_long" />
+                        <RadzenPanelMenuItem Text="Categories" Path="categories" Icon="category" />
+                        <RadzenPanelMenuItem Text="Budget Plan" Path="budget" Icon="pie_chart" />
 
-                    <div style="margin: 2rem 1.5rem; border-top: 1px solid var(--border-subtle);"></div>
+                        <div style="margin: 1.5rem 1.5rem; border-top: 1px solid rgba(255,255,255,0.1);"></div>
 
-                    <RadzenPanelMenuItem Text="Log Out" Path="logout" Icon="logout" Style="color: #ef4444;" />
-                </Authorized>
-                <NotAuthorized>
-                    <RadzenPanelMenuItem Text="Log In" Path="login" Icon="login" />
-                    <RadzenPanelMenuItem Text="Sign Up" Path="register" Icon="person_add" />
-                </NotAuthorized>
-            </AuthorizeView>
-        </RadzenPanelMenu>
+                        <RadzenPanelMenuItem Text="Log Out" Path="logout" Icon="logout" Style="color: #ef4444;" />
+                    </Authorized>
+                    <NotAuthorized>
+                        <RadzenPanelMenuItem Text="Log In" Path="login" Icon="login" />
+                        <RadzenPanelMenuItem Text="Sign Up" Path="register" Icon="person_add" />
+                    </NotAuthorized>
+                </AuthorizeView>
+            </RadzenPanelMenu>
+        </RadzenStack>
     </RadzenSidebar>
 
-    <RadzenBody Style="background: transparent; padding: 0;">
-        <div class="rz-p-4 animate-in" style="max-width: 1600px; margin: 0 auto;">
+    <RadzenBody Style="padding: 0; z-index: 0;">
+        <div class="rz-p-4" style="max-width: 1400px; margin: 0 auto; padding-bottom: 80px;">
             @Body
         </div>
     </RadzenBody>
+
 </RadzenLayout>
 
 @code {
