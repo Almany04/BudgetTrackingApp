@@ -1,8 +1,7 @@
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
-using MudBlazor.Services;
 using BudgetTrackingApp.Client.Services;
-using Microsoft.AspNetCore.Components.Authorization; 
-using Microsoft.AspNetCore.Components; 
+using Microsoft.AspNetCore.Components.Authorization;
+using Radzen; 
 
 namespace BudgetTrackingApp.Client
 {
@@ -17,7 +16,8 @@ namespace BudgetTrackingApp.Client
             builder.Services.AddScoped<AuthenticationStateProvider>(provider =>
                 provider.GetRequiredService<CustomAuthenticationStateProvider>());
 
-            builder.Services.AddMudServices();
+           
+            builder.Services.AddRadzenComponents();
 
             builder.Services.AddTransient<AntiforgeryHandler>();
             builder.Services.AddScoped(sp =>

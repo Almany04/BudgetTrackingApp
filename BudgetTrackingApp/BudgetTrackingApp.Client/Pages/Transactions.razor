@@ -5,106 +5,54 @@
 @using BudgetTrackingApp.Shared.Dtos.Transactions
 @using BudgetTrackingApp.Shared.Enums
 @inject HttpClient Http
-@inject ISnackbar Snackbar
-@inject IDialogService DialogService
+@inject DialogService DialogService
+@inject NotificationService NotificationService
 
 <PageTitle>Tranzakciók</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
-    <MudPaper Elevation="3" Class="pa-4">
-        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
-            <MudText Typo="Typo.h5">Tranzakciók</MudText>
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Primary"
-                       StartIcon="@Icons.Material.Filled.Add"
-                       OnClick="() => OpenTransactionDialog(null)">
-                Új Tranzakció
-            </MudButton>
-        </MudStack>
+<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" Class="rz-mb-4">
+    <RadzenText TextStyle="TextStyle.H5">Tranzakciók</RadzenText>
+    <RadzenButton Text="Új Tranzakció" Icon="add" ButtonStyle="ButtonStyle.Primary" Click="@(() => OpenTransactionDialog(null))" />
+</RadzenStack>
 
-        <MudToolBar Dense="true" Class="mb-2">
-            <MudDateRangePicker @bind-DateRange="dateRange"
-                                Label="Szűrés dátumra"
-                                PickerVariant="PickerVariant.Dialog" />
-            <MudSpacer />
-            <MudButton Variant="Variant.Filled" OnClick="LoadTransactionsAsync">Szűrés</MudButton>
-        </MudToolBar>
+<RadzenCard Class="rz-mb-4">
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
+        <RadzenDatePicker @bind-Value="startDate" DateFormat="yyyy.MM.dd" Placeholder="Kezdő dátum" />
+        <RadzenDatePicker @bind-Value="endDate" DateFormat="yyyy.MM.dd" Placeholder="Végdátum" />
+        <RadzenButton Text="Szűrés" Click="LoadTransactionsAsync" />
+    </RadzenStack>
+</RadzenCard>
 
-        @if (transactions != null)
-        {
-            <MudPaper Outlined="true" Class="pa-3 my-2">
-                <MudGrid Spacing="3" Justify="Justify.SpaceEvenly">
-                    <MudItem xs="4">
-                        <MudText Align="Align.Center" Typo="Typo.caption">Bevétel</MudText>
-                        <MudText Align="Align.Center" Typo="Typo.h6" Color="Color.Success">@totalIncome.ToString("C0")</MudText>
-                    </MudItem>
-                    <MudItem xs="4">
-                        <MudText Align="Align.Center" Typo="Typo.caption">Kiadás</MudText>
-                        <MudText Align="Align.Center" Typo="Typo.h6" Color="Color.Error">@totalExpense.ToString("C0")</MudText>
-                    </MudItem>
-                    <MudItem xs="4">
-                        <MudText Align="Align.Center" Typo="Typo.caption">Egyenleg</MudText>
-                        <MudText Align="Align.Center" Typo="Typo.h6" Color="@(balance >= 0 ? Color.Primary : Color.Error)">@balance.ToString("C0")</MudText>
-                    </MudItem>
-                </MudGrid>
-            </MudPaper>
-        }
-
-        <MudTable Items="transactions"
-                  Hover="true"
-                  Breakpoint="Breakpoint.Sm"
-                  Loading="@isLoading"
-                  LoadingProgressColor="Color.Info"
-                  FixedHeader="true"
-                  Height="calc(100vh - 420px)">
-            <HeaderContent>
-                <MudTh>Dátum</MudTh>
-                <MudTh>Kategória</MudTh>
-                <MudTh>Leírás</MudTh>
-                <MudTh Style="text-align: right">Összeg</MudTh>
-                <MudTh Style="text-align: right">Műveletek</MudTh>
-            </HeaderContent>
-            <RowTemplate>
-                <MudTd DataLabel="Dátum">@context.TransactionDate.ToString("yyyy.MM.dd")</MudTd>
-                <MudTd DataLabel="Kategória">@context.CategoryName</MudTd>
-                <MudTd DataLabel="Leírás">@context.Description</MudTd>
-                <MudTd DataLabel="Összeg" Style="text-align: right">
-                    <MudText Color="@(context.Type == TransactionType.Expense ? Color.Error : Color.Success)">
-                        @(context.Type == TransactionType.Expense ? "-" : "+") @context.Amount.ToString("C0")
-                    </MudText>
-                </MudTd>
-                <MudTd DataLabel="Műveletek" Style="text-align: right">
-                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                   Variant="Variant.Filled"
-                                   Color="Color.Primary"
-                                   Size="Size.Small"
-                                   OnClick="() => OpenTransactionDialog(context)"
-                                   Class="mr-2" />
-
-                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                   Variant="Variant.Filled"
-                                   Color="Color.Error"
-                                   Size="Size.Small"
-                                   OnClick="() => DeleteTransaction(context)" />
-                </MudTd>
-            </RowTemplate>
-            <NoRecordsContent>
-                <MudText>Nincsenek tranzakciók a megadott időszakban.</MudText>
-            </NoRecordsContent>
-            <LoadingContent>
-                <MudText>Tranzakciók betöltése...</MudText>
-            </LoadingContent>
-        </MudTable>
-    </MudPaper>
-</MudContainer>
+<RadzenDataGrid Data="@transactions" TItem="TransactionViewDto" AllowPaging="true" PageSize="10" AllowSorting="true" IsLoading="@isLoading">
+    <Columns>
+        <RadzenDataGridColumn TItem="TransactionViewDto" Property="TransactionDate" Title="Dátum">
+            <Template Context="data">
+                @data.TransactionDate.ToString("yyyy.MM.dd")
+            </Template>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="TransactionViewDto" Property="CategoryName" Title="Kategória" />
+        <RadzenDataGridColumn TItem="TransactionViewDto" Property="Description" Title="Leírás" />
+        <RadzenDataGridColumn TItem="TransactionViewDto" Property="Amount" Title="Összeg" TextAlign="TextAlign.Right">
+            <Template Context="data">
+                <span style='color: @(data.Type == TransactionType.Expense ? "red" : "green")'>
+                    @(data.Type == TransactionType.Expense ? "-" : "+") @data.Amount.ToString("C0")
+                </span>
+            </Template>
+        </RadzenDataGridColumn>
+        <RadzenDataGridColumn TItem="TransactionViewDto" Title="Műveletek" TextAlign="TextAlign.Center" Width="100px">
+            <Template Context="data">
+                <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small" Click="@(() => OpenTransactionDialog(data))" Class="rz-mr-1" />
+                <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" Click="@(() => DeleteTransaction(data))" />
+            </Template>
+        </RadzenDataGridColumn>
+    </Columns>
+</RadzenDataGrid>
 
 @code {
-    private List<TransactionViewDto>? transactions;
-    private bool isLoading = true;
-    private DateRange dateRange = new DateRange(DateTime.Now.AddDays(-30), DateTime.Now);
-    private decimal totalIncome = 0;
-    private decimal totalExpense = 0;
-    private decimal balance = 0;
+    private IEnumerable<TransactionViewDto>? transactions;
+    private bool isLoading = false;
+    private DateTime? startDate = DateTime.Now.AddDays(-30);
+    private DateTime? endDate = DateTime.Now;
 
     protected override async Task OnInitializedAsync()
     {
@@ -116,18 +64,15 @@
         isLoading = true;
         try
         {
-            var start = dateRange.Start?.ToString("yyyy-MM-dd");
-            var end = dateRange.End?.ToString("yyyy-MM-dd");
+            var start = startDate?.ToString("yyyy-MM-dd");
+            var end = endDate?.ToString("yyyy-MM-dd");
             var url = $"api/transaction?startDate={start}&endDate={end}";
 
-            var result = await Http.GetFromJsonAsync<List<TransactionViewDto>>(url);
-            transactions = result ?? new List<TransactionViewDto>();
-
-            CalculateSummary();
+            transactions = await Http.GetFromJsonAsync<List<TransactionViewDto>>(url);
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Hiba a tranzakciók betöltésekor: {ex.Message}", Severity.Error);
+            NotificationService.Notify(NotificationSeverity.Error, "Hiba", $"Adatok betöltése sikertelen: {ex.Message}");
         }
         finally
         {
@@ -135,50 +80,15 @@
         }
     }
 
-    private void CalculateSummary()
-    {
-        if (transactions == null) return;
-
-        totalIncome = transactions.Where(t => t.Type == TransactionType.Income).Sum(t => t.Amount);
-        totalExpense = transactions.Where(t => t.Type == TransactionType.Expense).Sum(t => t.Amount);
-        balance = totalIncome - totalExpense;
-    }
-
     private async Task OpenTransactionDialog(TransactionViewDto? transaction)
     {
-        var parameters = new DialogParameters();
-        string title;
+        var result = await DialogService.OpenAsync<BudgetTrackingApp.Client.Shared.TransactionDialog>(
+            transaction == null ? "Új Tranzakció" : "Tranzakció Szerkesztése",
+            new Dictionary<string, object> { { "TransactionId", transaction?.Id } },
+            new DialogOptions() { Width = "500px", Height = "auto" }
+        );
 
-        if (transaction == null)
-        {
-            title = "Új Tranzakció";
-            parameters.Add("TransactionModel", new TransactionUpdateDto
-            {
-                TransactionDate = DateTime.Today,
-                Type = TransactionType.Expense
-            });
-            parameters.Add("TransactionId", null);
-        }
-        else
-        {
-            title = "Tranzakció Szerkesztése";
-            var transactionToEdit = new TransactionUpdateDto
-            {
-                Amount = transaction.Amount,
-                Description = transaction.Description,
-                TransactionDate = transaction.TransactionDate,
-                Type = transaction.Type,
-                CategoryId = transaction.CategoryId
-            };
-
-            parameters.Add("TransactionModel", transactionToEdit);
-            parameters.Add("TransactionId", transaction.Id);
-        }
-
-        var dialog = DialogService.Show<BudgetTrackingApp.Client.Shared.TransactionDialog>(title, parameters);
-        var result = await dialog.Result;
-
-        if (result != null && !result.Canceled)
+        if (result == true)
         {
             await LoadTransactionsAsync();
         }
@@ -186,31 +96,21 @@
 
     private async Task DeleteTransaction(TransactionViewDto transaction)
     {
-        var result = await DialogService.ShowMessageBox(
-            "Törlés Megerősítése",
-            $"Biztosan törölni szeretnéd ezt a tranzakciót? ({transaction.Amount.ToString("C0")})",
-            yesText: "Törlés",
-            cancelText: "Mégse"
-        );
-
-        if (result == true)
+        var confirm = await DialogService.Confirm($"Biztosan törölni szeretnéd?", "Törlés", new ConfirmOptions() { OkButtonText = "Igen", CancelButtonText = "Nem" });
+        if (confirm == true)
         {
             try
             {
                 var response = await Http.DeleteAsync($"api/transaction/{transaction.Id}");
                 if (response.IsSuccessStatusCode)
                 {
-                    Snackbar.Add("Tranzakció törölve!", Severity.Success);
+                    NotificationService.Notify(NotificationSeverity.Success, "Siker", "Tranzakció törölve!");
                     await LoadTransactionsAsync();
-                }
-                else
-                {
-                    Snackbar.Add($"Hiba a törlés során: {await response.Content.ReadAsStringAsync()}", Severity.Error);
                 }
             }
             catch (Exception ex)
             {
-                Snackbar.Add($"Váratlan hiba: {ex.Message}", Severity.Error);
+                NotificationService.Notify(NotificationSeverity.Error, "Hiba", ex.Message);
             }
         }
     }

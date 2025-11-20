@@ -9,7 +9,7 @@ using BudgetTrackingApp.Repository.Interfaces;
 using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
-using MudBlazor.Services;
+using Radzen;
 using System.Security.Claims;
 
 namespace BudgetTrackingApp
@@ -25,7 +25,7 @@ namespace BudgetTrackingApp
                 .AddInteractiveWebAssemblyComponents();
 
             builder.Services.AddControllers();
-            builder.Services.AddMudServices();
+            builder.Services.AddRadzenComponents();
 
             builder.Services.AddHttpContextAccessor();
             builder.Services.AddScoped<AuthenticationStateProvider, ServerAuthenticationStateProvider>();

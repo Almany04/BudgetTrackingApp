@@ -1,33 +1,42 @@
 ﻿@inherits LayoutComponentBase
+@inject NavigationManager Navigation
+@inject AuthenticationStateProvider AuthStateProvider
 
+<RadzenComponents />
 
-<MudLayout>
-    <MudAppBar Elevation="1">
-        <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@((e) => DrawerToggle())" />
-        <MudText Typo="Typo.h6">Budget Tracker</MudText>
-        <MudSpacer />
-    </MudAppBar>
+<RadzenLayout>
+    <RadzenHeader>
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0">
+            <RadzenSidebarToggle Click="@(() => sidebar1Expanded = !sidebar1Expanded)" />
+            <RadzenLabel Text="Budget Tracker" />
+        </RadzenStack>
+    </RadzenHeader>
+    <RadzenSidebar @bind-Expanded="@sidebar1Expanded">
+        <RadzenPanelMenu>
+            <RadzenPanelMenuItem Text="Főoldal" Path="/" Icon="home" />
 
-    <MudDrawer @bind-Open="_drawerOpen" Elevation="1">
-        <MudDrawerHeader>
-            <MudText Typo="Typo.h6">BudgetTrackingApp</MudText>
-        </MudDrawerHeader>
-
-        <NavMenu />
-    </MudDrawer>
-
-    <MudMainContent>
-        <MudContainer MaxWidth="MaxWidth.Large" Class="my-6 pt-6">
+            <AuthorizeView>
+                <Authorized>
+                    <RadzenPanelMenuItem Text="Vezérlőpult" Path="dashboard" Icon="dashboard" />
+                    <RadzenPanelMenuItem Text="Tranzakciók" Path="transactions" Icon="list" />
+                    <RadzenPanelMenuItem Text="Kategóriák" Path="categories" Icon="category" />
+                    <RadzenPanelMenuItem Text="Budget Beállítás" Path="budget" Icon="account_balance_wallet" />
+                    <RadzenPanelMenuItem Text="Kijelentkezés" Path="logout" Icon="logout" />
+                </Authorized>
+                <NotAuthorized>
+                    <RadzenPanelMenuItem Text="Bejelentkezés" Path="login" Icon="login" />
+                    <RadzenPanelMenuItem Text="Regisztráció" Path="register" Icon="app_registration" />
+                </NotAuthorized>
+            </AuthorizeView>
+        </RadzenPanelMenu>
+    </RadzenSidebar>
+    <RadzenBody>
+        <div class="rz-p-4">
             @Body
-        </MudContainer>
-    </MudMainContent>
-</MudLayout>
+        </div>
+    </RadzenBody>
+</RadzenLayout>
 
 @code {
-    private bool _drawerOpen = true;
-
-    private void DrawerToggle()
-    {
-        _drawerOpen = !_drawerOpen;
-    }
+    bool sidebar1Expanded = true;
 }
