@@ -1,30 +1,30 @@
 ﻿@page "/login"
-@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
-
-@using BudgetTrackingApp.Shared.Dtos.User
-@using BudgetTrackingApp.Client.Services
 @inject HttpClient Http
 @inject NavigationManager Navigation
-@inject CustomAuthenticationStateProvider AuthStateProvider
+@inject AuthenticationStateProvider AuthStateProvider
 @inject NotificationService NotificationService
 
 <PageTitle>Bejelentkezés</PageTitle>
 
-<RadzenRow JustifyContent="JustifyContent.Center" Class="rz-mt-5">
-    <RadzenColumn Size="12" SizeMD="4">
-        <RadzenTemplateForm TItem="UserLoginDto" Data="@loginModel" Submit="@HandleLogin">
-            <RadzenCard>
-                <RadzenText TextStyle="TextStyle.H5" TextAlign="TextAlign.Center" Class="rz-mb-4">Bejelentkezés</RadzenText>
+<div style="display: flex; justify-content: center; align-items: center; min-height: 80vh;">
+    <RadzenCard Style="width: 100%; max-width: 400px; padding: 2rem;">
+        <RadzenStack Gap="1.5rem">
+            <div style="text-align: center;">
+                <RadzenIcon Icon="account_circle" Style="font-size: 4rem; color: var(--rz-primary);" />
+                <RadzenText TextStyle="TextStyle.H4" Class="rz-mt-2">Bejelentkezés</RadzenText>
+                <RadzenText TextStyle="TextStyle.Body2" Class="rz-color-secondary">Add meg a belépési adataidat</RadzenText>
+            </div>
 
-                <RadzenStack Spacing="3">
+            <RadzenTemplateForm TItem="UserLoginDto" Data="@loginModel" Submit="@HandleLogin">
+                <RadzenStack Gap="1rem">
                     <RadzenFormField Text="Email cím" Variant="Variant.Outlined">
-                        <RadzenTextBox @bind-Value="loginModel.Email" Name="Email" style="width: 100%;" />
+                        <RadzenTextBox @bind-Value="loginModel.Email" Name="Email" Style="width: 100%;" />
                     </RadzenFormField>
                     <RadzenRequiredValidator Component="Email" Text="Email kötelező" />
                     <RadzenEmailValidator Component="Email" Text="Érvénytelen email formátum" />
 
                     <RadzenFormField Text="Jelszó" Variant="Variant.Outlined">
-                        <RadzenPassword @bind-Value="loginModel.Password" Name="Password" style="width: 100%;" />
+                        <RadzenPassword @bind-Value="loginModel.Password" Name="Password" Style="width: 100%;" />
                     </RadzenFormField>
                     <RadzenRequiredValidator Component="Password" Text="Jelszó kötelező" />
 
@@ -35,14 +35,19 @@
                         </RadzenAlert>
                     }
 
-                    <RadzenButton ButtonType="ButtonType.Submit" Text="Bejelentkezés" ButtonStyle="ButtonStyle.Primary" Disabled="@isProcessing" IsBusy="@isProcessing" />
-
-                    <RadzenLink Path="register" Text="Nincs még fiókod? Regisztrálj!" TextAlign="TextAlign.Center" />
+                    <RadzenButton ButtonType="ButtonType.Submit" Text="Bejelentkezés" ButtonStyle="ButtonStyle.Primary"
+                                  Disabled="@isProcessing" IsBusy="@isProcessing" Class="rz-mt-2" />
                 </RadzenStack>
-            </RadzenCard>
-        </RadzenTemplateForm>
-    </RadzenColumn>
-</RadzenRow>
+            </RadzenTemplateForm>
+
+            <div style="text-align: center;">
+                <RadzenText TextStyle="TextStyle.Body2">
+                    Nincs még fiókod? <RadzenLink Path="register" Text="Regisztrálj most!" />
+                </RadzenText>
+            </div>
+        </RadzenStack>
+    </RadzenCard>
+</div>
 
 @code {
     private UserLoginDto loginModel = new UserLoginDto();
@@ -55,21 +60,32 @@
         apiErrorMessage = null;
         try
         {
+            // 1. API hívás - ez állítja be a HTTP-Only sütit
             var response = await Http.PostAsJsonAsync("api/user/login", loginModel);
+
             if (response.IsSuccessStatusCode)
             {
                 var responseDto = await response.Content.ReadFromJsonAsync<UserLoginResponseDto>();
                 if (responseDto != null)
                 {
-                    await AuthStateProvider.LoginAsync(responseDto);
+                    // 2. Kliens oldali állapot frissítése (SessionStorage)
+                    // A biztonságos típusellenőrzés (is) megvédi a kódot a szerver oldali futásnál
+                    if (AuthStateProvider is CustomAuthenticationStateProvider customAuthProvider)
+                    {
+                        await customAuthProvider.LoginAsync(responseDto);
+                    }
+
                     NotificationService.Notify(NotificationSeverity.Success, "Üdvözöllek!", "Sikeres bejelentkezés.");
-                    Navigation.NavigateTo("/dashboard", forceLoad: true);
+
+                    // 3. Teljes oldal újratöltés (ForceLoad)
+                    // Ez kritikus, hogy a szerver is lássa a sütit és a menük megjelenjenek
+                    Navigation.NavigateTo("/", forceLoad: true);
                 }
             }
             else
             {
                 string errorContent = await response.Content.ReadAsStringAsync();
-                apiErrorMessage = errorContent.Replace("[\"", "").Replace("\"]", "").Replace("\"", "");
+                apiErrorMessage = string.IsNullOrWhiteSpace(errorContent) ? "Hibás email vagy jelszó." : errorContent.Replace("[\"", "").Replace("\"]", "").Replace("\"", "");
             }
         }
         catch (Exception ex)

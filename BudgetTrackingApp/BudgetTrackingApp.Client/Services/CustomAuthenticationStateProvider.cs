@@ -6,13 +6,10 @@ using Microsoft.JSInterop;
 
 namespace BudgetTrackingApp.Client.Services
 {
-
     public class CustomAuthenticationStateProvider : AuthenticationStateProvider
     {
         private readonly IJSRuntime _jsRuntime;
         private ClaimsPrincipal _anonymous = new ClaimsPrincipal(new ClaimsIdentity());
-
-        // JAVÍTÁS: Átnevezve, és a tároló is változik
         private const string UserSessionKey = "userSession";
 
         public CustomAuthenticationStateProvider(IJSRuntime jsRuntime)
@@ -24,7 +21,7 @@ namespace BudgetTrackingApp.Client.Services
         {
             try
             {
-                // JAVÍTÁS: localStorage -> sessionStorage
+                // SessionStorage kiolvasása
                 var userSessionJson = await _jsRuntime.InvokeAsync<string>("sessionStorage.getItem", UserSessionKey);
 
                 if (string.IsNullOrWhiteSpace(userSessionJson))
@@ -39,7 +36,7 @@ namespace BudgetTrackingApp.Client.Services
                     return new AuthenticationState(_anonymous);
                 }
 
-
+                // Identity felépítése a tárolt adatokból
                 var claims = new[]
                 {
                     new Claim(ClaimTypes.NameIdentifier, userDto.UserId),
@@ -60,7 +57,6 @@ namespace BudgetTrackingApp.Client.Services
         public async Task LoginAsync(UserLoginResponseDto userDto)
         {
             var userSessionJson = JsonSerializer.Serialize(userDto);
-            // JAVÍTÁS: localStorage -> sessionStorage
             await _jsRuntime.InvokeVoidAsync("sessionStorage.setItem", UserSessionKey, userSessionJson);
 
             var claims = new[]
@@ -77,9 +73,7 @@ namespace BudgetTrackingApp.Client.Services
 
         public async Task LogoutAsync()
         {
-            // JAVÍTÁS: localStorage -> sessionStorage
             await _jsRuntime.InvokeVoidAsync("sessionStorage.removeItem", UserSessionKey);
-
             NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(_anonymous)));
         }
     }

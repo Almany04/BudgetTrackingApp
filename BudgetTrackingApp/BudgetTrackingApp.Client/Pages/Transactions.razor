@@ -1,9 +1,5 @@
 ﻿@page "/transactions"
-@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @attribute [Authorize]
-
-@using BudgetTrackingApp.Shared.Dtos.Transactions
-@using BudgetTrackingApp.Shared.Enums
 @inject HttpClient Http
 @inject DialogService DialogService
 @inject NotificationService NotificationService
@@ -11,38 +7,50 @@
 <PageTitle>Tranzakciók</PageTitle>
 
 <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" Class="rz-mb-4">
-    <RadzenText TextStyle="TextStyle.H5">Tranzakciók</RadzenText>
-    <RadzenButton Text="Új Tranzakció" Icon="add" ButtonStyle="ButtonStyle.Primary" Click="@(() => OpenTransactionDialog(null))" />
+    <RadzenText TextStyle="TextStyle.H4" Class="rz-m-0">Tranzakciók</RadzenText>
+    <RadzenButton Text="Új Hozzáadása" Icon="add_circle" ButtonStyle="ButtonStyle.Primary" Click="@(args => OpenTransactionDialog(null))" />
 </RadzenStack>
 
 <RadzenCard Class="rz-mb-4">
-    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem" Wrap="FlexWrap.Wrap">
-        <RadzenDatePicker @bind-Value="startDate" DateFormat="yyyy.MM.dd" Placeholder="Kezdő dátum" />
-        <RadzenDatePicker @bind-Value="endDate" DateFormat="yyyy.MM.dd" Placeholder="Végdátum" />
-        <RadzenButton Text="Szűrés" Click="LoadTransactionsAsync" Icon="search" />
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End" Gap="1rem" Wrap="FlexWrap.Wrap">
+        <RadzenFormField Text="Kezdő dátum" Variant="Variant.Outlined">
+            <RadzenDatePicker @bind-Value="startDate" DateFormat="yyyy.MM.dd" />
+        </RadzenFormField>
+        <RadzenFormField Text="Végdátum" Variant="Variant.Outlined">
+            <RadzenDatePicker @bind-Value="endDate" DateFormat="yyyy.MM.dd" />
+        </RadzenFormField>
+        <RadzenButton Text="Listázás" Click="@(args => LoadTransactionsAsync())" Icon="refresh" ButtonStyle="ButtonStyle.Secondary" />
     </RadzenStack>
 </RadzenCard>
 
-<RadzenDataGrid Data="@transactions" TItem="TransactionViewDto" AllowPaging="true" PageSize="10" AllowSorting="true" IsLoading="@isLoading" EmptyText="Nincs megjeleníthető adat.">
+<RadzenDataGrid Data="@transactions" TItem="TransactionViewDto"
+                AllowPaging="true" PageSize="10"
+                AllowSorting="true"
+                AllowFiltering="true" FilterMode="FilterMode.Simple"
+                IsLoading="@isLoading" EmptyText="Nincs megjeleníthető tranzakció.">
     <Columns>
-        <RadzenDataGridColumn TItem="TransactionViewDto" Property="TransactionDate" Title="Dátum">
+        <RadzenDataGridColumn TItem="TransactionViewDto" Property="TransactionDate" Title="Dátum" Width="120px">
             <Template Context="data">
                 @data.TransactionDate.ToString("yyyy.MM.dd")
             </Template>
         </RadzenDataGridColumn>
-        <RadzenDataGridColumn TItem="TransactionViewDto" Property="CategoryName" Title="Kategória" />
+
+        <RadzenDataGridColumn TItem="TransactionViewDto" Property="CategoryName" Title="Kategória" Width="150px" />
+
         <RadzenDataGridColumn TItem="TransactionViewDto" Property="Description" Title="Leírás" />
-        <RadzenDataGridColumn TItem="TransactionViewDto" Property="Amount" Title="Összeg" TextAlign="TextAlign.Right">
+
+        <RadzenDataGridColumn TItem="TransactionViewDto" Property="Amount" Title="Összeg" TextAlign="TextAlign.Right" Width="140px">
             <Template Context="data">
-                <span style='color: @(data.Type == TransactionType.Expense ? "var(--rz-danger)" : "var(--rz-success)")'>
+                <RadzenText TextStyle="TextStyle.Body1" Style="@(data.Type == TransactionType.Expense ? "color: var(--rz-danger)" : "color: var(--rz-success); font-weight:bold;")">
                     @(data.Type == TransactionType.Expense ? "-" : "+") @data.Amount.ToString("C0")
-                </span>
+                </RadzenText>
             </Template>
         </RadzenDataGridColumn>
-        <RadzenDataGridColumn TItem="TransactionViewDto" Title="Műveletek" TextAlign="TextAlign.Center" Width="100px">
+
+        <RadzenDataGridColumn TItem="TransactionViewDto" Title="Műveletek" TextAlign="TextAlign.Center" Width="120px" Sortable="false" Filterable="false">
             <Template Context="data">
-                <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small" Click="@(() => OpenTransactionDialog(data))" Class="rz-mr-1" />
-                <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" Click="@(() => DeleteTransaction(data))" />
+                <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => OpenTransactionDialog(data))" Class="rz-mr-1" />
+                <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => DeleteTransaction(data))" />
             </Template>
         </RadzenDataGridColumn>
     </Columns>
@@ -85,7 +93,7 @@
         var result = await DialogService.OpenAsync<BudgetTrackingApp.Client.Shared.TransactionDialog>(
             transaction == null ? "Új Tranzakció" : "Tranzakció Szerkesztése",
             new Dictionary<string, object> { { "TransactionId", transaction?.Id } },
-            new DialogOptions() { Width = "500px", Height = "auto" }
+            new DialogOptions() { Width = "500px", Height = "auto", Draggable = true, Resizable = false }
         );
 
         if (result == true)
@@ -96,7 +104,9 @@
 
     private async Task DeleteTransaction(TransactionViewDto transaction)
     {
-        var confirm = await DialogService.Confirm($"Biztosan törölni szeretnéd?", "Törlés", new ConfirmOptions() { OkButtonText = "Igen", CancelButtonText = "Nem" });
+        var confirm = await DialogService.Confirm($"Biztosan törölni szeretnéd ezt a tételt?", "Törlés megerősítése",
+            new ConfirmOptions() { OkButtonText = "Igen", CancelButtonText = "Nem" });
+
         if (confirm == true)
         {
             try

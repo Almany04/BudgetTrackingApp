@@ -1,37 +1,51 @@
-﻿@using BudgetTrackingApp.Shared.Dtos.Transactions
-@using BudgetTrackingApp.Shared.Dtos.Category
-@using BudgetTrackingApp.Shared.Enums
-@inject HttpClient Http
+﻿@inject HttpClient Http
 @inject DialogService DialogService
 @inject NotificationService NotificationService
 
-<RadzenTemplateForm Data="@TransactionModel" Submit="@(async (TransactionUpdateDto args) => { await HandleSave(); })">
-    <RadzenStack Spacing="3">
-        <RadzenFormField Text="Összeg" Variant="Variant.Outlined">
-            <RadzenNumeric @bind-Value="TransactionModel.Amount" Name="Amount" />
-        </RadzenFormField>
-        <RadzenRequiredValidator Component="Amount" Text="Összeg kötelező" />
+<RadzenTemplateForm TItem="TransactionUpdateDto" Data="@TransactionModel" Submit="@(args => OnSubmit(args))">
+    <RadzenStack Spacing="1.5rem">
 
-        <RadzenFormField Text="Típus" Variant="Variant.Outlined">
-            <RadzenDropDown @bind-Value="TransactionModel.Type" Data="@(Enum.GetValues(typeof(TransactionType)))" Name="Type" />
-        </RadzenFormField>
+        <RadzenRow>
+            <RadzenColumn Size="12" SizeMD="6">
+                <RadzenFormField Text="Típus" Variant="Variant.Outlined" Style="width: 100%">
+                    <RadzenDropDown @bind-Value="TransactionModel.Type"
+                                    Data="@(Enum.GetValues(typeof(TransactionType)))"
+                                    Name="Type" />
+                </RadzenFormField>
+            </RadzenColumn>
+            <RadzenColumn Size="12" SizeMD="6">
+                <RadzenFormField Text="Összeg (HUF)" Variant="Variant.Outlined" Style="width: 100%">
+                    <RadzenNumeric @bind-Value="TransactionModel.Amount" Name="Amount" Min="1" />
+                </RadzenFormField>
+                <RadzenRequiredValidator Component="Amount" Text="Az összeg megadása kötelező!" />
+                <RadzenNumericRangeValidator Component="Amount" Min="1" Text="Az összegnek nagyobbnak kell lennie 0-nál!" />
+            </RadzenColumn>
+        </RadzenRow>
 
         <RadzenFormField Text="Kategória" Variant="Variant.Outlined">
-            <RadzenDropDown @bind-Value="TransactionModel.CategoryId" Data="@categories" TextProperty="Name" ValueProperty="Id" Name="CategoryId" Placeholder="Válassz..." />
+            <RadzenDropDown @bind-Value="TransactionModel.CategoryId"
+                            Data="@categories"
+                            TextProperty="Name"
+                            ValueProperty="Id"
+                            Name="CategoryId"
+                            Placeholder="Válassz kategóriát..."
+                            AllowClear="true"
+                            Style="width: 100%" />
         </RadzenFormField>
-        <RadzenRequiredValidator Component="CategoryId" Text="Kategória kötelező" DefaultValue="Guid.Empty" />
+        <RadzenRequiredValidator Component="CategoryId" Text="Kategória kiválasztása kötelező!" DefaultValue="Guid.Empty" />
 
         <RadzenFormField Text="Dátum" Variant="Variant.Outlined">
-            <RadzenDatePicker @bind-Value="TransactionModel.TransactionDate" Name="TransactionDate" DateFormat="yyyy.MM.dd" />
+            <RadzenDatePicker @bind-Value="TransactionModel.TransactionDate" Name="TransactionDate" DateFormat="yyyy.MM.dd" Style="width: 100%" />
+        </RadzenFormField>
+        <RadzenRequiredValidator Component="TransactionDate" Text="Dátum megadása kötelező!" />
+
+        <RadzenFormField Text="Megjegyzés / Leírás" Variant="Variant.Outlined">
+            <RadzenTextArea @bind-Value="TransactionModel.Description" Rows="3" Name="Description" Style="width: 100%" />
         </RadzenFormField>
 
-        <RadzenFormField Text="Leírás" Variant="Variant.Outlined">
-            <RadzenTextArea @bind-Value="TransactionModel.Description" Rows="2" />
-        </RadzenFormField>
-
-        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="1rem" Class="rz-mt-4">
-            <RadzenButton ButtonType="ButtonType.Submit" Text="Mentés" ButtonStyle="ButtonStyle.Primary" Disabled="@isProcessing" />
-            <RadzenButton Text="Mégse" ButtonStyle="ButtonStyle.Light" Click="@(() => DialogService.Close(false))" />
+        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="1rem" Class="rz-mt-2">
+            <RadzenButton ButtonType="ButtonType.Submit" Text="Mentés" Icon="save" ButtonStyle="ButtonStyle.Primary" Disabled="@isProcessing" IsBusy="@isProcessing" />
+            <RadzenButton Text="Mégse" ButtonStyle="ButtonStyle.Light" Click="@(() => DialogService.Close(false))" Disabled="@isProcessing" />
         </RadzenStack>
     </RadzenStack>
 </RadzenTemplateForm>
@@ -46,34 +60,49 @@
     protected override async Task OnInitializedAsync()
     {
         await LoadCategoriesAsync();
+
         if (TransactionId != null)
         {
-            // Betöltés szerkesztéshez (egyszerűsítve: lekérjük a listából vagy API-ról, itt most API hívás kellene, de a DTO-t újraépíthetjük)
-            var t = await Http.GetFromJsonAsync<TransactionViewDto>($"api/transaction/{TransactionId}");
-            if (t != null)
+            // Meglévő betöltése
+            try
             {
-                TransactionModel = new TransactionUpdateDto
+                var t = await Http.GetFromJsonAsync<TransactionViewDto>($"api/transaction/{TransactionId}");
+                if (t != null)
                 {
-                    Amount = t.Amount,
-                    CategoryId = t.CategoryId,
-                    Description = t.Description,
-                    TransactionDate = t.TransactionDate,
-                    Type = t.Type
-                };
+                    TransactionModel = new TransactionUpdateDto
+                    {
+                        Amount = t.Amount,
+                        CategoryId = t.CategoryId,
+                        Description = t.Description,
+                        TransactionDate = t.TransactionDate,
+                        Type = t.Type
+                    };
+                }
+            }
+            catch
+            {
+                NotificationService.Notify(NotificationSeverity.Error, "Hiba", "Nem sikerült betölteni az adatokat.");
+                DialogService.Close(false);
             }
         }
         else if (categories?.Any() == true)
         {
+            // Alapértelmezett kategória beállítása újra
             TransactionModel.CategoryId = categories.First().Id;
         }
     }
 
     private async Task LoadCategoriesAsync()
     {
-        categories = await Http.GetFromJsonAsync<List<CategoryViewDto>>("api/categories");
+        try
+        {
+            categories = await Http.GetFromJsonAsync<List<CategoryViewDto>>("api/categories");
+        }
+        catch { }
     }
 
-    private async Task HandleSave()
+    // JAVÍTVA: A paraméter (args) hozzáadása kötelező az EventCallback<T> miatt
+    private async Task OnSubmit(TransactionUpdateDto args)
     {
         isProcessing = true;
         try
@@ -81,6 +110,7 @@
             HttpResponseMessage response;
             if (TransactionId == null)
             {
+                // Új létrehozása
                 var createDto = new TransactionCreateDto
                 {
                     Amount = TransactionModel.Amount,
@@ -93,13 +123,19 @@
             }
             else
             {
+                // Szerkesztés
                 response = await Http.PutAsJsonAsync($"api/transaction/{TransactionId}", TransactionModel);
             }
 
             if (response.IsSuccessStatusCode)
             {
                 NotificationService.Notify(NotificationSeverity.Success, "Siker", "Mentés sikeres!");
-                DialogService.Close(true);
+                DialogService.Close(true); // Siker jelzése a szülőnek
+            }
+            else
+            {
+                var errorMsg = await response.Content.ReadAsStringAsync();
+                NotificationService.Notify(NotificationSeverity.Error, "Hiba", errorMsg);
             }
         }
         catch (Exception ex)

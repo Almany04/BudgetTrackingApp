@@ -11,6 +11,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Radzen;
 using System.Security.Claims;
+using Microsoft.AspNetCore.Components;
 
 namespace BudgetTrackingApp
 {
@@ -18,9 +19,9 @@ namespace BudgetTrackingApp
     {
         public static void Main(string[] args)
         {
-
             var builder = WebApplication.CreateBuilder(args);
 
+            // Blazor szolgáltatások
             builder.Services.AddRazorComponents()
                 .AddInteractiveWebAssemblyComponents();
 
@@ -31,9 +32,17 @@ namespace BudgetTrackingApp
             builder.Services.AddScoped<AuthenticationStateProvider, ServerAuthenticationStateProvider>();
             builder.Services.AddCascadingAuthenticationState();
 
+            // HttpClient regisztrálása a Szerver oldalon (Prerendering miatt fontos!)
+            builder.Services.AddScoped(sp => {
+                var navigationManager = sp.GetRequiredService<NavigationManager>();
+                return new HttpClient { BaseAddress = new Uri(navigationManager.BaseUri) };
+            });
+
+            // Adatbázis kapcsolat
             builder.Services.AddDbContext<BudgetTrackerDbContext>(options =>
                 options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
 
+            // Identity beállítások
             builder.Services.AddIdentity<AppUser, IdentityRole>(options =>
             {
                 options.Password.RequireDigit = true;
@@ -45,13 +54,17 @@ namespace BudgetTrackingApp
             .AddEntityFrameworkStores<BudgetTrackerDbContext>()
             .AddDefaultTokenProviders();
 
+            // SÜTI BEÁLLÍTÁSOK JAVÍTÁSA (Kritikus a mûködéshez!)
             builder.Services.ConfigureApplicationCookie(options =>
             {
                 options.Cookie.HttpOnly = true;
-                options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-                options.Cookie.SameSite = SameSiteMode.Strict;
+                // Fejlesztéshez engedjük a HTTP-t is (SameAsRequest), élesben majd HTTPS kell
+                options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+                options.Cookie.SameSite = SameSiteMode.Lax; // Lazább szabályok a navigációhoz
                 options.ExpireTimeSpan = TimeSpan.FromDays(7);
                 options.SlidingExpiration = true;
+
+                // API válaszkódok kezelése átirányítás helyett (SPA barát)
                 options.Events.OnRedirectToLogin = context =>
                 {
                     context.Response.StatusCode = StatusCodes.Status401Unauthorized;
@@ -64,6 +77,7 @@ namespace BudgetTrackingApp
                 };
             });
 
+            // Rétegek regisztrálása (Dependency Injection)
             builder.Services.AddScoped<IUserRepository, UserRepository>();
             builder.Services.AddScoped<IBudgetRepository, BudgetRepository>();
             builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
@@ -78,6 +92,7 @@ namespace BudgetTrackingApp
 
             var app = builder.Build();
 
+            // Pipeline konfiguráció
             if (app.Environment.IsDevelopment())
             {
                 app.UseWebAssemblyDebugging();

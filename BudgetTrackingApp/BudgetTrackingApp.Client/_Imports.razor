@@ -6,9 +6,21 @@
 @using static Microsoft.AspNetCore.Components.Web.RenderMode
 @using Microsoft.AspNetCore.Components.Web.Virtualization
 @using Microsoft.JSInterop
+
+@* Alkalmazás specifikus névterek *@
 @using BudgetTrackingApp.Client
 @using BudgetTrackingApp.Client.Services
+@using BudgetTrackingApp.Client.Shared
+@using BudgetTrackingApp.Shared.Dtos.User
+@using BudgetTrackingApp.Shared.Dtos.Budget
+@using BudgetTrackingApp.Shared.Dtos.Category
+@using BudgetTrackingApp.Shared.Dtos.Transactions
+@using BudgetTrackingApp.Shared.Enums
+
+@* Authentikáció *@
 @using Microsoft.AspNetCore.Authorization
 @using Microsoft.AspNetCore.Components.Authorization
+
+@* UI Könyvtár *@
 @using Radzen
 @using Radzen.Blazor

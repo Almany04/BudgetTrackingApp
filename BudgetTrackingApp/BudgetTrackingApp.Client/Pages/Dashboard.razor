@@ -1,64 +1,85 @@
 ﻿@page "/dashboard"
-@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @attribute [Authorize]
-
-@using BudgetTrackingApp.Shared.Dtos.Budget
-@using BudgetTrackingApp.Shared.Dtos.Transactions
-@using BudgetTrackingApp.Shared.Enums
 @inject HttpClient Http
 @inject NotificationService NotificationService
 
 <PageTitle>Vezérlőpult</PageTitle>
 
-<RadzenGrid Count="2" Class="rz-p-0 rz-p-md-4">
-    <RadzenRow Gap="1rem">
+<RadzenText TextStyle="TextStyle.H3" TagName="TagName.H1" Class="rz-mb-4">Áttekintés</RadzenText>
+
+@if (isLoading)
+{
+    <RadzenProgressBar Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+}
+else
+{
+    <RadzenRow Class="rz-mb-4">
         <RadzenColumn Size="12" SizeMD="6">
-            <RadzenCard>
-                <RadzenText TextStyle="TextStyle.H6">Havi Keret</RadzenText>
-                @if (budget != null)
-                {
-                    <RadzenText TextStyle="TextStyle.DisplayH4" Class="rz-color-primary">@budget.SpentAmount.ToString("C0")</RadzenText>
-                    <RadzenText TextStyle="TextStyle.Caption">Limit: @budget.LimitAmount.ToString("C0")</RadzenText>
-                    <RadzenProgressBar Value="@budgetPercentage" Max="100" ShowValue="true" Class="rz-mt-4" Style="@GetProgressStyle()" />
-                }
-                else
-                {
-                    <RadzenProgressBar Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
-                }
+            <RadzenCard Variant="Variant.Outlined">
+                <RadzenStack Orientation="Orientation.Vertical" Gap="1rem">
+                    <RadzenText TextStyle="TextStyle.H6" Class="rz-mb-0">Havi Budget Állapot</RadzenText>
+
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                        <RadzenText TextStyle="TextStyle.DisplayH4" Class="rz-color-primary rz-mb-0">
+                            @((budget?.SpentAmount ?? 0).ToString("C0"))
+                        </RadzenText>
+                        <RadzenText TextStyle="TextStyle.Caption" Style="padding-top: 10px;">
+                            / @((budget?.LimitAmount ?? 0).ToString("C0"))
+                        </RadzenText>
+                    </RadzenStack>
+
+                    <RadzenProgressBar Value="@budgetPercentage" Max="100" ShowValue="true" Style="@GetProgressStyle()" />
+
+                    <RadzenText TextStyle="TextStyle.Body2" Class="rz-color-secondary">
+                        @(budgetPercentage > 100 ? "Túllépted a keretet!" : "Még van kereted.")
+                    </RadzenText>
+                </RadzenStack>
             </RadzenCard>
         </RadzenColumn>
 
         <RadzenColumn Size="12" SizeMD="6">
-             <RadzenCard>
-                <RadzenText TextStyle="TextStyle.H6">Kiadások megoszlása</RadzenText>
+            <RadzenCard Variant="Variant.Outlined">
+                <RadzenText TextStyle="TextStyle.H6" Class="rz-mb-4">Kiadások kategóriánként (elmúlt 30 nap)</RadzenText>
                 @if (chartData.Any())
                 {
-                    <RadzenChart>
+                    <RadzenChart style="height: 250px">
                         <RadzenDonutSeries Data="@chartData" CategoryProperty="Category" ValueProperty="Total">
                             <TitleTemplate>
                                 <div class="rz-donut-content">
                                     <div>Kiadások</div>
                                 </div>
                             </TitleTemplate>
+                            <TooltipTemplate Context="data">
+                                <div>
+                                    <strong>@data.Category</strong>
+                                    <div>@data.Total.ToString("C0")</div>
+                                </div>
+                            </TooltipTemplate>
                         </RadzenDonutSeries>
                         <RadzenLegend Position="LegendPosition.Right" />
                     </RadzenChart>
                 }
                 else
                 {
-                     <RadzenText>Nincs adat.</RadzenText>
+                    <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" Shade="Shade.Lighter">
+                        Nincs adat az elmúlt 30 napból.
+                    </RadzenAlert>
                 }
             </RadzenCard>
         </RadzenColumn>
     </RadzenRow>
-</RadzenGrid>
+}
 
 @code {
     private BudgetViewDto? budget;
     private double budgetPercentage = 0;
-    
-   
-    class ChartItem { public string Category { get; set; } public double Total { get; set; } }
+    private bool isLoading = true;
+
+    class ChartItem
+    {
+        public string Category { get; set; } = "";
+        public double Total { get; set; }
+    }
     private List<ChartItem> chartData = new();
 
     protected override async Task OnInitializedAsync()
@@ -68,35 +89,53 @@
 
     private async Task LoadDataAsync()
     {
-        try {
-             budget = await Http.GetFromJsonAsync<BudgetViewDto>("api/budget");
-             if (budget != null && budget.LimitAmount > 0)
-             {
-                budgetPercentage = (double)(budget.SpentAmount / budget.LimitAmount) * 100;
-             }
+        isLoading = true;
+        try
+        {
+            // Budget és tranzakciók párhuzamos betöltése
+            var budgetTask = Http.GetFromJsonAsync<BudgetViewDto>("api/budget");
 
-             // Chart adatok betöltése (egyszerűsítve a meglévő logika alapján)
-             var endDate = DateTime.Now;
-             var startDate = endDate.AddDays(-30);
-             var transactions = await Http.GetFromJsonAsync<List<TransactionViewDto>>($"api/transaction?startDate={startDate:yyyy-MM-dd}&endDate={endDate:yyyy-MM-dd}");
-             
-             if(transactions != null) {
-                 chartData = transactions
-                    .Where(t => t.Type == TransactionType.Expense)
-                    .GroupBy(t => t.CategoryName)
-                    .Select(g => new ChartItem { Category = g.Key, Total = (double)g.Sum(t => t.Amount) })
-                    .ToList();
-             }
+            var endDate = DateTime.Now;
+            var startDate = endDate.AddDays(-30);
+            var transactionsTask = Http.GetFromJsonAsync<List<TransactionViewDto>>($"api/transaction?startDate={startDate:yyyy-MM-dd}&endDate={endDate:yyyy-MM-dd}");
+
+            await Task.WhenAll(budgetTask, transactionsTask);
+
+            budget = await budgetTask;
+            var transactions = await transactionsTask;
+
+            if (budget != null && budget.LimitAmount > 0)
+            {
+                budgetPercentage = Math.Min(100, (double)(budget.SpentAmount / budget.LimitAmount) * 100);
+            }
+            else
+            {
+                budgetPercentage = 0;
+            }
+
+            if (transactions != null)
+            {
+                chartData = transactions
+                   .Where(t => t.Type == TransactionType.Expense)
+                   .GroupBy(t => t.CategoryName)
+                   .Select(g => new ChartItem { Category = g.Key, Total = (double)g.Sum(t => t.Amount) })
+                   .ToList();
+            }
         }
-        catch(Exception ex) {
-             NotificationService.Notify(NotificationSeverity.Error, "Hiba", ex.Message);
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Hiba", $"Adatok betöltése sikertelen: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
         }
     }
 
     private string GetProgressStyle()
     {
-        if (budgetPercentage > 90) return "color: var(--rz-danger)";
-        if (budgetPercentage > 75) return "color: var(--rz-warning)";
-        return "";
+        if (budgetPercentage >= 100) return "color: var(--rz-danger); height: 20px;";
+        if (budgetPercentage > 75) return "color: var(--rz-warning); height: 20px;";
+        return "color: var(--rz-success); height: 20px;";
     }
 }

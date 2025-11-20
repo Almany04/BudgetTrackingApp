@@ -1,8 +1,5 @@
 ﻿@page "/categories"
-@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @attribute [Authorize]
-
-@using BudgetTrackingApp.Shared.Dtos.Category
 @inject HttpClient Http
 @inject DialogService DialogService
 @inject NotificationService NotificationService
@@ -10,8 +7,8 @@
 <PageTitle>Kategóriák Kezelése</PageTitle>
 
 <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" Class="rz-mb-4">
-    <RadzenText TextStyle="TextStyle.H5">Kategóriák</RadzenText>
-    <RadzenButton Text="Új Kategória" Icon="add" ButtonStyle="ButtonStyle.Primary" Click="OpenCreateDialog" />
+    <RadzenText TextStyle="TextStyle.H5" Class="rz-m-0">Kategóriák</RadzenText>
+    <RadzenButton Text="Új Kategória" Icon="add" ButtonStyle="ButtonStyle.Primary" Click="@(args => OpenCreateDialog())" />
 </RadzenStack>
 
 <RadzenDataGrid Data="@categories" TItem="CategoryViewDto" AllowPaging="true" PageSize="10" AllowSorting="true" IsLoading="@isLoading" EmptyText="Nincs megjeleníthető adat.">
@@ -20,8 +17,8 @@
 
         <RadzenDataGridColumn TItem="CategoryViewDto" Title="Műveletek" TextAlign="TextAlign.Center" Width="120px">
             <Template Context="data">
-                <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small" Click="@(() => OpenEditDialog(data))" Class="rz-mr-1" />
-                <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" Click="@(() => DeleteCategory(data))" />
+                <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small" Click="@(args => OpenEditDialog(data))" Class="rz-mr-1" />
+                <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" Click="@(args => DeleteCategory(data))" />
             </Template>
         </RadzenDataGridColumn>
     </Columns>

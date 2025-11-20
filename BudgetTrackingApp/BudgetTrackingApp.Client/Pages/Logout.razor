@@ -1,23 +1,28 @@
 ﻿@page "/logout"
-@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
-@inject CustomAuthenticationStateProvider AuthStateProvider
+@inject AuthenticationStateProvider AuthStateProvider
 @inject NavigationManager Navigation
-@inject HttpClient Http 
+@inject HttpClient Http
+
+<RadzenProgressBar Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+<RadzenText TextStyle="TextStyle.Body1" Class="rz-text-align-center rz-mt-4">Kijelentkezés folyamatban...</RadzenText>
+
 @code {
     protected override async Task OnInitializedAsync()
     {
         try
         {
-            
+            // 1. Szerver oldali kijelentkezés (Süti törlése)
             await Http.PostAsync("api/user/logout", null);
         }
-        catch (Exception)
+        catch (Exception) { /* Hibatűrés, ha a szerver már kidobott */ }
+
+        // 2. Kliens oldali állapot törlése (SessionStorage)
+        if (AuthStateProvider is CustomAuthenticationStateProvider customAuthProvider)
         {
-            
+            await customAuthProvider.LogoutAsync();
         }
-        
-        await AuthStateProvider.LogoutAsync();
-        
-        Navigation.NavigateTo("/", forceLoad: true);
+
+        // 3. Teljes újratöltés és irányítás a főoldalra (Login)
+        Navigation.NavigateTo("/login", forceLoad: true);
     }
 }

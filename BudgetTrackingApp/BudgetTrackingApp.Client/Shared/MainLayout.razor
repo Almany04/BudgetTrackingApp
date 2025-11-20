@@ -1,35 +1,40 @@
 ﻿@inherits LayoutComponentBase
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+@inject TooltipService TooltipService
+@inject ContextMenuService ContextMenuService
 
 <RadzenComponents />
 
-<RadzenLayout>
+<RadzenLayout Style="height: 100vh">
     <RadzenHeader>
         <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0">
-            <RadzenSidebarToggle Click="@(() => sidebar1Expanded = !sidebar1Expanded)" />
-            <RadzenLabel Text="Budget Tracker" />
+            <RadzenSidebarToggle Click="@(() => sidebarExpanded = !sidebarExpanded)" />
+            <RadzenLabel Text="Budget Tracker" Style="margin-left: 1rem; font-weight: bold;" />
         </RadzenStack>
     </RadzenHeader>
-    <RadzenSidebar @bind-Expanded="@sidebar1Expanded">
-        <RadzenPanelMenu>
-            <RadzenPanelMenuItem Text="Főoldal" Path="/" Icon="home" />
 
+    <RadzenSidebar @bind-Expanded="@sidebarExpanded">
+        <RadzenPanelMenu>
             <AuthorizeView>
                 <Authorized>
                     <RadzenPanelMenuItem Text="Vezérlőpult" Path="dashboard" Icon="dashboard" />
-                    <RadzenPanelMenuItem Text="Tranzakciók" Path="transactions" Icon="list" />
+                    <RadzenPanelMenuItem Text="Tranzakciók" Path="transactions" Icon="receipt_long" />
                     <RadzenPanelMenuItem Text="Kategóriák" Path="categories" Icon="category" />
                     <RadzenPanelMenuItem Text="Budget Beállítás" Path="budget" Icon="account_balance_wallet" />
+
                     <RadzenPanelMenuItem Text="Kijelentkezés" Path="logout" Icon="logout" />
                 </Authorized>
                 <NotAuthorized>
                     <RadzenPanelMenuItem Text="Bejelentkezés" Path="login" Icon="login" />
-                    <RadzenPanelMenuItem Text="Regisztráció" Path="register" Icon="app_registration" />
+                    <RadzenPanelMenuItem Text="Regisztráció" Path="register" Icon="person_add" />
                 </NotAuthorized>
             </AuthorizeView>
         </RadzenPanelMenu>
     </RadzenSidebar>
+
     <RadzenBody>
         <div class="rz-p-4">
             @Body
@@ -38,5 +43,5 @@
 </RadzenLayout>
 
 @code {
-    bool sidebar1Expanded = true;
+    bool sidebarExpanded = true;
 }
