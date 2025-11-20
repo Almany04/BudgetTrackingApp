@@ -1,19 +1,22 @@
-﻿
-@using BudgetTrackingApp.Client.Services 
-@* Feltételezve, hogy a RedirectToLogin-t ide teszed: BudgetTrackingApp.Client/Services/RedirectToLogin.razor *@
+﻿@using BudgetTrackingApp.Client.Services
+@using BudgetTrackingApp.Client.Shared
+@using Microsoft.AspNetCore.Components.Authorization
 
 <Router AppAssembly="typeof(Program).Assembly" AdditionalAssemblies="new[] { typeof(Client._Imports).Assembly }">
     <Found Context="routeData">
-        <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(Layout.MainLayout)">
+        <AuthorizeRouteView RouteData="routeData" DefaultLayout="typeof(MainLayout)">
             <NotAuthorized>
-                <RedirectToLogin />
+                @* FIX: Use AuthLayout here so the Sidebar never appears when redirecting *@
+                <LayoutView Layout="typeof(AuthLayout)">
+                    <RedirectToLogin />
+                </LayoutView>
             </NotAuthorized>
         </AuthorizeRouteView>
         <FocusOnNavigate RouteData="routeData" Selector="h1" />
     </Found>
     <NotFound>
         <PageTitle>Not found</PageTitle>
-        <LayoutView Layout="typeof(Layout.MainLayout)">
+        <LayoutView Layout="typeof(MainLayout)">
             <p role="alert">Sorry, there's nothing at this address.</p>
         </LayoutView>
     </NotFound>

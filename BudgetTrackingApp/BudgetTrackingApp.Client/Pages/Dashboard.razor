@@ -14,6 +14,31 @@
 else
 {
     <RadzenRow Class="rz-mb-4">
+        @* AI Section *@
+        <RadzenColumn Size="12" Class="rz-mb-4">
+            <RadzenCard Variant="Variant.Filled" Class="rz-background-color-info-lighter">
+                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                    <RadzenIcon Icon="auto_awesome" Style="color: var(--rz-primary)" />
+                    <RadzenText TextStyle="TextStyle.H5" Class="rz-m-0">AI Pénzügyi Tanácsadó</RadzenText>
+                </RadzenStack>
+                <RadzenStack Gap="0.5rem" Class="rz-mt-2">
+                    @if (aiSuggestions.Any())
+                    {
+                        @foreach (var suggestion in aiSuggestions)
+                        {
+                            <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false" Style="margin: 0">
+                                @suggestion
+                            </RadzenAlert>
+                        }
+                    }
+                    else
+                    {
+                        <RadzenText>Nincs elég adat a tanácsok generálásához.</RadzenText>
+                    }
+                </RadzenStack>
+            </RadzenCard>
+        </RadzenColumn>
+
         <RadzenColumn Size="12" SizeMD="6">
             <RadzenCard Variant="Variant.Outlined">
                 <RadzenStack Orientation="Orientation.Vertical" Gap="1rem">
@@ -74,6 +99,7 @@ else
     private BudgetViewDto? budget;
     private double budgetPercentage = 0;
     private bool isLoading = true;
+    private List<string> aiSuggestions = new();
 
     class ChartItem
     {
@@ -92,17 +118,18 @@ else
         isLoading = true;
         try
         {
-            // Budget és tranzakciók párhuzamos betöltése
             var budgetTask = Http.GetFromJsonAsync<BudgetViewDto>("api/budget");
-
             var endDate = DateTime.Now;
             var startDate = endDate.AddDays(-30);
             var transactionsTask = Http.GetFromJsonAsync<List<TransactionViewDto>>($"api/transaction?startDate={startDate:yyyy-MM-dd}&endDate={endDate:yyyy-MM-dd}");
+            // Load AI suggestions
+            var aiTask = Http.GetFromJsonAsync<List<string>>("api/aisuggestion");
 
-            await Task.WhenAll(budgetTask, transactionsTask);
+            await Task.WhenAll(budgetTask, transactionsTask, aiTask);
 
             budget = await budgetTask;
             var transactions = await transactionsTask;
+            aiSuggestions = await aiTask ?? new();
 
             if (budget != null && budget.LimitAmount > 0)
             {

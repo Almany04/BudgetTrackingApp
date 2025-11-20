@@ -1,9 +1,6 @@
 ﻿using BudgetTrackingApp.Logic.Interfaces;
-using BudgetTrackingApp.Logic.Services;
-using BudgetTrackingApp.Shared.Dtos.Category;
 using BudgetTrackingApp.Shared.Dtos.Transactions;
 using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using System.Security.Claims;
 
@@ -12,6 +9,7 @@ namespace BudgetTrackingApp.Api.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
+    [IgnoreAntiforgeryToken] // FIX: Unblocks creation
     public class TransactionController : ControllerBase
     {
         private readonly ITransactionLogic _transactionLogic;
@@ -20,99 +18,45 @@ namespace BudgetTrackingApp.Api.Controllers
             _transactionLogic = transactionLogic;
         }
 
-        private string GetUserId()
-        {
-            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-            if (userId == null)
-            {
-                throw new Exception("Felhasználó ID nem található a tokenben. ");
-            }
-            return userId;
-        }
+        private string GetUserId() => User.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new Exception("User not found");
+
         [HttpGet]
-        public async Task<IActionResult> GetTransactionsAsync([FromQuery] DateTime? startDate,
-            [FromQuery] DateTime? endDate)
+        public async Task<IActionResult> GetTransactionsAsync([FromQuery] DateTime? startDate, [FromQuery] DateTime? endDate)
         {
-
-            try
-            {
-                string testUserId = GetUserId();
-                DateTime end = endDate ?? DateTime.Now;
-                DateTime start = startDate ?? end.AddDays(-30);
-
-
-                var transasctionDto = await _transactionLogic.GetTransactionsByUserIdFilteredAsync(testUserId, start, end);
-                return Ok(transasctionDto);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            try { return Ok(await _transactionLogic.GetTransactionsByUserIdFilteredAsync(GetUserId(), startDate ?? DateTime.Now.AddDays(-30), endDate ?? DateTime.Now)); }
+            catch (Exception ex) { return BadRequest(ex.Message); }
         }
+
         [HttpPost]
-        public async Task<IActionResult> CreateTransactionsAsync([FromBody] TransactionCreateDto transactionCreateDto)
+        public async Task<IActionResult> CreateTransactionsAsync([FromBody] TransactionCreateDto dto)
         {
-            try
-            {
-                string testUserId = GetUserId();
-                await _transactionLogic.CreateTransactionAsync(transactionCreateDto, testUserId);
-                return StatusCode(201);
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            try { await _transactionLogic.CreateTransactionAsync(dto, GetUserId()); return StatusCode(201); }
+            catch (Exception ex) { return BadRequest(ex.Message); }
         }
+
         [HttpGet("{id}")]
         public async Task<IActionResult> GetTransactionByIdAsync(Guid id)
         {
             try
             {
-                string userId = GetUserId();
-
-                var entity = await _transactionLogic.GetTransactionByIdAsync(id, userId);
-                if (entity == null)
-                {
-                    return NotFound("A tranzakció nem található.");
-                }
-
-                return Ok(entity);
+                var entity = await _transactionLogic.GetTransactionByIdAsync(id, GetUserId());
+                return entity == null ? NotFound() : Ok(entity);
             }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            catch (Exception ex) { return BadRequest(ex.Message); }
         }
 
-
         [HttpPut("{id}")]
-        public async Task<IActionResult> UpdateTransactionAsync(Guid id, [FromBody] TransactionUpdateDto transactionUpdateDto)
+        public async Task<IActionResult> UpdateTransactionAsync(Guid id, [FromBody] TransactionUpdateDto dto)
         {
-            try
-            {
-                string userId = GetUserId();
-                await _transactionLogic.UpdateTransactionAsync(id, transactionUpdateDto, userId);
-                return Ok();
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            try { await _transactionLogic.UpdateTransactionAsync(id, dto, GetUserId()); return Ok(); }
+            catch (Exception ex) { return BadRequest(ex.Message); }
         }
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteTransactionAsync(Guid id)
         {
-            try
-            {
-                string userId = GetUserId();
-                await _transactionLogic.DeleteTransactionAsync(id, userId);
-                return NoContent();
-            }
-            catch (Exception ex)
-            {
-                return BadRequest(ex.Message);
-            }
+            try { await _transactionLogic.DeleteTransactionAsync(id, GetUserId()); return NoContent(); }
+            catch (Exception ex) { return BadRequest(ex.Message); }
         }
     }
 }

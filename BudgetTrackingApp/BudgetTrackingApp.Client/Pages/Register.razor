@@ -1,4 +1,5 @@
 ﻿@page "/register"
+@layout BudgetTrackingApp.Client.Shared.AuthLayout
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @using BudgetTrackingApp.Shared.Dtos.User
 @inject HttpClient Http
@@ -7,44 +8,40 @@
 
 <PageTitle>Regisztráció</PageTitle>
 
-<RadzenRow JustifyContent="JustifyContent.Center" Class="rz-mt-5">
-    <RadzenColumn Size="12" SizeMD="4">
-        <RadzenTemplateForm TItem="UserRegisterDto" Data="@registerModel" Submit="@HandleRegistration">
-            <RadzenCard>
-                <RadzenText TextStyle="TextStyle.H5" TextAlign="TextAlign.Center" Class="rz-mb-4">Új Fiók Létrehozása</RadzenText>
+<RadzenTemplateForm TItem="UserRegisterDto" Data="@registerModel" Submit="@HandleRegistration">
+    <RadzenCard>
+        <RadzenText TextStyle="TextStyle.H5" TextAlign="TextAlign.Center" Class="rz-mb-4">Új Fiók Létrehozása</RadzenText>
 
-                <RadzenStack Spacing="3">
-                    <RadzenFormField Text="Email cím" Variant="Variant.Outlined">
-                        <RadzenTextBox @bind-Value="registerModel.Email" Name="Email" style="width: 100%;" />
-                    </RadzenFormField>
-                    <RadzenRequiredValidator Component="Email" Text="Email kötelező" />
-                    <RadzenEmailValidator Component="Email" Text="Érvénytelen email formátum" />
+        <RadzenStack Spacing="3">
+            <RadzenFormField Text="Email cím" Variant="Variant.Outlined">
+                <RadzenTextBox @bind-Value="registerModel.Email" Name="Email" style="width: 100%;" />
+            </RadzenFormField>
+            <RadzenRequiredValidator Component="Email" Text="Email kötelező" />
+            <RadzenEmailValidator Component="Email" Text="Érvénytelen email formátum" />
 
-                    <RadzenFormField Text="Jelszó" Variant="Variant.Outlined">
-                        <RadzenPassword @bind-Value="registerModel.Password" Name="Password" style="width: 100%;" />
-                    </RadzenFormField>
-                    <RadzenRequiredValidator Component="Password" Text="Jelszó kötelező" />
+            <RadzenFormField Text="Jelszó" Variant="Variant.Outlined">
+                <RadzenPassword @bind-Value="registerModel.Password" Name="Password" style="width: 100%;" />
+            </RadzenFormField>
+            <RadzenRequiredValidator Component="Password" Text="Jelszó kötelező" />
 
-                    <RadzenFormField Text="Jelszó megerősítése" Variant="Variant.Outlined">
-                        <RadzenPassword @bind-Value="registerModel.ConfirmPassword" Name="ConfirmPassword" style="width: 100%;" />
-                    </RadzenFormField>
-                    <RadzenCompareValidator Component="ConfirmPassword" Value="@registerModel.Password" Text="A jelszavak nem egyeznek" Operator="CompareOperator.Equal" />
+            <RadzenFormField Text="Jelszó megerősítése" Variant="Variant.Outlined">
+                <RadzenPassword @bind-Value="registerModel.ConfirmPassword" Name="ConfirmPassword" style="width: 100%;" />
+            </RadzenFormField>
+            <RadzenCompareValidator Component="ConfirmPassword" Value="@registerModel.Password" Text="A jelszavak nem egyeznek" Operator="CompareOperator.Equal" />
 
-                    @if (!string.IsNullOrEmpty(apiErrorMessage))
-                    {
-                        <RadzenAlert AlertStyle="AlertStyle.Danger" ShowIcon="true" Variant="Variant.Flat" Shade="Shade.Lighter">
-                            @apiErrorMessage
-                        </RadzenAlert>
-                    }
+            @if (!string.IsNullOrEmpty(apiErrorMessage))
+            {
+                <RadzenAlert AlertStyle="AlertStyle.Danger" ShowIcon="true" Variant="Variant.Flat" Shade="Shade.Lighter">
+                    @apiErrorMessage
+                </RadzenAlert>
+            }
 
-                    <RadzenButton ButtonType="ButtonType.Submit" Text="Regisztráció" ButtonStyle="ButtonStyle.Primary" />
+            <RadzenButton ButtonType="ButtonType.Submit" Text="Regisztráció" ButtonStyle="ButtonStyle.Primary" />
 
-                    <RadzenLink Path="login" Text="Már van fiókod? Jelentkezz be!" TextAlign="TextAlign.Center" />
-                </RadzenStack>
-            </RadzenCard>
-        </RadzenTemplateForm>
-    </RadzenColumn>
-</RadzenRow>
+            <RadzenLink Path="login" Text="Már van fiókod? Jelentkezz be!" TextAlign="TextAlign.Center" />
+        </RadzenStack>
+    </RadzenCard>
+</RadzenTemplateForm>
 
 @code {
     private UserRegisterDto registerModel = new UserRegisterDto();

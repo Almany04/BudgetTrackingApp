@@ -1,9 +1,11 @@
 ﻿@page "/"
+@layout BudgetTrackingApp.Client.Shared.AuthLayout
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthenticationStateProvider
 
 <PageTitle>Betöltés...</PageTitle>
+<RadzenProgressBar Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
 
 @code {
     protected override async Task OnInitializedAsync()

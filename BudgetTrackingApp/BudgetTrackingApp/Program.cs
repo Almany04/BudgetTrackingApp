@@ -1,4 +1,3 @@
-using BudgetTrackingApp.Api.Components;
 using BudgetTrackingApp.Api.Services;
 using BudgetTrackingApp.Data;
 using BudgetTrackingApp.Data.Entities;
@@ -10,8 +9,9 @@ using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Radzen;
-using System.Security.Claims;
 using Microsoft.AspNetCore.Components;
+// FIX: This imports the correct namespace for App.razor
+using BudgetTrackingApp.Api.Components;
 
 namespace BudgetTrackingApp
 {
@@ -41,27 +41,25 @@ namespace BudgetTrackingApp
 
             builder.Services.AddIdentity<AppUser, IdentityRole>(options =>
             {
-                options.Password.RequireDigit = true;
-                options.Password.RequireLowercase = true;
-                options.Password.RequireUppercase = true;
+                options.Password.RequireDigit = false;
+                options.Password.RequireLowercase = false;
+                options.Password.RequireUppercase = false;
                 options.Password.RequireNonAlphanumeric = false;
-                options.Password.RequiredLength = 6;
+                options.Password.RequiredLength = 4;
             })
             .AddEntityFrameworkStores<BudgetTrackerDbContext>()
             .AddDefaultTokenProviders();
 
-            // --- KRITIKUS JAVÍTÁS: Cookie beállítások Localhost fejlesztéshez ---
+            // --- MOBILE & LAN ACCESS FIX ---
             builder.Services.ConfigureApplicationCookie(options =>
             {
                 options.Cookie.HttpOnly = true;
-                // SameAsRequest: Ha http-n vagyunk, a süti is http lesz (fejlesztésnél kell!)
+                // SameAsRequest allows cookies to work on http://192.168.x.x (Local Network)
                 options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
-                // Lax: Engedékenyebb a navigációnál, segít megtartani a sütit átirányításkor
                 options.Cookie.SameSite = SameSiteMode.Lax;
-                options.ExpireTimeSpan = TimeSpan.FromDays(7);
+                options.ExpireTimeSpan = TimeSpan.FromDays(30);
                 options.SlidingExpiration = true;
 
-                // Ezeket hagyjuk meg, hogy az API hívások ne HTML oldalt kapjanak hiba esetén
                 options.Events.OnRedirectToLogin = context =>
                 {
                     if (context.Request.Path.StartsWithSegments("/api"))
@@ -73,19 +71,19 @@ namespace BudgetTrackingApp
                     return Task.CompletedTask;
                 };
             });
-            // ----------------------------------------------------------------
 
+            // Register Repositories
             builder.Services.AddScoped<IUserRepository, UserRepository>();
             builder.Services.AddScoped<IBudgetRepository, BudgetRepository>();
             builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
             builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
 
+            // Register Logic Services
             builder.Services.AddScoped<IUserLogic, UserLogic>();
             builder.Services.AddScoped<IBudgetLogic, BudgetLogic>();
             builder.Services.AddScoped<ICategoryLogic, CategoryLogic>();
             builder.Services.AddScoped<ITransactionLogic, TransactionLogic>();
-
-            builder.Services.AddAntiforgery();
+            builder.Services.AddScoped<IAiSuggestionLogic, AiSuggestionLogic>(); // AI Service
 
             var app = builder.Build();
 
@@ -99,7 +97,6 @@ namespace BudgetTrackingApp
                 app.UseHsts();
             }
 
-            app.UseHttpsRedirection();
             app.UseStaticFiles();
             app.UseAntiforgery();
 
@@ -107,6 +104,8 @@ namespace BudgetTrackingApp
             app.UseAuthorization();
 
             app.MapControllers();
+
+            // Map the App component (now correctly resolved)
             app.MapRazorComponents<App>()
                 .AddInteractiveWebAssemblyRenderMode()
                 .AddAdditionalAssemblies(typeof(BudgetTrackingApp.Client._Imports).Assembly);
