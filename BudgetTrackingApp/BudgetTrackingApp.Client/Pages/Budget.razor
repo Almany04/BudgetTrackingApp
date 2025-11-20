@@ -3,58 +3,45 @@
 @attribute [Authorize]
 @using BudgetTrackingApp.Shared.Dtos.Budget
 @inject HttpClient Http
-@inject ISnackbar Snackbar
+@inject NotificationService NotificationService
 
 <PageTitle>Budget Beállítása</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Small" Class="mt-10">
-    <EditForm Model="budgetModel" OnValidSubmit="HandleSaveBudget">
-        <DataAnnotationsValidator />
-        <MudCard Elevation="3">
-            <MudCardHeader>
-                <CardHeaderContent>
-                    <MudText Typo="Typo.h5">Havi Keret Beállítása</MudText>
-                </CardHeaderContent>
-            </MudCardHeader>
-            <MudCardContent>
+<RadzenRow JustifyContent="JustifyContent.Center" Class="rz-mt-4">
+    <RadzenColumn Size="12" SizeMD="6">
+        <RadzenTemplateForm TItem="BudgetUpdateDto" Data="@budgetModel" Submit="@HandleSaveBudget">
+            <RadzenCard>
+                <RadzenText TextStyle="TextStyle.H5" Class="rz-mb-4">Havi Keret Beállítása</RadzenText>
+
                 @if (isLoading)
                 {
-                    <MudProgressCircular Indeterminate="true" />
+                    <RadzenProgressBar Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
                 }
                 else
                 {
-                    <MudTextField Label="Havi keretösszeg"
-                                  @bind-Value="budgetModel.LimitAmount"
-                                  For="@(() => budgetModel.LimitAmount)"
-                                  InputType="InputType.Number"
-                                  Adornment="Adornment.End"
-                                  AdornmentText="Ft"
-                                  HelperText="Add meg a teljes havi keretedet." />
+                    <RadzenStack Spacing="3">
+                        <RadzenFormField Text="Havi keretösszeg (HUF)" Variant="Variant.Outlined">
+                            <RadzenNumeric @bind-Value="budgetModel.LimitAmount" Name="LimitAmount" style="width: 100%;" />
+                        </RadzenFormField>
+                        <RadzenRequiredValidator Component="LimitAmount" Text="Az összeg kötelező" />
+                        <RadzenNumericRangeValidator Component="LimitAmount" Min="0" Text="Az összeg nem lehet negatív" />
+
+                        <RadzenText TextStyle="TextStyle.Body2" Class="rz-color-secondary">
+                            Add meg a teljes havi keretedet.
+                        </RadzenText>
+
+                        <RadzenButton ButtonType="ButtonType.Submit" Text="Mentés" ButtonStyle="ButtonStyle.Primary" Disabled="@isSaving" IsBusy="@isSaving" />
+                    </RadzenStack>
                 }
-            </MudCardContent>
-            <MudCardActions>
-                <MudButton ButtonType="ButtonType.Submit"
-                           Variant="Variant.Filled"
-                           Color="Color.Primary"
-                           Disabled="@isLoading"
-                           Class="mx-2 mb-2">
-                    @if (isLoading)
-                    {
-                        <MudProgressCircular Indeterminate="true" Size="Size.Small" />
-                    }
-                    else
-                    {
-                        <span>Mentés</span>
-                    }
-                </MudButton>
-            </MudCardActions>
-        </MudCard>
-    </EditForm>
-</MudContainer>
+            </RadzenCard>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+</RadzenRow>
 
 @code {
     private BudgetUpdateDto budgetModel = new();
     private bool isLoading = true;
+    private bool isSaving = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -74,7 +61,7 @@
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Hiba a keret betöltésekor: {ex.Message}", Severity.Error);
+            NotificationService.Notify(NotificationSeverity.Error, "Hiba", $"Hiba a keret betöltésekor: {ex.Message}");
         }
         finally
         {
@@ -82,29 +69,29 @@
         }
     }
 
-    private async Task HandleSaveBudget()
+    private async Task HandleSaveBudget(BudgetUpdateDto args)
     {
-        isLoading = true;
+        isSaving = true;
         try
         {
             var response = await Http.PutAsJsonAsync("api/budget", budgetModel);
             if (response.IsSuccessStatusCode)
             {
-                Snackbar.Add("Budget sikeresen frissítve!", Severity.Success);
+                NotificationService.Notify(NotificationSeverity.Success, "Siker", "Budget sikeresen frissítve!");
             }
             else
             {
                 var errorMsg = await response.Content.ReadAsStringAsync();
-                Snackbar.Add($"Hiba mentés közben: {errorMsg}", Severity.Error);
+                NotificationService.Notify(NotificationSeverity.Error, "Hiba", $"Hiba mentés közben: {errorMsg}");
             }
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Váratlan hiba: {ex.Message}", Severity.Error);
+            NotificationService.Notify(NotificationSeverity.Error, "Hiba", ex.Message);
         }
         finally
         {
-            isLoading = false;
+            isSaving = false;
         }
     }
 }

@@ -1,60 +1,40 @@
 ﻿@using BudgetTrackingApp.Shared.Dtos.Category
-@using MudBlazor
-@using Microsoft.AspNetCore.Components.Forms
 @inject HttpClient Http
-@inject ISnackbar Snackbar
+@inject DialogService DialogService
+@inject NotificationService NotificationService
 
-<EditForm Model="CategoryModel" OnValidSubmit="HandleSave">
-    <DataAnnotationsValidator />
-    <MudDialog>
-        <DialogContent>
+<RadzenTemplateForm TItem="object" Data="@CategoryModel" Submit="@OnSubmit">
+    <RadzenStack Spacing="3">
+        <RadzenFormField Text="Kategória Név" Variant="Variant.Outlined">
             @if (CategoryModel is CategoryCreateDto createModel)
             {
-                <MudTextField Label="Kategória Név"
-                              Class="mt-3"
-                              @bind-Value="createModel.Name"
-                              For="@(() => createModel.Name)"
-                              AutoFocus="true" />
+                <RadzenTextBox @bind-Value="createModel.Name" Name="Name" style="width: 100%;" />
             }
             else if (CategoryModel is CategoryUpdateDto updateModel)
             {
-                <MudTextField Label="Kategória Név"
-                              Class="mt-3"
-                              @bind-Value="updateModel.Name"
-                              For="@(() => updateModel.Name)"
-                              AutoFocus="true" />
+                <RadzenTextBox @bind-Value="updateModel.Name" Name="Name" style="width: 100%;" />
             }
-        </DialogContent>
-        <DialogActions>
-            <MudButton OnClick="Cancel">Mégse</MudButton>
-            <MudButton ButtonType="ButtonType.Submit"
-                       Color="Color.Primary"
-                       Variant="Variant.Filled"
-                       Disabled="isProcessing">
-                @if (isProcessing)
-                {
-                    <MudProgressCircular Indeterminate="true" Size="Size.Small" />
-                }
-                else
-                {
-                    <span>Mentés</span>
-                }
-            </MudButton>
-        </DialogActions>
-    </MudDialog>
-</EditForm>
+        </RadzenFormField>
+        <RadzenRequiredValidator Component="Name" Text="Név megadása kötelező" />
+
+        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="1rem" Class="rz-mt-4">
+            <RadzenButton ButtonType="ButtonType.Submit" Text="Mentés" ButtonStyle="ButtonStyle.Primary" Disabled="@isProcessing" IsBusy="@isProcessing" />
+            <RadzenButton Text="Mégse" ButtonStyle="ButtonStyle.Light" Click="@(() => DialogService.Close(false))" />
+        </RadzenStack>
+    </RadzenStack>
+</RadzenTemplateForm>
 
 @code {
-    [CascadingParameter]
-    IMudDialogInstance MudDialog { get; set; }
-
-    [Parameter]
-    public object CategoryModel { get; set; } = new();
-
-    [Parameter]
-    public Guid? CategoryId { get; set; }
+    [Parameter] public object CategoryModel { get; set; } = new();
+    [Parameter] public Guid? CategoryId { get; set; }
 
     private bool isProcessing = false;
+
+    // Külön metódus a submit eseményhez a biztos működésért
+    private async Task OnSubmit(object args)
+    {
+        await HandleSave();
+    }
 
     private async Task HandleSave()
     {
@@ -72,36 +52,27 @@
             }
             else
             {
-                throw new InvalidOperationException("Érvénytelen modell vagy hiányzó ID.");
+                throw new InvalidOperationException("Érvénytelen modell.");
             }
 
             if (response.IsSuccessStatusCode)
             {
-                MudDialog.Close(DialogResult.Ok(true));
+                NotificationService.Notify(NotificationSeverity.Success, "Siker", "Mentés sikeres!");
+                DialogService.Close(true);
             }
             else
             {
                 var error = await response.Content.ReadAsStringAsync();
-                Snackbar.Add($"Hiba mentés közben: {error}", Severity.Error, config =>
-                {
-                    config.ShowCloseIcon = true;
-                    config.VisibleStateDuration = 5000;
-                });
+                NotificationService.Notify(NotificationSeverity.Error, "Hiba", error);
             }
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Váratlan hiba: {ex.Message}", Severity.Error, config =>
-            {
-                config.ShowCloseIcon = true;
-                config.VisibleStateDuration = 5000;
-            });
+            NotificationService.Notify(NotificationSeverity.Error, "Hiba", ex.Message);
         }
         finally
         {
             isProcessing = false;
         }
     }
-
-    void Cancel() => MudDialog.Cancel();
 }

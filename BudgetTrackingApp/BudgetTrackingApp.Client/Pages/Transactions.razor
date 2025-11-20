@@ -16,14 +16,14 @@
 </RadzenStack>
 
 <RadzenCard Class="rz-mb-4">
-    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem" Wrap="FlexWrap.Wrap">
         <RadzenDatePicker @bind-Value="startDate" DateFormat="yyyy.MM.dd" Placeholder="Kezdő dátum" />
         <RadzenDatePicker @bind-Value="endDate" DateFormat="yyyy.MM.dd" Placeholder="Végdátum" />
-        <RadzenButton Text="Szűrés" Click="LoadTransactionsAsync" />
+        <RadzenButton Text="Szűrés" Click="LoadTransactionsAsync" Icon="search" />
     </RadzenStack>
 </RadzenCard>
 
-<RadzenDataGrid Data="@transactions" TItem="TransactionViewDto" AllowPaging="true" PageSize="10" AllowSorting="true" IsLoading="@isLoading">
+<RadzenDataGrid Data="@transactions" TItem="TransactionViewDto" AllowPaging="true" PageSize="10" AllowSorting="true" IsLoading="@isLoading" EmptyText="Nincs megjeleníthető adat.">
     <Columns>
         <RadzenDataGridColumn TItem="TransactionViewDto" Property="TransactionDate" Title="Dátum">
             <Template Context="data">
@@ -34,7 +34,7 @@
         <RadzenDataGridColumn TItem="TransactionViewDto" Property="Description" Title="Leírás" />
         <RadzenDataGridColumn TItem="TransactionViewDto" Property="Amount" Title="Összeg" TextAlign="TextAlign.Right">
             <Template Context="data">
-                <span style='color: @(data.Type == TransactionType.Expense ? "red" : "green")'>
+                <span style='color: @(data.Type == TransactionType.Expense ? "var(--rz-danger)" : "var(--rz-success)")'>
                     @(data.Type == TransactionType.Expense ? "-" : "+") @data.Amount.ToString("C0")
                 </span>
             </Template>

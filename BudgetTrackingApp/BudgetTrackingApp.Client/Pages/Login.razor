@@ -6,89 +6,64 @@
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject CustomAuthenticationStateProvider AuthStateProvider
-@inject ISnackbar Snackbar
+@inject NotificationService NotificationService
 
 <PageTitle>Bejelentkezés</PageTitle>
 
-<MudGrid Justify="Justify.Center" Class="mt-10">
-    <MudItem xs="12" sm="8" md="6" lg="4">
-        <EditForm Model="loginModel" OnValidSubmit="HandleLogin" FormName="LoginForm">
-            <DataAnnotationsValidator />
+<RadzenRow JustifyContent="JustifyContent.Center" Class="rz-mt-5">
+    <RadzenColumn Size="12" SizeMD="4">
+        <RadzenTemplateForm TItem="UserLoginDto" Data="@loginModel" Submit="@HandleLogin">
+            <RadzenCard>
+                <RadzenText TextStyle="TextStyle.H5" TextAlign="TextAlign.Center" Class="rz-mb-4">Bejelentkezés</RadzenText>
 
-            <MudCard Elevation="25">
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <MudText Typo="Typo.h5" Align="Align.Center">Bejelentkezés</MudText>
-                    </CardHeaderContent>
-                </MudCardHeader>
-                <MudCardContent>
+                <RadzenStack Spacing="3">
+                    <RadzenFormField Text="Email cím" Variant="Variant.Outlined">
+                        <RadzenTextBox @bind-Value="loginModel.Email" Name="Email" style="width: 100%;" />
+                    </RadzenFormField>
+                    <RadzenRequiredValidator Component="Email" Text="Email kötelező" />
+                    <RadzenEmailValidator Component="Email" Text="Érvénytelen email formátum" />
 
-                    <MudTextField Label="Email cím"
-                                  Class="mb-3"
-                                  @bind-Value="loginModel.Email"
-                                  For="@(() => loginModel.Email)"
-                                  InputType="InputType.Email" />
-
-                    <MudTextField Label="Jelszó"
-                                  Class="mb-3"
-                                  @bind-Value="loginModel.Password"
-                                  For="@(() => loginModel.Password)"
-                                  InputType="InputType.Password" />
+                    <RadzenFormField Text="Jelszó" Variant="Variant.Outlined">
+                        <RadzenPassword @bind-Value="loginModel.Password" Name="Password" style="width: 100%;" />
+                    </RadzenFormField>
+                    <RadzenRequiredValidator Component="Password" Text="Jelszó kötelező" />
 
                     @if (!string.IsNullOrEmpty(apiErrorMessage))
                     {
-                        <MudAlert Severity="Severity.Error" Class="mb-3">@apiErrorMessage</MudAlert>
+                        <RadzenAlert AlertStyle="AlertStyle.Danger" ShowIcon="true" Variant="Variant.Flat" Shade="Shade.Lighter">
+                            @apiErrorMessage
+                        </RadzenAlert>
                     }
-                </MudCardContent>
-                <MudCardActions>
-                    <MudButton ButtonType="ButtonType.Submit"
-                               Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               Disabled="@isProcessing"
-                               FullWidth="true"
-                               Class="mx-2 mb-2">
-                        @if (isProcessing)
-                        {
-                            <MudProgressCircular Indeterminate="true" Size="Size.Small" />
-                        }
-                        else
-                        {
-                            <span>Bejelentkezés</span>
-                        }
-                    </MudButton>
-                </MudCardActions>
-            </MudCard>
-        </EditForm>
-    </MudItem>
-</MudGrid>
 
+                    <RadzenButton ButtonType="ButtonType.Submit" Text="Bejelentkezés" ButtonStyle="ButtonStyle.Primary" Disabled="@isProcessing" IsBusy="@isProcessing" />
+
+                    <RadzenLink Path="register" Text="Nincs még fiókod? Regisztrálj!" TextAlign="TextAlign.Center" />
+                </RadzenStack>
+            </RadzenCard>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+</RadzenRow>
 
 @code {
     private UserLoginDto loginModel = new UserLoginDto();
     private string? apiErrorMessage;
     private bool isProcessing = false;
 
-    private async Task HandleLogin()
+    private async Task HandleLogin(UserLoginDto args)
     {
         isProcessing = true;
         apiErrorMessage = null;
         try
         {
             var response = await Http.PostAsJsonAsync("api/user/login", loginModel);
-
             if (response.IsSuccessStatusCode)
             {
                 var responseDto = await response.Content.ReadFromJsonAsync<UserLoginResponseDto>();
                 if (responseDto != null)
                 {
-                    // Itt hívjuk meg az új szervizt, ami elmenti az adatokat és értesíti a Blazor-t!
                     await AuthStateProvider.LoginAsync(responseDto);
-                    Snackbar.Add("Sikeres bejelentkezés!", Severity.Success);
-                    Navigation.NavigateTo("/dashboard", forceLoad: true); // forceLoad: true kell, hogy az egész layout újra töltődjön
-                }
-                else
-                {
-                    apiErrorMessage = "Hiba a válasz feldolgozása közben.";
+                    NotificationService.Notify(NotificationSeverity.Success, "Üdvözöllek!", "Sikeres bejelentkezés.");
+                    Navigation.NavigateTo("/dashboard", forceLoad: true);
                 }
             }
             else
@@ -99,7 +74,7 @@
         }
         catch (Exception ex)
         {
-            apiErrorMessage = $"Hiba történt a bejelentkezés során: {ex.Message}";
+            apiErrorMessage = $"Hiba történt: {ex.Message}";
         }
         finally
         {

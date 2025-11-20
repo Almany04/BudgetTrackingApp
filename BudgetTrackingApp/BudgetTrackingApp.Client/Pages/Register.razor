@@ -3,65 +3,54 @@
 @using BudgetTrackingApp.Shared.Dtos.User
 @inject HttpClient Http
 @inject NavigationManager Navigation
+@inject NotificationService NotificationService
 
 <PageTitle>Regisztráció</PageTitle>
 
-<MudGrid Justify="Justify.Center" Class="mt-10">
-    <MudItem xs="12" sm="8" md="6" lg="4">
-        <EditForm Model="registerModel" OnValidSubmit="HandleRegistration" FormName="RegisterForm">
-            <DataAnnotationsValidator />
+<RadzenRow JustifyContent="JustifyContent.Center" Class="rz-mt-5">
+    <RadzenColumn Size="12" SizeMD="4">
+        <RadzenTemplateForm TItem="UserRegisterDto" Data="@registerModel" Submit="@HandleRegistration">
+            <RadzenCard>
+                <RadzenText TextStyle="TextStyle.H5" TextAlign="TextAlign.Center" Class="rz-mb-4">Új Fiók Létrehozása</RadzenText>
 
-            <MudCard Elevation="25">
-                <MudCardHeader>
-                    <CardHeaderContent>
-                        <MudText Typo="Typo.h5" Align="Align.Center">Új Fiók Létrehozása</MudText>
-                    </CardHeaderContent>
-                </MudCardHeader>
-                <MudCardContent>
+                <RadzenStack Spacing="3">
+                    <RadzenFormField Text="Email cím" Variant="Variant.Outlined">
+                        <RadzenTextBox @bind-Value="registerModel.Email" Name="Email" style="width: 100%;" />
+                    </RadzenFormField>
+                    <RadzenRequiredValidator Component="Email" Text="Email kötelező" />
+                    <RadzenEmailValidator Component="Email" Text="Érvénytelen email formátum" />
 
-                    <MudTextField Label="Email cím"
-                                  Class="mb-3"
-                                  @bind-Value="registerModel.Email"
-                                  For="@(() => registerModel.Email)"
-                                  InputType="InputType.Email" />
+                    <RadzenFormField Text="Jelszó" Variant="Variant.Outlined">
+                        <RadzenPassword @bind-Value="registerModel.Password" Name="Password" style="width: 100%;" />
+                    </RadzenFormField>
+                    <RadzenRequiredValidator Component="Password" Text="Jelszó kötelező" />
 
-                    <MudTextField Label="Jelszó"
-                                  Class="mb-3"
-                                  @bind-Value="registerModel.Password"
-                                  For="@(() => registerModel.Password)"
-                                  InputType="InputType.Password" />
-
-                    <MudTextField Label="Jelszó megerősítése"
-                                  Class="mb-3"
-                                  @bind-Value="registerModel.ConfirmPassword"
-                                  For="@(() => registerModel.ConfirmPassword)"
-                                  InputType="InputType.Password" />
+                    <RadzenFormField Text="Jelszó megerősítése" Variant="Variant.Outlined">
+                        <RadzenPassword @bind-Value="registerModel.ConfirmPassword" Name="ConfirmPassword" style="width: 100%;" />
+                    </RadzenFormField>
+                    <RadzenCompareValidator Component="ConfirmPassword" Value="@registerModel.Password" Text="A jelszavak nem egyeznek" Operator="CompareOperator.Equal" />
 
                     @if (!string.IsNullOrEmpty(apiErrorMessage))
                     {
-                        <MudAlert Severity="Severity.Error" Class="mb-3">@apiErrorMessage</MudAlert>
+                        <RadzenAlert AlertStyle="AlertStyle.Danger" ShowIcon="true" Variant="Variant.Flat" Shade="Shade.Lighter">
+                            @apiErrorMessage
+                        </RadzenAlert>
                     }
-                </MudCardContent>
-                <MudCardActions>
-                    <MudButton ButtonType="ButtonType.Submit"
-                               Variant="Variant.Filled"
-                               Color="Color.Primary"
-                               FullWidth="true"
-                               Class="mx-2 mb-2">
-                        Regisztráció
-                    </MudButton>
-                </MudCardActions>
-            </MudCard>
-        </EditForm>
-    </MudItem>
-</MudGrid>
 
+                    <RadzenButton ButtonType="ButtonType.Submit" Text="Regisztráció" ButtonStyle="ButtonStyle.Primary" />
+
+                    <RadzenLink Path="login" Text="Már van fiókod? Jelentkezz be!" TextAlign="TextAlign.Center" />
+                </RadzenStack>
+            </RadzenCard>
+        </RadzenTemplateForm>
+    </RadzenColumn>
+</RadzenRow>
 
 @code {
     private UserRegisterDto registerModel = new UserRegisterDto();
     private string? apiErrorMessage;
 
-    private async Task HandleRegistration()
+    private async Task HandleRegistration(UserRegisterDto args)
     {
         try
         {
@@ -70,6 +59,7 @@
 
             if (response.IsSuccessStatusCode)
             {
+                NotificationService.Notify(NotificationSeverity.Success, "Siker", "Regisztráció sikeres! Jelentkezz be.");
                 Navigation.NavigateTo("/login");
             }
             else
@@ -80,7 +70,7 @@
         }
         catch (Exception ex)
         {
-            apiErrorMessage = $"Hiba történt a regisztáció során: {ex.Message}";
+            apiErrorMessage = $"Hiba történt: {ex.Message}";
         }
     }
 }

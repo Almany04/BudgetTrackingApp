@@ -1,7 +1,8 @@
 using Microsoft.AspNetCore.Components.WebAssembly.Hosting;
 using BudgetTrackingApp.Client.Services;
 using Microsoft.AspNetCore.Components.Authorization;
-using Radzen; 
+using Microsoft.AspNetCore.Components;
+using Radzen; // Radzen névtér
 
 namespace BudgetTrackingApp.Client
 {

@@ -4,63 +4,32 @@
 
 @using BudgetTrackingApp.Shared.Dtos.Category
 @inject HttpClient Http
-@inject ISnackbar Snackbar
-@inject IDialogService DialogService
+@inject DialogService DialogService
+@inject NotificationService NotificationService
 
 <PageTitle>Kategóriák Kezelése</PageTitle>
 
-<MudContainer MaxWidth="MaxWidth.Large" Class="mt-6">
-    <MudPaper Elevation="3" Class="pa-4">
-        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center" Class="mb-4">
-            <MudText Typo="Typo.h5">Kategóriák</MudText>
-            <MudButton Variant="Variant.Filled"
-                       Color="Color.Primary"
-                       StartIcon="@Icons.Material.Filled.Add"
-                       OnClick="OpenCreateDialog">
-                Új Kategória
-            </MudButton>
-        </MudStack>
+<RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" Class="rz-mb-4">
+    <RadzenText TextStyle="TextStyle.H5">Kategóriák</RadzenText>
+    <RadzenButton Text="Új Kategória" Icon="add" ButtonStyle="ButtonStyle.Primary" Click="OpenCreateDialog" />
+</RadzenStack>
 
-        <MudTable Items="categories"
-                  Hover="true"
-                  Breakpoint="Breakpoint.Sm"
-                  Loading="@(categories == null)"
-                  LoadingProgressColor="Color.Info"
-                  FixedHeader="true"
-                  Height="calc(100vh - 250px)">
-            <HeaderContent>
-                <MudTh>Név</MudTh>
-                <MudTh Style="text-align: right">Műveletek</MudTh>
-            </HeaderContent>
-            <RowTemplate>
-                <MudTd DataLabel="Név">@context.Name</MudTd>
-                <MudTd DataLabel="Műveletek" Style="text-align: right">
-                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                   Variant="Variant.Filled"
-                                   Color="Color.Primary"
-                                   Size="Size.Small"
-                                   OnClick="@(() => OpenEditDialog(context))"
-                                   Class="mr-2" />
+<RadzenDataGrid Data="@categories" TItem="CategoryViewDto" AllowPaging="true" PageSize="10" AllowSorting="true" IsLoading="@isLoading" EmptyText="Nincs megjeleníthető adat.">
+    <Columns>
+        <RadzenDataGridColumn TItem="CategoryViewDto" Property="Name" Title="Név" />
 
-                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                   Variant="Variant.Filled"
-                                   Color="Color.Error"
-                                   Size="Size.Small"
-                                   OnClick="@(() => DeleteCategory(context))" />
-                </MudTd>
-            </RowTemplate>
-            <NoRecordsContent>
-                <MudText>Nincsenek kategóriák rögzítve.</MudText>
-            </NoRecordsContent>
-            <LoadingContent>
-                <MudText>Kategóriák betöltése...</MudText>
-            </LoadingContent>
-        </MudTable>
-    </MudPaper>
-</MudContainer>
+        <RadzenDataGridColumn TItem="CategoryViewDto" Title="Műveletek" TextAlign="TextAlign.Center" Width="120px">
+            <Template Context="data">
+                <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small" Click="@(() => OpenEditDialog(data))" Class="rz-mr-1" />
+                <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" Click="@(() => DeleteCategory(data))" />
+            </Template>
+        </RadzenDataGridColumn>
+    </Columns>
+</RadzenDataGrid>
 
 @code {
     private List<CategoryViewDto>? categories;
+    private bool isLoading = false;
 
     protected override async Task OnInitializedAsync()
     {
@@ -69,42 +38,30 @@
 
     private async Task LoadCategoriesAsync()
     {
+        isLoading = true;
         try
         {
-            categories = null;
-            var result = await Http.GetFromJsonAsync<List<CategoryViewDto>>("api/categories");
-            categories = result ?? new List<CategoryViewDto>();
+            categories = await Http.GetFromJsonAsync<List<CategoryViewDto>>("api/categories");
         }
         catch (Exception ex)
         {
-            Snackbar.Add($"Hiba a kategóriák betöltésekor: {ex.Message}", Severity.Error);
-            categories = new List<CategoryViewDto>();
+            NotificationService.Notify(NotificationSeverity.Error, "Hiba", $"Adatok betöltése sikertelen: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
         }
     }
 
     private async Task OpenCreateDialog()
     {
-        var parameters = new DialogParameters
-        {
-            { "CategoryModel", new CategoryCreateDto() },
-            { "CategoryId", null }
-        };
-
-        var options = new DialogOptions
-        {
-            CloseButton = true,
-            MaxWidth = MaxWidth.Small,
-            FullWidth = true
-        };
-
-        var dialog = await DialogService.ShowAsync<BudgetTrackingApp.Client.Shared.CategoryDialog>(
+        var result = await DialogService.OpenAsync<BudgetTrackingApp.Client.Shared.CategoryDialog>(
             "Új Kategória",
-            parameters,
-            options);
+            new Dictionary<string, object> { { "CategoryModel", new CategoryCreateDto() }, { "CategoryId", null } },
+            new DialogOptions() { Width = "400px", Height = "auto" }
+        );
 
-        var result = await dialog.Result;
-
-        if (result != null && !result.Canceled)
+        if (result == true)
         {
             await LoadCategoriesAsync();
         }
@@ -112,27 +69,13 @@
 
     private async Task OpenEditDialog(CategoryViewDto category)
     {
-        var parameters = new DialogParameters
-        {
-            { "CategoryModel", new CategoryUpdateDto { Name = category.Name } },
-            { "CategoryId", category.Id }
-        };
-
-        var options = new DialogOptions
-        {
-            CloseButton = true,
-            MaxWidth = MaxWidth.Small,
-            FullWidth = true
-        };
-
-        var dialog = await DialogService.ShowAsync<BudgetTrackingApp.Client.Shared.CategoryDialog>(
+        var result = await DialogService.OpenAsync<BudgetTrackingApp.Client.Shared.CategoryDialog>(
             "Kategória Szerkesztése",
-            parameters,
-            options);
+            new Dictionary<string, object> { { "CategoryModel", new CategoryUpdateDto { Name = category.Name } }, { "CategoryId", category.Id } },
+            new DialogOptions() { Width = "400px", Height = "auto" }
+        );
 
-        var result = await dialog.Result;
-
-        if (result != null && !result.Canceled)
+        if (result == true)
         {
             await LoadCategoriesAsync();
         }
@@ -140,32 +83,26 @@
 
     private async Task DeleteCategory(CategoryViewDto category)
     {
-        var result = await DialogService.ShowMessageBox(
-            "Törlés Megerősítése",
-            $"Biztosan törölni szeretnéd a '{category.Name}' kategóriát? Ezt a műveletet nem lehet visszavonni.",
-            yesText: "Törlés",
-            cancelText: "Mégse"
-        );
-
-        if (result == true)
+        var confirm = await DialogService.Confirm($"Biztosan törölni szeretnéd a '{category.Name}' kategóriát?", "Törlés", new ConfirmOptions() { OkButtonText = "Igen", CancelButtonText = "Nem" });
+        if (confirm == true)
         {
             try
             {
                 var response = await Http.DeleteAsync($"api/categories/{category.Id}");
                 if (response.IsSuccessStatusCode)
                 {
-                    Snackbar.Add("Kategória törölve!", Severity.Success);
+                    NotificationService.Notify(NotificationSeverity.Success, "Siker", "Kategória törölve!");
                     await LoadCategoriesAsync();
                 }
                 else
                 {
                     var errorMsg = await response.Content.ReadAsStringAsync();
-                    Snackbar.Add($"Hiba a törlés során: {errorMsg}", Severity.Error);
+                    NotificationService.Notify(NotificationSeverity.Error, "Hiba", errorMsg);
                 }
             }
             catch (Exception ex)
             {
-                Snackbar.Add($"Váratlan hiba: {ex.Message}", Severity.Error);
+                NotificationService.Notify(NotificationSeverity.Error, "Hiba", ex.Message);
             }
         }
     }
