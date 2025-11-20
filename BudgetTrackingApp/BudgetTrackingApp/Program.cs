@@ -36,7 +36,7 @@ builder.Services.AddScoped(sp =>
 
 // 4. Database
 builder.Services.AddDbContext<BudgetTrackerDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseSqlite("Data Source=budget.db"));
 
 // 5. Identity Configuration
 builder.Services.AddIdentity<AppUser, IdentityRole>(options =>
@@ -89,7 +89,11 @@ builder.Services.AddScoped<ITransactionLogic, TransactionLogic>();
 builder.Services.AddScoped<IAiSuggestionLogic, AiSuggestionLogic>();
 
 var app = builder.Build();
-
+using (var scope = app.Services.CreateScope())
+{
+    var dbContext = scope.ServiceProvider.GetRequiredService<BudgetTrackerDbContext>();
+    dbContext.Database.Migrate();
+}
 // 8. Pipeline
 if (app.Environment.IsDevelopment())
 {
