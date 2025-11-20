@@ -1,225 +1,181 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 :root {
-    /* Xtract Palette */
-    --bg-root: #020204; /* Deepest Black */
-    --bg-card: #0A0A0B; /* Slightly lighter black */
-    --bg-surface: rgba(255, 255, 255, 0.03); /* Glass effect */
-
+    /* --- Palette: Deepest Space --- */
+    --bg-root: #020204; /* Absolute Black */
+    --bg-panel: #0A0A0C; /* Slightly off-black for panels */
+    --bg-input: #131316; /* Input background */
+    /* --- Borders --- */
     --border-subtle: rgba(255, 255, 255, 0.08);
-    --border-highlight: rgba(255, 255, 255, 0.15);
-    --text-primary: #FFFFFF;
-    --text-secondary: #9CA3AF;
+    --border-active: rgba(139, 92, 246, 0.5);
+    /* --- Text --- */
+    --text-primary: #ffffff;
+    --text-secondary: #A1A1AA;
     --text-muted: #52525b;
-    /* The Xtract Purple/Violet Glow */
-    --accent-glow: #7c3aed;
-    --accent-primary: #8b5cf6;
-    /* Radzen Overrides */
+    /* --- Neon Accent --- */
+    --accent: #7c3aed;
+    --accent-glow: rgba(124, 58, 237, 0.4);
+    /* --- Radzen Variable Overrides --- */
     --rz-text-font-family: 'Inter', sans-serif;
     --rz-body-background-color: var(--bg-root);
     --rz-text-color: var(--text-primary);
-    --rz-base-background-color: var(--bg-card);
+    --rz-base-background-color: var(--bg-panel);
     --rz-border-color: var(--border-subtle);
-    --rz-primary: var(--accent-primary);
+    --rz-primary: var(--accent);
     --rz-secondary: var(--text-secondary);
+    --rz-border-radius: 8px;
+    --rz-input-height: 48px; /* Taller, more premium inputs */
 }
 
 html, body {
     background-color: var(--bg-root);
     color: var(--text-primary);
     font-family: 'Inter', sans-serif;
-    overflow-x: hidden;
     height: 100%;
+    margin: 0;
+    overflow-x: hidden;
 }
 
-/* --- Ambient Background Glows --- */
+/* --- Ambient Glow Effect --- */
 .ambient-glow {
     position: fixed;
-    top: -20%;
+    top: -50%;
     left: 50%;
     transform: translateX(-50%);
-    width: 60vw;
-    height: 60vw;
-    background: radial-gradient(circle, rgba(124, 58, 237, 0.15) 0%, rgba(2, 2, 4, 0) 70%);
+    width: 100vw;
+    height: 100vw;
+    background: radial-gradient(circle, rgba(124, 58, 237, 0.12) 0%, rgba(2, 2, 4, 0) 60%);
     pointer-events: none;
     z-index: -1;
 }
 
-.card-glow {
-    position: absolute;
-    width: 100%;
-    height: 100%;
-    top: 0;
-    left: 0;
-    background: radial-gradient(600px circle at var(--x) var(--y), rgba(255,255,255,0.06), transparent 40%);
-    opacity: 0;
-    transition: opacity 0.5s;
-    pointer-events: none;
-}
-
-/* --- Xtract Card Style --- */
+/* --- Glass Card (The Xtract Look) --- */
 .xtract-card {
-    background-color: var(--bg-card) !important;
+    background: rgba(15, 15, 17, 0.6) !important; /* Semi-transparent dark */
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
     border: 1px solid var(--border-subtle) !important;
     border-radius: 16px !important;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.5) !important;
-    position: relative;
-    overflow: hidden;
-    transition: all 0.3s ease;
+    box-shadow: 0 0 0 1px rgba(0,0,0,1), 0 8px 40px rgba(0,0,0,0.6) !important; /* Double border trick for sharpness */
 }
 
-    .xtract-card:hover {
-        border-color: var(--border-highlight) !important;
-        transform: translateY(-2px);
-        box-shadow: 0 10px 30px rgba(124, 58, 237, 0.05) !important; /* Subtle purple glow on hover */
+/* --- INPUTS: The "Typing Area" Fix --- */
+.rz-textbox, .rz-password, .rz-numeric, .rz-dropdown, .rz-textarea {
+    background-color: var(--bg-input) !important;
+    border: 1px solid var(--border-subtle) !important;
+    color: white !important;
+    border-radius: 8px !important;
+    font-size: 0.95rem !important;
+    padding-left: 1rem !important;
+    transition: all 0.2s ease;
+    box-shadow: inset 0 1px 2px rgba(0,0,0,0.2);
+}
+
+    .rz-textbox:focus, .rz-password:focus, .rz-numeric:focus, .rz-textarea:focus {
+        border-color: var(--accent) !important;
+        background-color: #17171a !important;
+        box-shadow: 0 0 0 2px rgba(124, 58, 237, 0.2), inset 0 1px 2px rgba(0,0,0,0.2) !important;
     }
 
-/* --- Typography --- */
-h1, h2, h3, h4, h5, h6 {
-    color: var(--text-primary);
-    font-weight: 700;
-    letter-spacing: -0.03em; /* Tight tracking like the template */
+    .rz-textbox::placeholder, .rz-password::placeholder {
+        color: #52525b !important;
+    }
+
+/* --- Buttons --- */
+.btn-primary, .rz-button-primary {
+    background: linear-gradient(180deg, #8b5cf6 0%, #7c3aed 100%) !important;
+    border: 1px solid rgba(255,255,255,0.1) !important;
+    box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3), inset 0 1px 0 rgba(255,255,255,0.2) !important;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    transition: all 0.2s;
 }
 
+    .btn-primary:hover, .rz-button-primary:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 6px 20px rgba(124, 58, 237, 0.5), inset 0 1px 0 rgba(255,255,255,0.2) !important;
+    }
+
+/* --- Sidebar & Layout --- */
+.rz-sidebar {
+    background-color: rgba(5, 5, 7, 0.8) !important; /* Glassy sidebar */
+    backdrop-filter: blur(15px);
+    border-right: 1px solid var(--border-subtle);
+}
+
+.rz-header {
+    background-color: transparent !important;
+    border-bottom: 1px solid var(--border-subtle);
+}
+
+/* Navigation Items */
+.rz-navigation-item-wrapper {
+    color: var(--text-secondary) !important;
+    transition: color 0.2s;
+}
+
+    .rz-navigation-item-wrapper:hover {
+        background-color: rgba(255,255,255,0.03) !important;
+        color: white !important;
+    }
+
+.rz-navigation-item-wrapper-active {
+    background-color: rgba(124, 58, 237, 0.1) !important;
+    color: #a78bfa !important;
+    border-left: 3px solid #a78bfa;
+}
+
+    .rz-navigation-item-wrapper-active .rz-navigation-item-icon {
+        color: #a78bfa !important;
+    }
+
+/* --- Text Utilities --- */
 .text-gradient {
-    background: linear-gradient(to right, #fff, #a78bfa);
+    background: linear-gradient(to right, #ffffff, #a78bfa);
     -webkit-background-clip: text;
     -webkit-text-fill-color: transparent;
 }
 
-/* --- Animations --- */
+/* --- DataGrid Modernization --- */
+.rz-grid-table {
+    background: transparent !important;
+}
+
+    .rz-grid-table thead th {
+        background-color: transparent !important;
+        border-bottom: 1px solid var(--border-subtle) !important;
+        color: var(--text-muted) !important;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+        letter-spacing: 1px;
+        padding-top: 1.5rem !important;
+        padding-bottom: 1rem !important;
+    }
+
+    .rz-grid-table td {
+        background-color: transparent !important;
+        border-bottom: 1px solid var(--border-subtle) !important;
+        color: var(--text-primary);
+    }
+
+.rz-datatable-data tr:hover td {
+    background-color: rgba(255,255,255,0.02) !important;
+}
+
+/* --- Animation --- */
 .animate-in {
-    animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+    animation: fadeInUp 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
     opacity: 0;
 }
 
 @keyframes fadeInUp {
     from {
         opacity: 0;
-        transform: translateY(30px);
+        transform: translateY(20px);
     }
 
     to {
         opacity: 1;
         transform: translateY(0);
     }
-}
-
-/* --- Radzen Overrides (The Heavy Lifting) --- */
-
-/* Sidebar */
-.rz-sidebar {
-    background-color: rgba(10, 10, 11, 0.8) !important;
-    border-right: 1px solid var(--border-subtle);
-    backdrop-filter: blur(20px);
-}
-
-.rz-panel-menu {
-    background: transparent !important;
-}
-
-.rz-panel-menu-item-text {
-    color: var(--text-secondary) !important;
-    font-weight: 500;
-    font-size: 0.95rem;
-}
-
-.rz-navigation-item-link:hover {
-    background-color: rgba(255,255,255,0.05) !important;
-    border-radius: 8px;
-}
-
-.rz-navigation-item-wrapper-active {
-    background-color: rgba(139, 92, 246, 0.1) !important;
-    color: var(--accent-primary) !important;
-    border-radius: 8px;
-}
-
-    .rz-navigation-item-wrapper-active .rz-panel-menu-item-text {
-        color: white !important;
-    }
-
-    .rz-navigation-item-wrapper-active .rz-navigation-item-icon {
-        color: var(--accent-primary) !important;
-    }
-
-/* Header */
-.rz-header {
-    background-color: rgba(2, 2, 4, 0.8) !important;
-    border-bottom: 1px solid var(--border-subtle);
-    backdrop-filter: blur(10px);
-}
-
-/* Buttons */
-.btn-primary, .rz-button-primary {
-    background: var(--accent-primary) !important;
-    border: none !important;
-    box-shadow: 0 0 15px rgba(139, 92, 246, 0.3);
-    font-weight: 600;
-    border-radius: 8px !important;
-    transition: all 0.3s;
-}
-
-    .btn-primary:hover, .rz-button-primary:hover {
-        background: #7c3aed !important;
-        box-shadow: 0 0 25px rgba(139, 92, 246, 0.5);
-    }
-
-/* Inputs */
-.rz-textbox, .rz-password, .rz-dropdown, .rz-numeric {
-    background-color: rgba(255,255,255,0.03) !important;
-    border: 1px solid var(--border-subtle) !important;
-    color: white !important;
-    border-radius: 8px !important;
-    height: 45px;
-}
-
-    .rz-textbox:focus, .rz-password:focus {
-        border-color: var(--accent-primary) !important;
-        background-color: rgba(0,0,0,0.5) !important;
-    }
-
-/* DataGrid (The Table) */
-.rz-grid-table {
-    background: transparent !important;
-}
-
-    .rz-grid-table thead th {
-        background: transparent !important;
-        border-bottom: 1px solid var(--border-subtle) !important;
-        color: var(--text-muted) !important;
-        text-transform: uppercase;
-        font-size: 0.75rem;
-        letter-spacing: 1px;
-    }
-
-    .rz-grid-table tr {
-        background: transparent !important;
-    }
-
-    .rz-grid-table td {
-        border-bottom: 1px solid rgba(255,255,255,0.03) !important;
-        color: var(--text-secondary);
-    }
-
-    .rz-grid-table tr:hover td {
-        background: rgba(255,255,255,0.03) !important;
-        color: white;
-    }
-
-.rz-datatable-header {
-    background: transparent !important;
-    border: none !important;
-}
-
-/* Dialogs */
-.rz-dialog {
-    background: #0e0e10 !important;
-    border: 1px solid var(--border-subtle);
-    border-radius: 16px !important;
-}
-
-.rz-dialog-titlebar {
-    background: transparent !important;
-    border-bottom: 1px solid var(--border-subtle);
 }

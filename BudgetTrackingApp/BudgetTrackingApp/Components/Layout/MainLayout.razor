@@ -1,48 +1,51 @@
 ﻿@inherits LayoutComponentBase
+@inject NavigationManager Navigation
 @using Radzen
 @using Radzen.Blazor
-@inject NavigationManager Navigation
 
 <RadzenComponents />
 
-<RadzenLayout>
-    <RadzenHeader>
-        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0">
-            <RadzenSidebarToggle Click="@(() => sidebarExpanded = !sidebarExpanded)" />
-            <RadzenLabel Text="Budget Tracker" />
+@* Global Ambient Glow *@
+<div class="ambient-glow"></div>
+
+<RadzenLayout Style="height: 100vh; background: transparent;">
+
+    <RadzenHeader Style="height: 70px; padding: 0 1.5rem;">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem" Style="height: 100%;">
+            <RadzenSidebarToggle Click="@(() => sidebarExpanded = !sidebarExpanded)" Style="background: transparent; color: white; border: 1px solid rgba(255,255,255,0.1);" />
+
+            <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center">
+                <div style="width: 32px; height: 32px; background: linear-gradient(135deg, #8b5cf6, #6366f1); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
+                    <RadzenIcon Icon="pie_chart" Style="color: white; font-size: 1.2rem;" />
+                </div>
+                <span class="text-gradient" style="font-weight: 800; font-size: 1.4rem; letter-spacing: -0.5px;">XTRACT</span>
+            </RadzenStack>
         </RadzenStack>
     </RadzenHeader>
-    <RadzenSidebar @bind-Expanded="@sidebarExpanded">
-        <RadzenPanelMenu>
-            <RadzenPanelMenuItem Text="Főoldal" Path="/" Icon="home" />
 
-            <AuthorizeView>
-                <Authorized>
-                    <RadzenPanelMenuItem Text="Vezérlőpult" Path="dashboard" Icon="dashboard" />
-                    <RadzenPanelMenuItem Text="Tranzakciók" Path="transactions" Icon="list" />
-                    <RadzenPanelMenuItem Text="Kategóriák" Path="categories" Icon="category" />
-                    <RadzenPanelMenuItem Text="Budget Beállítás" Path="budget" Icon="account_balance_wallet" />
-                    <RadzenPanelMenuItem Text="Kijelentkezés" Path="logout" Icon="logout" />
-                </Authorized>
-                <NotAuthorized>
-                    <RadzenPanelMenuItem Text="Bejelentkezés" Path="login" Icon="login" />
-                    <RadzenPanelMenuItem Text="Regisztráció" Path="register" Icon="app_registration" />
-                </NotAuthorized>
-            </AuthorizeView>
+    <RadzenSidebar @bind-Expanded="@sidebarExpanded" Style="width: 260px; padding: 1.5rem 0; z-index: 10;">
+        <RadzenPanelMenu>
+            @* Note: Authorization logic works differently in Server vs Client rendering. 
+                For visual consistency, we render the same structure. *@
+            <RadzenText TextStyle="TextStyle.Caption" Style="padding-left: 1.5rem; margin-bottom: 0.5rem; color: var(--text-muted); font-weight: 700; letter-spacing: 1px;">MAIN MENU</RadzenText>
+
+            <RadzenPanelMenuItem Text="Dashboard" Path="dashboard" Icon="dashboard" />
+            <RadzenPanelMenuItem Text="Transactions" Path="transactions" Icon="receipt_long" />
+            <RadzenPanelMenuItem Text="Categories" Path="categories" Icon="category" />
+            <RadzenPanelMenuItem Text="Budget Plan" Path="budget" Icon="account_balance_wallet" />
+
+            <div style="margin: 2rem 1.5rem; border-top: 1px solid var(--border-subtle);"></div>
+
+            <RadzenPanelMenuItem Text="Log Out" Path="logout" Icon="logout" Style="color: #ef4444;" />
         </RadzenPanelMenu>
     </RadzenSidebar>
-    <RadzenBody>
-        <div class="rz-p-4">
+
+    <RadzenBody Style="background: transparent; padding: 0;">
+        <div class="rz-p-4 animate-in" style="max-width: 1600px; margin: 0 auto;">
             @Body
         </div>
     </RadzenBody>
 </RadzenLayout>
-
-<div id="blazor-error-ui">
-    An unhandled error has occurred.
-    <a href="" class="reload">Reload</a>
-    <a class="dismiss">🗙</a>
-</div>
 
 @code {
     bool sidebarExpanded = true;
