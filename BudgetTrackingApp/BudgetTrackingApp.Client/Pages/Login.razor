@@ -60,7 +60,7 @@
         apiErrorMessage = null;
         try
         {
-            // 1. API hívás - ez állítja be a HTTP-Only sütit
+            // 1. API hívás a szerver felé - Ez állítja be a HTTP-Only Sütit
             var response = await Http.PostAsJsonAsync("api/user/login", loginModel);
 
             if (response.IsSuccessStatusCode)
@@ -68,18 +68,19 @@
                 var responseDto = await response.Content.ReadFromJsonAsync<UserLoginResponseDto>();
                 if (responseDto != null)
                 {
-                    // 2. Kliens oldali állapot frissítése (SessionStorage)
-                    // A biztonságos típusellenőrzés (is) megvédi a kódot a szerver oldali futásnál
+                    // 2. Kliens oldali állapot (Session) beállítása
+                    // Ez azért kell, hogy a WASM komponensek azonnal tudják, ki vagy
                     if (AuthStateProvider is CustomAuthenticationStateProvider customAuthProvider)
                     {
                         await customAuthProvider.LoginAsync(responseDto);
                     }
 
-                    NotificationService.Notify(NotificationSeverity.Success, "Üdvözöllek!", "Sikeres bejelentkezés.");
+                    NotificationService.Notify(NotificationSeverity.Success, "Siker", "Sikeres bejelentkezés.");
 
-                    // 3. Teljes oldal újratöltés (ForceLoad)
-                    // Ez kritikus, hogy a szerver is lássa a sütit és a menük megjelenjenek
-                    Navigation.NavigateTo("/", forceLoad: true);
+                    // 3. TELJES ÚJRATÖLTÉS (forceLoad: true)
+                    // Ez kényszeríti a böngészőt, hogy elküldje az új sütit a szervernek.
+                    // E nélkül a szerver "elfelejti", hogy beléptél.
+                    Navigation.NavigateTo("/dashboard", forceLoad: true);
                 }
             }
             else
@@ -90,7 +91,7 @@
         }
         catch (Exception ex)
         {
-            apiErrorMessage = $"Hiba történt: {ex.Message}";
+            apiErrorMessage = $"Kritikus hiba történt: {ex.Message}";
         }
         finally
         {

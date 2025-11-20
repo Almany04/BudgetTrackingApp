@@ -1,10 +1,6 @@
 ﻿@inherits LayoutComponentBase
 @inject NavigationManager Navigation
 @inject AuthenticationStateProvider AuthStateProvider
-@inject DialogService DialogService
-@inject NotificationService NotificationService
-@inject TooltipService TooltipService
-@inject ContextMenuService ContextMenuService
 
 <RadzenComponents />
 
@@ -20,11 +16,11 @@
         <RadzenPanelMenu>
             <AuthorizeView>
                 <Authorized>
+                    <RadzenPanelMenuItem Text="Főoldal" Path="/" Icon="home" />
                     <RadzenPanelMenuItem Text="Vezérlőpult" Path="dashboard" Icon="dashboard" />
                     <RadzenPanelMenuItem Text="Tranzakciók" Path="transactions" Icon="receipt_long" />
                     <RadzenPanelMenuItem Text="Kategóriák" Path="categories" Icon="category" />
                     <RadzenPanelMenuItem Text="Budget Beállítás" Path="budget" Icon="account_balance_wallet" />
-
                     <RadzenPanelMenuItem Text="Kijelentkezés" Path="logout" Icon="logout" />
                 </Authorized>
                 <NotAuthorized>

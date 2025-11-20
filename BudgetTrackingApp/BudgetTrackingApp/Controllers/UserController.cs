@@ -44,19 +44,19 @@ namespace BudgetTrackingApp.Api.Controllers
 
         [HttpPost("login")]
         [AllowAnonymous]
-        public async Task<IActionResult> UserLoginAsync([FromBody]UserLoginDto userLoginDto)
+        public async Task<IActionResult> UserLoginAsync([FromBody] UserLoginDto userLoginDto)
         {
             try
             {
-                // A UserLogic leellenőrzi a jelszót és visszaadja a DTO-t
+                // A UserLogic ellenőrzi a jelszót
                 var responseDto = await _userLogic.LoginUserAsync(userLoginDto);
 
-                // Most TÉNYLEGESEN bejelentkeztetjük a felhasználót a szerveren,
-                // ami beállítja az authentikációs SÜTIT.
+                // Bejelentkeztetjük a felhasználót a szerveren
                 var user = await _userManager.FindByEmailAsync(userLoginDto.Email);
-                await _signInManager.SignInAsync(user, isPersistent: false); // <-- EZ A KULCSOR!
 
-                // Visszaadjuk a DTO-t a kliensnek, hogy a localStorage-ba is bekerüljön
+                // JAVÍTÁS: isPersistent: true - Ez segít, hogy a süti megmaradjon böngésző bezárás/frissítés után is
+                await _signInManager.SignInAsync(user, isPersistent: true);
+
                 return Ok(responseDto);
             }
             catch (Exception ex)
