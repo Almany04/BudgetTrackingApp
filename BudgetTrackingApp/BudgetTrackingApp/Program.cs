@@ -4,6 +4,7 @@ using BudgetTrackingApp.Logic.Interfaces;
 using BudgetTrackingApp.Logic.Services;
 using BudgetTrackingApp.Repository.Implamentations;
 using BudgetTrackingApp.Repository.Interfaces;
+using Microsoft.AspNetCore.Authentication.Cookies;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Radzen;
@@ -26,7 +27,7 @@ builder.Services.AddHttpContextAccessor();
 builder.Services.AddScoped<AuthenticationStateProvider, ServerAuthenticationStateProvider>();
 builder.Services.AddCascadingAuthenticationState();
 
-// 3. Register HttpClient (Required for Server logic to not crash)
+// 3. Register HttpClient
 builder.Services.AddScoped(sp =>
 {
     var navigation = sp.GetRequiredService<NavigationManager>();
@@ -49,13 +50,18 @@ builder.Services.AddIdentity<AppUser, IdentityRole>(options =>
 .AddEntityFrameworkStores<BudgetTrackerDbContext>()
 .AddDefaultTokenProviders();
 
-// 6. Fix Cookie Settings for Localhost
+// --- FIX: Cookie Configuration ---
 builder.Services.ConfigureApplicationCookie(options =>
 {
+    // 1. CHANGE THE NAME: This invalidates all previous "Identity.Application" cookies immediately.
+    options.Cookie.Name = "BudgetAppSession";
+
     options.Cookie.HttpOnly = true;
     options.Cookie.SameSite = SameSiteMode.Lax;
     options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
-    options.ExpireTimeSpan = TimeSpan.FromDays(30);
+
+    // 2. SHORTEN LIFETIME: Set to 60 minutes (or whatever you prefer) instead of 30 days.
+    options.ExpireTimeSpan = TimeSpan.FromMinutes(60);
     options.SlidingExpiration = true;
 
     options.Events.OnRedirectToLogin = context =>
@@ -103,8 +109,6 @@ app.UseAuthorization();
 
 app.MapControllers();
 
-// FIX: Method takes NO arguments here. 
-// We configure disabling prerendering in App.razor instead.
 app.MapRazorComponents<App>()
     .AddInteractiveWebAssemblyRenderMode()
     .AddAdditionalAssemblies(typeof(BudgetTrackingApp.Client._Imports).Assembly);

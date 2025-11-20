@@ -1,101 +1,141 @@
 ﻿@page "/dashboard"
-@* ADD THIS LINE BELOW *@
 @rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @attribute [Authorize]
+
+@using BudgetTrackingApp.Shared.Dtos.Budget
+@using BudgetTrackingApp.Shared.Dtos.Transactions
+@using BudgetTrackingApp.Shared.Enums
 @inject HttpClient Http
 @inject NotificationService NotificationService
 
-<PageTitle>Vezérlőpult</PageTitle>
+<PageTitle>Dashboard</PageTitle>
 
-<RadzenText TextStyle="TextStyle.H3" TagName="TagName.H1" Class="rz-mb-4">Áttekintés</RadzenText>
+<div class="animate-in">
+    <RadzenText TextStyle="TextStyle.DisplayH4" Style="font-weight: 800; margin-bottom: 0.5rem; color: white;">
+        Overview
+    </RadzenText>
+    <RadzenText TextStyle="TextStyle.Body1" Style="color: var(--text-secondary); margin-bottom: 2rem;">
+        Your financial health at a glance.
+    </RadzenText>
 
-@if (isLoading)
-{
-    <RadzenProgressBar Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
-}
-else
-{
-    <RadzenRow Class="rz-mb-4">
-        @* AI Section *@
-        <RadzenColumn Size="12" Class="rz-mb-4">
-            <RadzenCard Variant="Variant.Filled" Class="rz-background-color-info-lighter">
-                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
-                    <RadzenIcon Icon="auto_awesome" Style="color: var(--rz-primary)" />
-                    <RadzenText TextStyle="TextStyle.H5" Class="rz-m-0">AI Pénzügyi Tanácsadó</RadzenText>
-                </RadzenStack>
-                <RadzenStack Gap="0.5rem" Class="rz-mt-2">
-                    @if (aiSuggestions.Any())
-                    {
-                        @foreach (var suggestion in aiSuggestions)
+    @if (isLoading)
+    {
+        <RadzenProgressBar Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" Style="background: transparent; height: 2px;" />
+    }
+    else
+    {
+        <RadzenRow Gutter="1.5rem">
+
+            @* --- Column 1: Budget & AI (Left) --- *@
+            <RadzenColumn Size="12" SizeLG="8">
+                <RadzenStack Gap="1.5rem">
+
+                    @* Budget Card *@
+                    <RadzenCard Class="xtract-card" Style="padding: 2rem;">
+                        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Start">
+                            <RadzenStack Gap="0.5rem">
+                                <RadzenText TextStyle="TextStyle.Subtitle2" Style="color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px;">Monthly Budget</RadzenText>
+                                <div style="font-size: 3.5rem; font-weight: 800; line-height: 1; letter-spacing: -2px;">
+                                    <span style="color: white;">@((budget?.SpentAmount ?? 0).ToString("N0"))</span>
+                                    <span style="color: var(--text-muted); font-size: 1.5rem; font-weight: 500;"> / @((budget?.LimitAmount ?? 0).ToString("N0")) HUF</span>
+                                </div>
+                            </RadzenStack>
+
+                            @* Circular Progress Indicator *@
+                            <div style="position: relative; width: 80px; height: 80px;">
+                                <svg width="80" height="80" viewBox="0 0 100 100">
+                                    <circle cx="50" cy="50" r="40" stroke="#262626" stroke-width="8" fill="none" />
+                                    <circle cx="50" cy="50" r="40" stroke="@(budgetPercentage > 100 ? "#ef4444" : "#8b5cf6")" stroke-width="8" fill="none"
+                                            stroke-dasharray="251.2" stroke-dashoffset="@(251.2 - (251.2 * Math.Min(budgetPercentage, 100) / 100))"
+                                            transform="rotate(-90 50 50)" style="transition: stroke-dashoffset 1s ease;" />
+                                </svg>
+                                <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); font-weight: bold; color: white;">
+                                    @budgetPercentage.ToString("0")%
+                                </div>
+                            </div>
+                        </RadzenStack>
+
+                        <div style="margin-top: 2rem;">
+                            <RadzenProgressBar Value="@budgetPercentage" Max="100" ShowValue="false" Style="height: 8px; border-radius: 4px; background-color: rgba(255,255,255,0.1);" />
+                            <RadzenText TextStyle="TextStyle.Caption" Style="margin-top: 0.5rem; color: var(--text-secondary);">
+                                @(budgetPercentage > 100 ? "Warning: You have exceeded your budget limit." : "You are within your budget limits.")
+                            </RadzenText>
+                        </div>
+                    </RadzenCard>
+
+                    @* AI Insights Card *@
+                    <RadzenCard Class="xtract-card" Style="padding: 2rem; background: linear-gradient(180deg, rgba(139, 92, 246, 0.05) 0%, rgba(10, 10, 11, 0) 100%) !important;">
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem" Class="rz-mb-3">
+                            <RadzenIcon Icon="auto_awesome" Style="color: #8b5cf6;" />
+                            <RadzenText TextStyle="TextStyle.Subtitle2" Style="color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin: 0;">AI Insights</RadzenText>
+                        </RadzenStack>
+
+                        @if (aiSuggestions.Any())
                         {
-                            <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" Shade="Shade.Lighter" AllowClose="false" Style="margin: 0">
-                                @suggestion
-                            </RadzenAlert>
+                            <RadzenStack Gap="1rem">
+                                @foreach (var suggestion in aiSuggestions)
+                                {
+                                    <div style="background: rgba(255,255,255,0.03); padding: 1rem; border-radius: 12px; border-left: 3px solid #8b5cf6;">
+                                        <RadzenText TextStyle="TextStyle.Body2" Style="color: var(--text-secondary); line-height: 1.4; margin: 0;">
+                                            @suggestion
+                                        </RadzenText>
+                                    </div>
+                                }
+                            </RadzenStack>
                         }
+                        else
+                        {
+                            <RadzenText TextStyle="TextStyle.Body2" Style="color: var(--text-muted);">Analyzing your spending patterns...</RadzenText>
+                        }
+                    </RadzenCard>
+
+                </RadzenStack>
+            </RadzenColumn>
+
+            @* --- Column 2: Chart (Right) --- *@
+            <RadzenColumn Size="12" SizeLG="4">
+                <RadzenCard Class="xtract-card" Style="height: 100%; padding: 2rem; min-height: 400px;">
+                    <RadzenText TextStyle="TextStyle.Subtitle2" Style="color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 1.5rem;">Top Expenses</RadzenText>
+
+                    @if (chartData.Any())
+                    {
+                        <RadzenChart style="height: 250px; background: transparent;">
+                            <RadzenColumnSeries Data="@chartData" CategoryProperty="Category" ValueProperty="Total" Fill="#8b5cf6" />
+
+                            <RadzenCategoryAxis Padding="20">
+                                <RadzenGridLines Visible="false" />
+                                <RadzenAxisTitle Text="" />
+                            </RadzenCategoryAxis>
+
+                            <RadzenValueAxis Formatter="@(value => ((double)value).ToString("N0"))">
+                                <RadzenGridLines Visible="true" Stroke="rgba(255,255,255,0.05)" />
+                                <RadzenAxisTitle Text="" />
+                            </RadzenValueAxis>
+
+                            <RadzenLegend Visible="false" />
+                        </RadzenChart>
+
+                        <RadzenStack Gap="0.5rem" Class="rz-mt-4">
+                            @foreach (var item in chartData.Take(5))
+                            {
+                                <div style="display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding: 8px 0;">
+                                    <span style="color: var(--text-secondary); font-size: 0.9rem;">@item.Category</span>
+                                    <span style="color: white; font-weight: 600; font-size: 0.9rem;">@item.Total.ToString("N0")</span>
+                                </div>
+                            }
+                        </RadzenStack>
                     }
                     else
                     {
-                        <RadzenText>Nincs elég adat a tanácsok generálásához.</RadzenText>
+                        <div style="height: 200px; display: flex; align-items: center; justify-content: center; color: var(--text-muted);">
+                            No data available for this month.
+                        </div>
                     }
-                </RadzenStack>
-            </RadzenCard>
-        </RadzenColumn>
-
-        <RadzenColumn Size="12" SizeMD="6">
-            <RadzenCard Variant="Variant.Outlined">
-                <RadzenStack Orientation="Orientation.Vertical" Gap="1rem">
-                    <RadzenText TextStyle="TextStyle.H6" Class="rz-mb-0">Havi Budget Állapot</RadzenText>
-
-                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
-                        <RadzenText TextStyle="TextStyle.DisplayH4" Class="rz-color-primary rz-mb-0">
-                            @((budget?.SpentAmount ?? 0).ToString("C0"))
-                        </RadzenText>
-                        <RadzenText TextStyle="TextStyle.Caption" Style="padding-top: 10px;">
-                            / @((budget?.LimitAmount ?? 0).ToString("C0"))
-                        </RadzenText>
-                    </RadzenStack>
-
-                    <RadzenProgressBar Value="@budgetPercentage" Max="100" ShowValue="true" Style="@GetProgressStyle()" />
-
-                    <RadzenText TextStyle="TextStyle.Body2" Class="rz-color-secondary">
-                        @(budgetPercentage > 100 ? "Túllépted a keretet!" : "Még van kereted.")
-                    </RadzenText>
-                </RadzenStack>
-            </RadzenCard>
-        </RadzenColumn>
-
-        <RadzenColumn Size="12" SizeMD="6">
-            <RadzenCard Variant="Variant.Outlined">
-                <RadzenText TextStyle="TextStyle.H6" Class="rz-mb-4">Kiadások kategóriánként (elmúlt 30 nap)</RadzenText>
-                @if (chartData.Any())
-                {
-                    <RadzenChart style="height: 250px">
-                        <RadzenDonutSeries Data="@chartData" CategoryProperty="Category" ValueProperty="Total">
-                            <TitleTemplate>
-                                <div class="rz-donut-content">
-                                    <div>Kiadások</div>
-                                </div>
-                            </TitleTemplate>
-                            <TooltipTemplate Context="data">
-                                <div>
-                                    <strong>@data.Category</strong>
-                                    <div>@data.Total.ToString("C0")</div>
-                                </div>
-                            </TooltipTemplate>
-                        </RadzenDonutSeries>
-                        <RadzenLegend Position="LegendPosition.Right" />
-                    </RadzenChart>
-                }
-                else
-                {
-                    <RadzenAlert AlertStyle="AlertStyle.Info" Variant="Variant.Flat" Shade="Shade.Lighter">
-                        Nincs adat az elmúlt 30 napból.
-                    </RadzenAlert>
-                }
-            </RadzenCard>
-        </RadzenColumn>
-    </RadzenRow>
-}
+                </RadzenCard>
+            </RadzenColumn>
+        </RadzenRow>
+    }
+</div>
 
 @code {
     private BudgetViewDto? budget;
@@ -108,6 +148,7 @@ else
         public string Category { get; set; } = "";
         public double Total { get; set; }
     }
+
     private List<ChartItem> chartData = new();
 
     protected override async Task OnInitializedAsync()
@@ -123,8 +164,9 @@ else
             var budgetTask = Http.GetFromJsonAsync<BudgetViewDto>("api/budget");
             var endDate = DateTime.Now;
             var startDate = endDate.AddDays(-30);
+
+            // API Calls
             var transactionsTask = Http.GetFromJsonAsync<List<TransactionViewDto>>($"api/transaction?startDate={startDate:yyyy-MM-dd}&endDate={endDate:yyyy-MM-dd}");
-            // Load AI suggestions
             var aiTask = Http.GetFromJsonAsync<List<string>>("api/aisuggestion");
 
             await Task.WhenAll(budgetTask, transactionsTask, aiTask);
@@ -133,6 +175,7 @@ else
             var transactions = await transactionsTask;
             aiSuggestions = await aiTask ?? new();
 
+            // Calculate Budget %
             if (budget != null && budget.LimitAmount > 0)
             {
                 budgetPercentage = Math.Min(100, (double)(budget.SpentAmount / budget.LimitAmount) * 100);
@@ -142,12 +185,14 @@ else
                 budgetPercentage = 0;
             }
 
+            // Process Chart Data
             if (transactions != null)
             {
                 chartData = transactions
                    .Where(t => t.Type == TransactionType.Expense)
                    .GroupBy(t => t.CategoryName)
-                   .Select(g => new ChartItem { Category = g.Key, Total = (double)g.Sum(t => t.Amount) })
+                   .Select(g => new ChartItem { Category = g.Key ?? "Egyéb", Total = (double)g.Sum(t => t.Amount) })
+                   .OrderByDescending(x => x.Total)
                    .ToList();
             }
         }
@@ -159,12 +204,5 @@ else
         {
             isLoading = false;
         }
-    }
-
-    private string GetProgressStyle()
-    {
-        if (budgetPercentage >= 100) return "color: var(--rz-danger); height: 20px;";
-        if (budgetPercentage > 75) return "color: var(--rz-warning); height: 20px;";
-        return "color: var(--rz-success); height: 20px;";
     }
 }

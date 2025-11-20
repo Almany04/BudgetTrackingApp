@@ -27,7 +27,7 @@ namespace BudgetTrackingApp.Api.Controllers
 
         [HttpPost("register")]
         [AllowAnonymous]
-        [IgnoreAntiforgeryToken] // FIX 1: Allows POST without token issues
+        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> UserRegisterAsync([FromBody] UserRegisterDto userRegisterDto)
         {
             try
@@ -41,7 +41,7 @@ namespace BudgetTrackingApp.Api.Controllers
 
         [HttpPost("login")]
         [AllowAnonymous]
-        [IgnoreAntiforgeryToken] // FIX 1
+        [IgnoreAntiforgeryToken]
         public async Task<IActionResult> UserLoginAsync([FromBody] UserLoginDto userLoginDto)
         {
             try
@@ -49,15 +49,15 @@ namespace BudgetTrackingApp.Api.Controllers
                 var responseDto = await _userLogic.LoginUserAsync(userLoginDto);
                 var user = await _userManager.FindByEmailAsync(userLoginDto.Email);
 
-                // FIX 2: Persistent cookie for mobile/refresh
-                await _signInManager.SignInAsync(user, isPersistent: true);
+                // FIX: Set isPersistent to false!
+                // This creates a "Session Cookie" that dies when the browser is closed.
+                await _signInManager.SignInAsync(user, isPersistent: false);
 
                 return Ok(responseDto);
             }
             catch (Exception ex) { return BadRequest(ex.Message); }
         }
 
-        // FIX 3: Endpoint to recover session after refresh
         [HttpGet("current")]
         [AllowAnonymous]
         public IActionResult GetCurrentUser()

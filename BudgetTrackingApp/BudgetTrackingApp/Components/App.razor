@@ -6,20 +6,20 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <base href="/" />
     <link rel="stylesheet" href="bootstrap/bootstrap.min.css" />
+
+    @* CHANGED: Use the Dark theme as a base *@
+    <link rel="stylesheet" href="_content/Radzen.Blazor/css/dark-base.css">
+
     <link rel="stylesheet" href="app.css" />
     <link rel="stylesheet" href="BudgetTrackingApp.styles.css" />
     <link rel="icon" type="image/png" href="favicon.png" />
-
-    <link rel="stylesheet" href="_content/Radzen.Blazor/css/material-base.css">
-
-    @* FIX: Disable Prerendering here *@
-    <HeadOutlet @rendermode="new InteractiveWebAssemblyRenderMode(prerender: false)" />
     <link href="manifest.json" rel="manifest" />
+
+    <HeadOutlet @rendermode="new InteractiveWebAssemblyRenderMode(prerender: false)" />
 </head>
 
 <body>
-    @* FIX: Disable Prerendering here *@
-    <Routes @rendermode="new InteractiveWebAssemblyRenderMode(prerender: false)" />
+    <BudgetTrackingApp.Client.Routes @rendermode="new InteractiveWebAssemblyRenderMode(prerender: false)" />
 
     <script src="_framework/blazor.web.js"></script>
     <script src="_content/Radzen.Blazor/Radzen.Blazor.js"></script>

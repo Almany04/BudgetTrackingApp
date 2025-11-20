@@ -4,35 +4,40 @@
 
 <RadzenComponents />
 
-<RadzenLayout Style="height: 100vh">
-    <RadzenHeader>
-        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0">
-            <RadzenSidebarToggle Click="@(() => sidebarExpanded = !sidebarExpanded)" />
-            <RadzenLabel Text="Budget Tracker" Style="margin-left: 1rem; font-weight: bold;" />
+@* Global Ambient Glow Effect *@
+<div class="ambient-glow"></div>
+
+<RadzenLayout Style="height: 100vh; background: transparent;">
+    <RadzenHeader Style="height: 70px; padding: 0 1rem;">
+        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0" Style="height: 100%;">
+            <RadzenSidebarToggle Click="@(() => sidebarExpanded = !sidebarExpanded)" Style="color: var(--text-primary); background: transparent;" />
+            <RadzenLabel Text="XTRACT" Style="margin-left: 0.5rem; font-weight: 800; font-size: 1.5rem; letter-spacing: -0.05em; color: white;" />
+            <span style="color: var(--accent-primary); font-weight: bold; margin-left: 2px;">.</span>
         </RadzenStack>
     </RadzenHeader>
 
-    <RadzenSidebar @bind-Expanded="@sidebarExpanded">
+    <RadzenSidebar @bind-Expanded="@sidebarExpanded" Style="width: 260px; padding-top: 1rem;">
         <RadzenPanelMenu>
             <AuthorizeView>
                 <Authorized>
-                    <RadzenPanelMenuItem Text="Főoldal" Path="/" Icon="home" />
-                    <RadzenPanelMenuItem Text="Vezérlőpult" Path="dashboard" Icon="dashboard" />
-                    <RadzenPanelMenuItem Text="Tranzakciók" Path="transactions" Icon="receipt_long" />
-                    <RadzenPanelMenuItem Text="Kategóriák" Path="categories" Icon="category" />
-                    <RadzenPanelMenuItem Text="Budget Beállítás" Path="budget" Icon="account_balance_wallet" />
-                    <RadzenPanelMenuItem Text="Kijelentkezés" Path="logout" Icon="logout" />
+                    <RadzenPanelMenuItem Text="Dashboard" Path="dashboard" Icon="grid_view" />
+                    <RadzenPanelMenuItem Text="Transactions" Path="transactions" Icon="receipt" />
+                    <RadzenPanelMenuItem Text="Categories" Path="categories" Icon="pie_chart" />
+                    <RadzenPanelMenuItem Text="Budget" Path="budget" Icon="account_balance_wallet" />
+
+                    <div style="margin-top: auto; border-top: 1px solid var(--border-subtle); margin: 1rem 1rem 0 1rem;"></div>
+                    <RadzenPanelMenuItem Text="Sign Out" Path="logout" Icon="logout" Style="margin-top: 1rem; color: #ef4444;" />
                 </Authorized>
                 <NotAuthorized>
-                    <RadzenPanelMenuItem Text="Bejelentkezés" Path="login" Icon="login" />
-                    <RadzenPanelMenuItem Text="Regisztráció" Path="register" Icon="person_add" />
+                    <RadzenPanelMenuItem Text="Sign In" Path="login" Icon="login" />
+                    <RadzenPanelMenuItem Text="Sign Up" Path="register" Icon="person_add" />
                 </NotAuthorized>
             </AuthorizeView>
         </RadzenPanelMenu>
     </RadzenSidebar>
 
-    <RadzenBody>
-        <div class="rz-p-4">
+    <RadzenBody Style="background: transparent;">
+        <div class="rz-p-4 animate-in" style="max-width: 1200px; margin: 0 auto;">
             @Body
         </div>
     </RadzenBody>
