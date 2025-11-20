@@ -12,12 +12,15 @@
 
     <link rel="stylesheet" href="_content/Radzen.Blazor/css/material-base.css">
 
-    <HeadOutlet />
+    @* FIX: Disable Prerendering here *@
+    <HeadOutlet @rendermode="new InteractiveWebAssemblyRenderMode(prerender: false)" />
     <link href="manifest.json" rel="manifest" />
 </head>
 
 <body>
-    <Routes />
+    @* FIX: Disable Prerendering here *@
+    <Routes @rendermode="new InteractiveWebAssemblyRenderMode(prerender: false)" />
+
     <script src="_framework/blazor.web.js"></script>
     <script src="_content/Radzen.Blazor/Radzen.Blazor.js"></script>
     <script>navigator.serviceWorker.register('service-worker.js');</script>

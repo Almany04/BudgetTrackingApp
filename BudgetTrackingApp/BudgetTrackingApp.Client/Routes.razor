@@ -1,0 +1,34 @@
+﻿@using Microsoft.AspNetCore.Components.Authorization
+@using BudgetTrackingApp.Client.Shared
+@using BudgetTrackingApp.Client.Services
+@using Microsoft.AspNetCore.Components.Routing
+
+<Router AppAssembly="@typeof(Program).Assembly">
+    <Found Context="routeData">
+        <AuthorizeRouteView RouteData="@routeData" DefaultLayout="@typeof(MainLayout)">
+            <NotAuthorized>
+                @if (context.User.Identity?.IsAuthenticated != true)
+                {
+                    <RedirectToLogin />
+                }
+                else
+                {
+                    <div style="padding:20px;">
+                        <h3>Hozzáférés megtagadva</h3>
+                        <p>Nincs jogosultsága az oldal megtekintéséhez.</p>
+                    </div>
+                }
+            </NotAuthorized>
+        </AuthorizeRouteView>
+        <FocusOnNavigate RouteData="@routeData" Selector="h1" />
+    </Found>
+    <NotFound>
+        <PageTitle>Nem található</PageTitle>
+        <LayoutView Layout="@typeof(MainLayout)">
+            <div style="padding:20px;">
+                <h3>Hoppá!</h3>
+                <p>A keresett oldal nem található.</p>
+            </div>
+        </LayoutView>
+    </NotFound>
+</Router>

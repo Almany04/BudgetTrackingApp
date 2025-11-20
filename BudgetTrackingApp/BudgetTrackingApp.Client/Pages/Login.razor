@@ -59,39 +59,29 @@
         apiErrorMessage = null;
         try
         {
-            // 1. API call to server (sets HTTP-only cookie)
+            // 1. Send Login Request
             var response = await Http.PostAsJsonAsync("api/user/login", loginModel);
 
             if (response.IsSuccessStatusCode)
             {
-                var responseDto = await response.Content.ReadFromJsonAsync<UserLoginResponseDto>();
-                if (responseDto != null)
-                {
-                    // 2. Update client-side state
-                    if (AuthStateProvider is CustomAuthenticationStateProvider customAuthProvider)
-                    {
-                        await customAuthProvider.LoginAsync(responseDto);
-                    }
-
-                    NotificationService.Notify(NotificationSeverity.Success, "Siker", "Sikeres bejelentkezés.");
-
-                    // 3. Force reload to ensure all services pick up the new cookie identity
-                    Navigation.NavigateTo("/dashboard", forceLoad: true);
-                }
+                // 2. CRITICAL: We must force a full page reload.
+                // This forces the browser to recognize the new HTTP-Only cookie for all future requests.
+                Navigation.NavigateTo("/dashboard", forceLoad: true);
             }
             else
             {
                 string errorContent = await response.Content.ReadAsStringAsync();
-                apiErrorMessage = string.IsNullOrWhiteSpace(errorContent) ? "Hibás email vagy jelszó." : errorContent.Replace("[\"", "").Replace("\"]", "").Replace("\"", "");
+                apiErrorMessage = "Hibás email vagy jelszó.";
             }
         }
         catch (Exception ex)
         {
-            apiErrorMessage = $"Kritikus hiba történt: {ex.Message}";
+            apiErrorMessage = $"Hiba: {ex.Message}";
         }
         finally
         {
             isProcessing = false;
         }
+    }
     }
 }
