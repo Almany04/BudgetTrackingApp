@@ -1,5 +1,6 @@
 ﻿using BudgetTrackingApp.Logic.Interfaces;
 using BudgetTrackingApp.Repository.Interfaces;
+using BudgetTrackingApp.Shared.Dtos.AI;
 using BudgetTrackingApp.Shared.Enums;
 using Microsoft.Extensions.Configuration;
 using System.Net.Http.Json;
@@ -111,7 +112,87 @@ namespace BudgetTrackingApp.Logic.Services
             }
         }
 
-        // --- DTOs ---
+
+
+        public async Task<ReceiptScanResultDto> ScanReceiptAsync(byte[] imageBytes, string contentType)
+        {
+            try
+            {
+                // 1. Base64 kódolás a képhez
+                string base64Image = Convert.ToBase64String(imageBytes);
+
+                // 2. Prompt (Utasítás) a modellnek
+                // Kifejezetten JSON-t kérünk tőle, "markdown" formázás nélkül.
+                var promptText = @"
+                    Analyze this receipt image. Extract the following data into a raw JSON object:
+                    - ""Amount"": The total amount paid (as a number).
+                    - ""TransactionDate"": The date of purchase (in YYYY-MM-DD format). If year is missing, assume current year.
+                    - ""Description"": The name of the merchant or store.
+                    - ""SuggestedCategory"": Guess the budget category (e.g., Groceries, Transport, Entertainment, Utilities) based on the items or store name.
+                    
+                    Return ONLY valid JSON. Do not use code blocks like ```json.
+                    Example format: { ""Amount"": 1250, ""TransactionDate"": ""2025-11-20"", ""Description"": ""Tesco"", ""SuggestedCategory"": ""Groceries"" }";
+
+                // 3. Request összeállítása (Gemini 2.5 Pro)
+                var url = $"[https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=](https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=){_apiKey}";
+
+                var requestBody = new
+                {
+                    contents = new[]
+                    {
+                        new
+                        {
+                            parts = new object[]
+                            {
+                                new { text = promptText },
+                                new
+                                {
+                                    inline_data = new
+                                    {
+                                        mime_type = contentType,
+                                        data = base64Image
+                                    }
+                                }
+                            }
+                        }
+                    }
+                };
+
+                // 4. Küldés
+                var response = await _httpClient.PostAsJsonAsync(url, requestBody);
+
+                if (!response.IsSuccessStatusCode)
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    return new ReceiptScanResultDto { IsSuccess = false, ErrorMessage = $"AI Error: {response.StatusCode}" };
+                }
+
+                var result = await response.Content.ReadFromJsonAsync<GeminiResponse>();
+                var jsonText = result?.Candidates?.FirstOrDefault()?.Content?.Parts?.FirstOrDefault()?.Text;
+
+                if (string.IsNullOrEmpty(jsonText))
+                {
+                    return new ReceiptScanResultDto { IsSuccess = false, ErrorMessage = "AI could not read the image." };
+                }
+
+                // 5. Tisztítás és Deszerializálás
+                // Néha a Gemini mégis tesz köré ```json ... ``` keretet, ezt leszedjük.
+                jsonText = jsonText.Replace("```json", "").Replace("```", "").Trim();
+
+                var dto = JsonSerializer.Deserialize<ReceiptScanResultDto>(jsonText, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+
+                if (dto == null) return new ReceiptScanResultDto { IsSuccess = false, ErrorMessage = "Failed to parse AI response." };
+
+                dto.IsSuccess = true;
+                return dto;
+            }
+            catch (Exception ex)
+            {
+                return new ReceiptScanResultDto { IsSuccess = false, ErrorMessage = ex.Message };
+            }
+        }
+
+        // --- Belső osztályok a Gemini válaszhoz (Ezek már megvannak, csak ellenőrizd) ---
         private class GeminiResponse
         {
             [JsonPropertyName("candidates")]
