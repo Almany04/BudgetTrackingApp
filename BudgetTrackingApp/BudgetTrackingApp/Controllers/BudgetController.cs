@@ -27,14 +27,14 @@ namespace BudgetTrackingApp.Api.Controllers
                 var dto = await _budgetLogic.GetBudgetByUserIdAsync(GetUserId());
                 return dto == null ? NotFound() : Ok(dto);
             }
-            catch (Exception ex) { return BadRequest(ex.Message); }
+            catch (Exception ex) { return BadRequest("Váratlan hiba történt."); }
         }
 
         [HttpPut]
         public async Task<IActionResult> UpdateBudgetLimit([FromBody] BudgetUpdateDto dto)
         {
             try { await _budgetLogic.UpdateBudgetLimitAsync(dto, GetUserId()); return Ok(); }
-            catch (Exception ex) { return BadRequest(ex.Message); }
+            catch (Exception ex) { return BadRequest("Váratlan hiba történt."); }
         }
     }
 }

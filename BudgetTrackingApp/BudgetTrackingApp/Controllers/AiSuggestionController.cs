@@ -32,7 +32,7 @@ namespace BudgetTrackingApp.Api.Controllers
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                return BadRequest("Váratlan hiba történt.");
             }
         }
     }

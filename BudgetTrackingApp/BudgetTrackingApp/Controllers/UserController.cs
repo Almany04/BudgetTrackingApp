@@ -38,7 +38,7 @@ namespace BudgetTrackingApp.Api.Controllers
                 if (result.Succeeded) return StatusCode(201);
                 return BadRequest(result.Errors.Select(r => r.Description));
             }
-            catch (Exception ex) { return BadRequest(ex.Message); }
+            catch (Exception ex) { return BadRequest("Váratlan hiba történt."); }
         }
 
         [HttpPost("login")]
@@ -57,7 +57,7 @@ namespace BudgetTrackingApp.Api.Controllers
 
                 return Ok(responseDto);
             }
-            catch (Exception ex) { return BadRequest(ex.Message); }
+            catch (Exception ex) { return BadRequest("Váratlan hiba történt."); }
         }
 
         [HttpGet("current")]

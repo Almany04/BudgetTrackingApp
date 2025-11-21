@@ -26,28 +26,28 @@ namespace BudgetTrackingApp.Api.Controllers
         public async Task<IActionResult> GetUserCategories()
         {
             try { return Ok(await _categoryLogic.GetCategoriesByUserIdAsync(GetUserId())); }
-            catch (Exception ex) { return BadRequest(ex.Message); }
+            catch (Exception ex) { return BadRequest("Váratlan hiba történt."); }
         }
 
         [HttpPost]
         public async Task<IActionResult> CreateCategory([FromBody] CategoryCreateDto dto)
         {
             try { await _categoryLogic.CreateCategoryAsync(dto, GetUserId()); return StatusCode(201); }
-            catch (Exception ex) { return BadRequest(ex.Message); }
+            catch (Exception ex) { return BadRequest("Váratlan hiba történt."); }
         }
 
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateCategory(Guid id, [FromBody] CategoryUpdateDto dto)
         {
             try { await _categoryLogic.UpdateCategoryAsync(id, dto, GetUserId()); return Ok(); }
-            catch (Exception ex) { return BadRequest(ex.Message); }
+            catch (Exception ex) { return BadRequest("Váratlan hiba történt."); }
         }
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteCategory(Guid id)
         {
             try { await _categoryLogic.DeleteCategoryAsync(id, GetUserId()); return NoContent(); }
-            catch (Exception ex) { return BadRequest(ex.Message); }
+            catch (Exception ex) { return BadRequest("Váratlan hiba történt."); }
         }
     }
 }

@@ -43,11 +43,11 @@ builder.Services.AddDbContext<BudgetTrackerDbContext>(options =>
 // 5. Identity Configuration
 builder.Services.AddIdentity<AppUser, IdentityRole>(options =>
 {
-    options.Password.RequireDigit = false;
-    options.Password.RequireLowercase = false;
-    options.Password.RequireUppercase = false;
-    options.Password.RequireNonAlphanumeric = false;
-    options.Password.RequiredLength = 4;
+    options.Password.RequireDigit = true;
+    options.Password.RequireLowercase = true;
+    options.Password.RequireUppercase = true;
+    options.Password.RequireNonAlphanumeric = false; // Speciális karakter (@#!) opcionális maradhat
+    options.Password.RequiredLength = 8; // Minimum 8 karakter!
 })
 .AddEntityFrameworkStores<BudgetTrackerDbContext>()
 .AddDefaultTokenProviders();
@@ -55,14 +55,17 @@ builder.Services.AddIdentity<AppUser, IdentityRole>(options =>
 
 builder.Services.ConfigureApplicationCookie(options =>
 {
-    
+
     options.Cookie.Name = "BudgetAppSession";
+    options.Cookie.HttpOnly = true; // JavaScript nem férhet hozzá (XSS védelem)
 
-    options.Cookie.HttpOnly = true;
-    options.Cookie.SameSite = SameSiteMode.Lax;
-    options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
+    // FONTOS: A Strict a legbiztonságosabb, de a Lax kényelmesebb.
+    // Mivel SPA (Single Page App) vagyunk, a Strict általában mûködik és ajánlott!
+    options.Cookie.SameSite = SameSiteMode.Strict;
 
-   
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
+
+
     options.ExpireTimeSpan = TimeSpan.FromMinutes(60);
     options.SlidingExpiration = true;
 
