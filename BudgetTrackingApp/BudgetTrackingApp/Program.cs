@@ -116,7 +116,13 @@ app.UseRateLimiter();
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<BudgetTrackerDbContext>();
-    dbContext.Database.Migrate();
+
+    // Csak akkor migrálunk, ha ez egy relációs adatbázis (pl. SQLite vagy SQL Server)
+    // Ha InMemory (tesztelés), akkor ezt átugorjuk.
+    if (dbContext.Database.IsRelational())
+    {
+        dbContext.Database.Migrate();
+    }
 }
 // 8. Pipeline
 if (app.Environment.IsDevelopment())
@@ -142,3 +148,5 @@ app.MapRazorComponents<App>()
     .AddAdditionalAssemblies(typeof(BudgetTrackingApp.Client._Imports).Assembly);
 
 app.Run();
+
+public partial class Program { }

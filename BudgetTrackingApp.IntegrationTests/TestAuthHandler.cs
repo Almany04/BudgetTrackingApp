@@ -16,10 +16,10 @@ namespace BudgetTrackingApp.IntegrationTests
         protected override Task<AuthenticateResult> HandleAuthenticateAsync()
         {
             var claims = new[] {
-                new Claim(ClaimTypes.Name, "TestUser"),
-                new Claim(ClaimTypes.NameIdentifier, "test-user-id"), // Ez lesz a GetUserId() eredménye
-                new Claim(ClaimTypes.Email, "test@test.com")
-            };
+        new Claim(ClaimTypes.Name, "TestUser"),
+        new Claim(ClaimTypes.NameIdentifier, "test-user-id"), // Ennek egyeznie kell a tesztben használt ID-val!
+        new Claim(ClaimTypes.Email, "test@test.com")
+    };
             var identity = new ClaimsIdentity(claims, "Test");
             var principal = new ClaimsPrincipal(identity);
             var ticket = new AuthenticationTicket(principal, "TestScheme");

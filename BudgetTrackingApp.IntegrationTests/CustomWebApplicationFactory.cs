@@ -14,7 +14,7 @@ namespace BudgetTrackingApp.IntegrationTests
         {
             builder.ConfigureServices(services =>
             {
-                // 1. Adatbázis csere InMemory-ra (ezt már megírtad)
+                // 1. Adatbázis csere (ez már jó volt)
                 var descriptor = services.SingleOrDefault(d => d.ServiceType == typeof(DbContextOptions<BudgetTrackerDbContext>));
                 if (descriptor != null) services.Remove(descriptor);
 
@@ -23,9 +23,14 @@ namespace BudgetTrackingApp.IntegrationTests
                     options.UseInMemoryDatabase("IntegrationTestDb");
                 });
 
-                // 2. ÚJ: Hitelesítés megkerülése
-                services.AddAuthentication("TestScheme")
-                        .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>("TestScheme", options => { });
+                // 2. JAVÍTOTT AUTHENTICATION MOCKOLÁS
+                // Ez a trükk: Felülírjuk az alapértelmezett Scheme-et "TestScheme"-re!
+                services.AddAuthentication(options =>
+                {
+                    options.DefaultAuthenticateScheme = "TestScheme";
+                    options.DefaultChallengeScheme = "TestScheme";
+                })
+                .AddScheme<AuthenticationSchemeOptions, TestAuthHandler>("TestScheme", options => { });
             });
         }
     }

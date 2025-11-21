@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <TargetFramework>net8.0</TargetFramework>
@@ -20,11 +20,19 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\BudgetTrackingApp\BudgetTrackingApp\BudgetTrackingApp.Api.csproj" />
+    <ProjectReference Include="..\BudgetTrackingApp\BudgetTrackingApp\BudgetTrackingApp.Api.csproj">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </ProjectReference>
   </ItemGroup>
 
   <ItemGroup>
     <Using Include="Xunit" />
   </ItemGroup>
-
+  <Target Name="CopyDepsFile" AfterTargets="Build">
+    <ItemGroup>
+      <DepsFile Include="$(SolutionDir)BudgetTrackingApp\BudgetTrackingApp\bin\Debug\net8.0\BudgetTrackingApp.Api.deps.json" />
+    </ItemGroup>
+    <Copy SourceFiles="@(DepsFile)" DestinationFiles="$(OutputPath)testhost.deps.json" Condition="Exists('%(RootDir)%(Directory)%(Filename)%(Extension)')" />
+    <Copy SourceFiles="@(DepsFile)" DestinationFolder="$(OutputPath)" Condition="Exists('%(RootDir)%(Directory)%(Filename)%(Extension)')" />
+  </Target>
 </Project>
