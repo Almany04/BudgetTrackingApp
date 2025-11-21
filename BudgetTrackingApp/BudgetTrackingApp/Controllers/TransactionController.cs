@@ -2,6 +2,7 @@
 using BudgetTrackingApp.Shared.Dtos.Transactions;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
 
 namespace BudgetTrackingApp.Api.Controllers
@@ -9,7 +10,8 @@ namespace BudgetTrackingApp.Api.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
-    [IgnoreAntiforgeryToken] // FIX: Unblocks creation
+    [IgnoreAntiforgeryToken]
+    [EnableRateLimiting("General")]
     public class TransactionController : ControllerBase
     {
         private readonly ITransactionLogic _transactionLogic;

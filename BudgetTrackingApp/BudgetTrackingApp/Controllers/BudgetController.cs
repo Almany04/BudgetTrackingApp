@@ -2,6 +2,7 @@
 using BudgetTrackingApp.Shared.Dtos.Budget;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
 
 namespace BudgetTrackingApp.Api.Controllers
@@ -9,7 +10,8 @@ namespace BudgetTrackingApp.Api.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
-    [IgnoreAntiforgeryToken] // FIX: Unblocks updates
+    [IgnoreAntiforgeryToken]
+    [EnableRateLimiting("General")]
     public class BudgetController : ControllerBase
     {
         private readonly IBudgetLogic _budgetLogic;

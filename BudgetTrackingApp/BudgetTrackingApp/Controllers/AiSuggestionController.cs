@@ -1,6 +1,7 @@
 ﻿using BudgetTrackingApp.Logic.Interfaces;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
 
 namespace BudgetTrackingApp.Api.Controllers
@@ -8,6 +9,7 @@ namespace BudgetTrackingApp.Api.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
+    [EnableRateLimiting("Strict")]
     public class AiSuggestionController : ControllerBase
     {
         private readonly IAiSuggestionLogic _aiLogic;

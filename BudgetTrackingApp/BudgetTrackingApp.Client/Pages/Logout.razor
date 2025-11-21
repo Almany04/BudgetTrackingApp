@@ -11,18 +11,18 @@
     {
         try
         {
-            // 1. Szerver oldali kijelentkezés (Süti törlése)
+            
             await Http.PostAsync("api/user/logout", null);
         }
-        catch (Exception) { /* Hibatűrés, ha a szerver már kidobott */ }
+        catch (Exception) { }
 
-        // 2. Kliens oldali állapot törlése (SessionStorage)
+       
         if (AuthStateProvider is CustomAuthenticationStateProvider customAuthProvider)
         {
             await customAuthProvider.LogoutAsync();
         }
 
-        // 3. Teljes újratöltés és irányítás a főoldalra (Login)
+       
         Navigation.NavigateTo("/login", forceLoad: true);
     }
 }

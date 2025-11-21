@@ -21,10 +21,10 @@ namespace BudgetTrackingApp.Client
 
             builder.Services.AddRadzenComponents();
 
-            // FIX: Register the handler that attaches Cookies to every request
+           
             builder.Services.AddTransient<CookieHandler>();
 
-            // FIX: Configure HttpClient to use the CookieHandler
+            
             builder.Services.AddScoped(sp =>
             {
                 var handler = sp.GetRequiredService<CookieHandler>();

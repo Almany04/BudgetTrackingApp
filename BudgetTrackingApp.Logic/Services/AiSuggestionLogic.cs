@@ -70,7 +70,7 @@ namespace BudgetTrackingApp.Logic.Services
             // 3. Call Gemini 2.5 Pro API
             try
             {
-                // CHANGED: Updated to 'gemini-2.5-pro'
+               
                 var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key={_apiKey}";
 
                 var requestBody = new

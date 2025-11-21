@@ -1,3 +1,5 @@
+using BudgetTrackingApp.Api.Components;
+using BudgetTrackingApp.Api.Services;
 using BudgetTrackingApp.Data;
 using BudgetTrackingApp.Data.Entities;
 using BudgetTrackingApp.Logic.Interfaces;
@@ -5,13 +7,13 @@ using BudgetTrackingApp.Logic.Services;
 using BudgetTrackingApp.Repository.Implamentations;
 using BudgetTrackingApp.Repository.Interfaces;
 using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Components;
+using Microsoft.AspNetCore.Components.Authorization;
 using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.EntityFrameworkCore;
 using Radzen;
-using BudgetTrackingApp.Api.Components;
-using BudgetTrackingApp.Api.Services;
-using Microsoft.AspNetCore.Components.Authorization;
-using Microsoft.AspNetCore.Components;
+using System.Threading.RateLimiting;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -50,17 +52,17 @@ builder.Services.AddIdentity<AppUser, IdentityRole>(options =>
 .AddEntityFrameworkStores<BudgetTrackerDbContext>()
 .AddDefaultTokenProviders();
 
-// --- FIX: Cookie Configuration ---
+
 builder.Services.ConfigureApplicationCookie(options =>
 {
-    // 1. CHANGE THE NAME: This invalidates all previous "Identity.Application" cookies immediately.
+    
     options.Cookie.Name = "BudgetAppSession";
 
     options.Cookie.HttpOnly = true;
     options.Cookie.SameSite = SameSiteMode.Lax;
     options.Cookie.SecurePolicy = CookieSecurePolicy.SameAsRequest;
 
-    // 2. SHORTEN LIFETIME: Set to 60 minutes (or whatever you prefer) instead of 30 days.
+   
     options.ExpireTimeSpan = TimeSpan.FromMinutes(60);
     options.SlidingExpiration = true;
 
@@ -87,8 +89,30 @@ builder.Services.AddScoped<IBudgetLogic, BudgetLogic>();
 builder.Services.AddScoped<ICategoryLogic, CategoryLogic>();
 builder.Services.AddScoped<ITransactionLogic, TransactionLogic>();
 builder.Services.AddScoped<IAiSuggestionLogic, AiSuggestionLogic>();
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
+    
+    options.AddFixedWindowLimiter("General", options =>
+    {
+        options.PermitLimit = 60;
+        options.Window = TimeSpan.FromMinutes(1);
+        options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        options.QueueLimit = 2;
+    });
+
+    
+    options.AddFixedWindowLimiter("Strict", options =>
+    {
+        options.PermitLimit = 5;
+        options.Window = TimeSpan.FromMinutes(1);
+        options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
+        options.QueueLimit = 0;
+    });
+});
 var app = builder.Build();
+app.UseRateLimiter();
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<BudgetTrackerDbContext>();

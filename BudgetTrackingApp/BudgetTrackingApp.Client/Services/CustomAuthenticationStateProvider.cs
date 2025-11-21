@@ -8,7 +8,7 @@ namespace BudgetTrackingApp.Client.Services
     public class CustomAuthenticationStateProvider : AuthenticationStateProvider
     {
         private readonly HttpClient _httpClient;
-        // Initialize with anonymous (not logged in) state
+       
         private readonly AuthenticationState _anonymousState = new AuthenticationState(new ClaimsPrincipal(new ClaimsIdentity()));
 
         public CustomAuthenticationStateProvider(HttpClient httpClient)
@@ -20,8 +20,7 @@ namespace BudgetTrackingApp.Client.Services
         {
             try
             {
-                // Always ask the server: "Am I logged in?" 
-                // This keeps Client and Server in sync via the HTTP-Only Cookie.
+
                 var userDto = await _httpClient.GetFromJsonAsync<UserLoginResponseDto>("api/user/current");
 
                 if (userDto != null && !string.IsNullOrEmpty(userDto.UserId))
@@ -38,13 +37,13 @@ namespace BudgetTrackingApp.Client.Services
             }
             catch
             {
-                // If server returns 401 or error, assume logged out.
+                
             }
 
             return _anonymousState;
         }
 
-        // Called by Login.razor to update UI immediately
+   
         public void NotifyUserLogin(string userId, string email)
         {
             var claims = new[]
@@ -58,10 +57,10 @@ namespace BudgetTrackingApp.Client.Services
             NotifyAuthenticationStateChanged(Task.FromResult(new AuthenticationState(user)));
         }
 
-        // Called by Logout.razor - This fixes your compiler error
+        
         public Task LogoutAsync()
         {
-            // Notify the app that the state is now anonymous
+   
             NotifyAuthenticationStateChanged(Task.FromResult(_anonymousState));
             return Task.CompletedTask;
         }
