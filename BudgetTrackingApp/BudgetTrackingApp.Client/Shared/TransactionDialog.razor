@@ -29,20 +29,27 @@
             <RadzenColumn Size="12" SizeMD="6">
                 <RadzenFormField Text="Type" Variant="Variant.Outlined" Style="width: 100%">
                     <RadzenDropDown @bind-Value="TransactionModel.Type"
-                                    Data="@(Enum.GetValues(typeof(TransactionType)))"
+                                    Data="@(Enum.GetValues(typeof(TransactionType)).Cast<TransactionType>().Select(t => new { Text = t.ToString(), Value = t }))"
+                                    TextProperty="Text" ValueProperty="Value"
                                     Name="Type" />
                 </RadzenFormField>
             </RadzenColumn>
             <RadzenColumn Size="12" SizeMD="6">
-                <RadzenFormField Text="Amount (HUF)" Variant="Variant.Outlined" Style="width: 100%">
-                    <RadzenNumeric @bind-Value="TransactionModel.Amount" Name="Amount" Min="1" />
+                <RadzenFormField Text="Payment Method" Variant="Variant.Outlined" Style="width: 100%">
+                    <RadzenDropDown @bind-Value="TransactionModel.PaymentMethod"
+                                    Data="@(Enum.GetValues(typeof(PaymentMethod)).Cast<PaymentMethod>().Select(p => new { Text = p.ToString(), Value = p }))"
+                                    TextProperty="Text" ValueProperty="Value"
+                                    Name="PaymentMethod" />
                 </RadzenFormField>
-                <RadzenRequiredValidator Component="Amount" Text="Amount is required!" />
-                <RadzenNumericRangeValidator Component="Amount" Min="1" Text="Amount must be greater than 0!" />
             </RadzenColumn>
         </RadzenRow>
 
-        <RadzenFormField Text="Category" Variant="Variant.Outlined">
+        @* FEATURE 1: Merchant (Main Group) *@
+        <RadzenFormField Text="Merchant / Store (Main Group)" Variant="Variant.Outlined">
+            <RadzenTextBox @bind-Value="TransactionModel.Merchant" Name="Merchant" Placeholder="e.g. Spar, Tesco, OMV" Style="width: 100%" />
+        </RadzenFormField>
+
+        <RadzenFormField Text="Category (Analysis Group)" Variant="Variant.Outlined">
             <RadzenDropDown @bind-Value="TransactionModel.CategoryId"
                             Data="@categories"
                             TextProperty="Name"
@@ -54,13 +61,23 @@
         </RadzenFormField>
         <RadzenRequiredValidator Component="CategoryId" Text="Category selection is required!" DefaultValue="Guid.Empty" />
 
+        <RadzenRow>
+            <RadzenColumn Size="12">
+                <RadzenFormField Text="Amount (HUF)" Variant="Variant.Outlined" Style="width: 100%">
+                    <RadzenNumeric @bind-Value="TransactionModel.Amount" Name="Amount" Min="1" />
+                </RadzenFormField>
+                <RadzenRequiredValidator Component="Amount" Text="Amount is required!" />
+                <RadzenNumericRangeValidator Component="Amount" Min="1" Text="Amount must be greater than 0!" />
+            </RadzenColumn>
+        </RadzenRow>
+
         <RadzenFormField Text="Date" Variant="Variant.Outlined">
             <RadzenDatePicker @bind-Value="TransactionModel.TransactionDate" Name="TransactionDate" DateFormat="yyyy.MM.dd" Style="width: 100%" />
         </RadzenFormField>
         <RadzenRequiredValidator Component="TransactionDate" Text="Date is required!" />
 
-        <RadzenFormField Text="Description / Note" Variant="Variant.Outlined">
-            <RadzenTextArea @bind-Value="TransactionModel.Description" Rows="3" Name="Description" Style="width: 100%" />
+        <RadzenFormField Text="Items / Details (Sub Group)" Variant="Variant.Outlined">
+            <RadzenTextArea @bind-Value="TransactionModel.Description" Rows="3" Name="Description" Placeholder="e.g. Cheese, Milk, Bread" Style="width: 100%" />
         </RadzenFormField>
 
         <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="1rem" Class="rz-mt-2">
@@ -103,9 +120,14 @@
                         Amount = t.Amount,
                         CategoryId = t.CategoryId,
                         Description = t.Description,
+                        // Add mapping for new properties if your ViewDto has them, otherwise defaults apply
+                        // Merchant = t.Merchant,
+                        // PaymentMethod = t.PaymentMethod,
                         TransactionDate = t.TransactionDate,
                         Type = t.Type
                     };
+                    // Manual mapping if ViewDto doesn't have these yet but UpdateDto does:
+                    // Assuming ViewDto will be updated later, for now defaults are fine or you extend ViewDto.
                 }
             }
             catch
@@ -129,7 +151,7 @@
         catch { }
     }
 
-    
+
     private async Task TriggerFileUpload()
     {
         // Ez a JS hívás nyitja meg a fájlválasztót/kamerát
@@ -162,6 +184,9 @@
                     // 1. Kitöltjük a mezőket az AI adataival
                     if (result.Amount.HasValue) TransactionModel.Amount = result.Amount.Value;
                     if (result.TransactionDate.HasValue) TransactionModel.TransactionDate = result.TransactionDate.Value;
+
+                    // AI Mapping for new fields
+                    if (!string.IsNullOrEmpty(result.Merchant)) TransactionModel.Merchant = result.Merchant;
                     if (!string.IsNullOrEmpty(result.Description)) TransactionModel.Description = result.Description;
 
                     // 2. Kategória kitalálása (szöveges egyezés alapján)
@@ -215,6 +240,8 @@
                     Amount = TransactionModel.Amount,
                     Type = TransactionModel.Type,
                     Description = TransactionModel.Description,
+                    Merchant = TransactionModel.Merchant, // Save Merchant
+                    PaymentMethod = TransactionModel.PaymentMethod, // Save Payment Method
                     TransactionDate = TransactionModel.TransactionDate,
                     CategoryId = TransactionModel.CategoryId
                 };

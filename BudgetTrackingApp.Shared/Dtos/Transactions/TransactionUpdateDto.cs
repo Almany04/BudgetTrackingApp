@@ -16,6 +16,10 @@ namespace BudgetTrackingApp.Shared.Dtos.Transactions
         public TransactionType Type { get; set; }
 
         public string? Description { get; set; }
+        [StringLength(100)]
+        public string? Merchant { get; set; } 
+
+        public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Card;
 
         public DateTime TransactionDate { get; set; }
         [Required]

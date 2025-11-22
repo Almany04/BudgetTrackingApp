@@ -4,9 +4,9 @@ using BudgetTrackingApp.Shared.Dtos.AI;
 using BudgetTrackingApp.Shared.Enums;
 using Microsoft.Extensions.Configuration;
 using System.Net.Http.Json;
-using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Text.RegularExpressions;
 
 namespace BudgetTrackingApp.Logic.Services
 {
@@ -37,7 +37,7 @@ namespace BudgetTrackingApp.Logic.Services
             var budget = await _budgetRepository.GetBudgetByUserIdAsync(userId);
 
             if (transactions == null || !transactions.Any())
-                return new List<string> { "🤖 AI: I need more data! Add some transactions first." };
+                return new List<string> { "🤖 AI: Add some transactions to get insights!" };
 
             var expenses = transactions.Where(t => t.Type == TransactionType.Expense).ToList();
             var totalSpent = expenses.Sum(t => t.Amount);
@@ -48,143 +48,113 @@ namespace BudgetTrackingApp.Logic.Services
                 .Select(g => $"{g.Key}: {g.Sum(t => t.Amount):C0}")
                 .ToList();
 
-            // 2. Build Prompt for Gemini 2.5 Pro (Thinking Model)
+            // 2. Prompt for Gemini 1.5 Flash (Fast & Clean)
             var promptText = $@"
-                You are an expert personal finance advisor. Analyze this user's monthly spending data carefully.
-                
-                Data:
-                - Total Monthly Budget Limit: {budgetLimit:C0}
-                - Total Spent So Far: {totalSpent:C0}
-                - Spending Breakdown by Category: {string.Join(", ", categorySummary)}
-                - Current Date: {DateTime.Now:yyyy-MM-dd}
+                Act as a financial advisor. Data:
+                - Budget: {budgetLimit:C0}
+                - Spent: {totalSpent:C0}
+                - Breakdown: {string.Join(", ", categorySummary)}
 
-                Task:
-                Provide exactly 3 distinct, high-quality, and actionable financial tips.
-                - Use your reasoning capabilities to detect subtle spending habits.
-                - If they are over budget, be stern but helpful.
-                - If they are under budget, suggest saving strategies or investment ideas.
+                Task: 3 short, actionable financial tips (Plain text, no markdown, no bolding).
+                Start each with an emoji.";
 
-                Format:
-                Return ONLY the 3 tips separated by newlines. Do not use introductory text.
-                Start each tip with an emoji suitable for the advice.";
-
-            // 3. Call Gemini 2.5 Pro API
             try
             {
-               
-                var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key={_apiKey}";
-
-                var requestBody = new
-                {
-                    contents = new[]
-                    {
-                        new { parts = new[] { new { text = promptText } } }
-                    }
-                };
+                var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={_apiKey}";
+                var requestBody = new { contents = new[] { new { parts = new[] { new { text = promptText } } } } };
 
                 var response = await _httpClient.PostAsJsonAsync(url, requestBody);
-
-                if (!response.IsSuccessStatusCode)
-                {
-                    var error = await response.Content.ReadAsStringAsync();
-                    throw new Exception($"Gemini API Error: {response.StatusCode} - {error}");
-                }
+                if (!response.IsSuccessStatusCode) return new List<string> { "⚠️ AI Service Unavailable." };
 
                 var result = await response.Content.ReadFromJsonAsync<GeminiResponse>();
-
-                // 4. Parse Response
                 var responseText = result?.Candidates?.FirstOrDefault()?.Content?.Parts?.FirstOrDefault()?.Text;
 
-                if (string.IsNullOrEmpty(responseText)) return new List<string> { "🤖 AI: Could not generate advice this time." };
+                if (string.IsNullOrEmpty(responseText)) return new List<string>();
 
-                var suggestions = responseText
+                return responseText
                     .Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries)
+                    .Select(s => CleanText(s))
                     .Where(s => s.Length > 10)
                     .Take(3)
-                    .Select(s => s.Trim())
                     .ToList();
-
-                return suggestions;
             }
-            catch (Exception ex)
-            {
-                return new List<string> { $"⚠️ AI Unavailable: {ex.Message}" };
-            }
+            catch (Exception) { return new List<string> { "⚠️ AI is unreachable." }; }
         }
 
-
+        private string CleanText(string input)
+        {
+            if (string.IsNullOrWhiteSpace(input)) return "";
+            // Remove Markdown symbols
+            var clean = input.Replace("**", "").Replace("*", "").Replace("#", "").Replace("`", "").Trim();
+            if (clean.StartsWith("- ")) clean = clean.Substring(2);
+            return clean;
+        }
 
         public async Task<ReceiptScanResultDto> ScanReceiptAsync(byte[] imageBytes, string contentType)
         {
             try
             {
-                // 1. Base64 kódolás a képhez
                 string base64Image = Convert.ToBase64String(imageBytes);
 
-                // 2. Prompt (Utasítás) a modellnek
-                // Kifejezetten JSON-t kérünk tőle, "markdown" formázás nélkül.
+                // IMPROVED PROMPT: specifically tailored for Hungarian Receipts (SPAR, etc.)
                 var promptText = @"
-                    Analyze this receipt image. Extract the following data into a raw JSON object:
-                    - ""Amount"": The total amount paid (as a number).
-                    - ""TransactionDate"": The date of purchase (in YYYY-MM-DD format). If year is missing, assume current year.
-                    - ""Description"": The name of the merchant or store.
-                    - ""SuggestedCategory"": Guess the budget category (e.g., Groceries, Transport, Entertainment, Utilities) based on the items or store name.
+                    Analyze this receipt image (likely Hungarian). Extract raw JSON with these exact fields:
+                    - ""Merchant"": The store name at the top (e.g., SPAR, Tesco, Rossmann).
+                    - ""TransactionDate"": Date in YYYY-MM-DD format. Look for formats like '2025.11.20' or '2025.11.20.'.
+                    - ""Amount"": The total amount paid. Look for 'Összesen', 'Összeg', or 'Bankkártya'. Ignore VAT lines (ÁFA). Return as a number.
+                    - ""Description"": A short summary of the items purchased (e.g., 'Tej, Kenyér, Hús').
+                    - ""SuggestedCategory"": A general category guess based on the items (e.g., 'Élelmiszer', 'Bevásárlás', 'Utazás').
                     
-                    Return ONLY valid JSON. Do not use code blocks like ```json.
-                    Example format: { ""Amount"": 1250, ""TransactionDate"": ""2025-11-20"", ""Description"": ""Tesco"", ""SuggestedCategory"": ""Groceries"" }";
+                    Return ONLY valid JSON. Do NOT wrap in markdown code blocks.";
 
-                // 3. Request összeállítása (Gemini 2.5 Pro)
-                var url = $"[https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=](https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key=){_apiKey}";
+                var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={_apiKey}";
 
                 var requestBody = new
                 {
-                    contents = new[]
-                    {
-                        new
-                        {
-                            parts = new object[]
-                            {
+                    contents = new[] {
+                        new {
+                            parts = new object[] {
                                 new { text = promptText },
-                                new
-                                {
-                                    inline_data = new
-                                    {
-                                        mime_type = contentType,
-                                        data = base64Image
-                                    }
-                                }
+                                new { inline_data = new { mime_type = contentType, data = base64Image } }
                             }
                         }
                     }
                 };
 
-                // 4. Küldés
                 var response = await _httpClient.PostAsJsonAsync(url, requestBody);
 
                 if (!response.IsSuccessStatusCode)
                 {
-                    var errorContent = await response.Content.ReadAsStringAsync();
+                    var err = await response.Content.ReadAsStringAsync();
                     return new ReceiptScanResultDto { IsSuccess = false, ErrorMessage = $"AI Error: {response.StatusCode}" };
                 }
 
                 var result = await response.Content.ReadFromJsonAsync<GeminiResponse>();
                 var jsonText = result?.Candidates?.FirstOrDefault()?.Content?.Parts?.FirstOrDefault()?.Text;
 
-                if (string.IsNullOrEmpty(jsonText))
+                if (string.IsNullOrEmpty(jsonText)) return new ReceiptScanResultDto { IsSuccess = false, ErrorMessage = "No text found in receipt." };
+
+                // CLEANUP: Remove ```json and ``` wrappers if the AI adds them
+                jsonText = Regex.Replace(jsonText, @"^```json\s*", "", RegexOptions.IgnoreCase);
+                jsonText = Regex.Replace(jsonText, @"^```\s*", "", RegexOptions.IgnoreCase);
+                jsonText = Regex.Replace(jsonText, @"\s*```$", "", RegexOptions.IgnoreCase);
+                jsonText = jsonText.Trim();
+
+                try
                 {
-                    return new ReceiptScanResultDto { IsSuccess = false, ErrorMessage = "AI could not read the image." };
+                    var dto = JsonSerializer.Deserialize<ReceiptScanResultDto>(jsonText, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    if (dto != null)
+                    {
+                        dto.IsSuccess = true;
+                        return dto;
+                    }
+                }
+                catch (JsonException)
+                {
+                    return new ReceiptScanResultDto { IsSuccess = false, ErrorMessage = "AI format error (JSON)." };
                 }
 
-                // 5. Tisztítás és Deszerializálás
-                // Néha a Gemini mégis tesz köré ```json ... ``` keretet, ezt leszedjük.
-                jsonText = jsonText.Replace("```json", "").Replace("```", "").Trim();
-
-                var dto = JsonSerializer.Deserialize<ReceiptScanResultDto>(jsonText, new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
-
-                if (dto == null) return new ReceiptScanResultDto { IsSuccess = false, ErrorMessage = "Failed to parse AI response." };
-
-                dto.IsSuccess = true;
-                return dto;
+                return new ReceiptScanResultDto { IsSuccess = false };
             }
             catch (Exception ex)
             {
@@ -192,26 +162,10 @@ namespace BudgetTrackingApp.Logic.Services
             }
         }
 
-        // --- Belső osztályok a Gemini válaszhoz (Ezek már megvannak, csak ellenőrizd) ---
-        private class GeminiResponse
-        {
-            [JsonPropertyName("candidates")]
-            public List<Candidate>? Candidates { get; set; }
-        }
-        private class Candidate
-        {
-            [JsonPropertyName("content")]
-            public Content? Content { get; set; }
-        }
-        private class Content
-        {
-            [JsonPropertyName("parts")]
-            public List<Part>? Parts { get; set; }
-        }
-        private class Part
-        {
-            [JsonPropertyName("text")]
-            public string? Text { get; set; }
-        }
+        // --- DTOs for Gemini API ---
+        private class GeminiResponse { [JsonPropertyName("candidates")] public List<Candidate>? Candidates { get; set; } }
+        private class Candidate { [JsonPropertyName("content")] public Content? Content { get; set; } }
+        private class Content { [JsonPropertyName("parts")] public List<Part>? Parts { get; set; } }
+        private class Part { [JsonPropertyName("text")] public string? Text { get; set; } }
     }
 }

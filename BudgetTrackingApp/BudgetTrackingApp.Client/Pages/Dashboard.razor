@@ -82,8 +82,41 @@ else
                 </div>
             </RadzenColumn>
 
-            <RadzenColumn Size="12">
-                <div class="xtract-card" style="padding: 2rem;">
+            <!-- NEW: Circle Diagram (Donut Chart) -->
+            <RadzenColumn Size="12" SizeLG="6">
+                <div class="xtract-card" style="padding: 2rem; height: 100%;">
+                    <h3 style="margin-bottom: 1.5rem; font-size: 1.2rem;">Spending Breakdown</h3>
+                    @if (chartData.Any())
+                    {
+                        <RadzenChart Style="height: 300px; background: transparent; font-family: 'Inter';">
+                            <RadzenDonutSeries Data="@chartData" CategoryProperty="Category" ValueProperty="Total">
+                                <ChildContent>
+                                    <RadzenSeriesDataLabels Visible="true" />
+                                </ChildContent>
+                                <TitleTemplate>
+                                    <div class="rz-donut-content">
+                                        <div style="color: var(--text-secondary); font-size: 0.9rem;">Total</div>
+                                        <div style="color: white; font-size: 1.5rem; font-weight: 800;">
+                                            @chartData.Sum(x => x.Total).ToString("C0")
+                                        </div>
+                                    </div>
+                                </TitleTemplate>
+                            </RadzenDonutSeries>
+                            <RadzenLegend Visible="true" Position="LegendPosition.Right" />
+                        </RadzenChart>
+                    }
+                    else
+                    {
+                        <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
+                            No expense data available.
+                        </div>
+                    }
+                </div>
+            </RadzenColumn>
+
+            <!-- EXISTING: Top Categories (Bar Chart) - Now side-by-side -->
+            <RadzenColumn Size="12" SizeLG="6">
+                <div class="xtract-card" style="padding: 2rem; height: 100%;">
                     <h3 style="margin-bottom: 1.5rem; font-size: 1.2rem;">Top Categories</h3>
                     @if (chartData.Any())
                     {
@@ -113,7 +146,7 @@ else
 }
 
 @code {
-   
+
     private BudgetViewDto? budget;
     private double budgetPercentage = 0;
     private bool isLoading = true;

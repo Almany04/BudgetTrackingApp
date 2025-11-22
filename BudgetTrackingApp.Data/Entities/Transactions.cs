@@ -27,6 +27,10 @@ namespace BudgetTrackingApp.Data.Entities
         [StringLength(500)]
         public string? Description {  get; set; }
         [Required]
+        public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Card; 
+        [StringLength(100)]
+        public string? Merchant { get; set; }
+        [Required]
         public DateTime TransactionDate { get; set; }
         [Required]
         public string AppUserId { get; set; }
