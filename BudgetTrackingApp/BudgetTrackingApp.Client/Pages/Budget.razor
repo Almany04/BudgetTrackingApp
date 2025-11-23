@@ -1,97 +1,87 @@
 ﻿@page "/budget"
-@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
 @attribute [Authorize]
 @using BudgetTrackingApp.Shared.Dtos.Budget
+@using BudgetTrackingApp.Shared.Dtos.Transactions
+@using BudgetTrackingApp.Shared.Enums
 @inject HttpClient Http
+@inject DialogService DialogService
 @inject NotificationService NotificationService
 
-<PageTitle>Budget Plan</PageTitle>
+<PageTitle>Budget & Savings</PageTitle>
 
-<RadzenRow JustifyContent="JustifyContent.Center" Class="rz-mt-4">
-    <RadzenColumn Size="12" SizeMD="6">
-        <RadzenTemplateForm TItem="BudgetUpdateDto" Data="@budgetModel" Submit="@HandleSaveBudget">
-            <RadzenCard Class="xtract-card">
-                <RadzenText TextStyle="TextStyle.H5" Class="rz-mb-4" Style="color: white;">Monthly Budget Settings</RadzenText>
+<RadzenStack Gap="2rem">
+    @* Header & Buttons *@
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" Wrap="FlexWrap.Wrap">
+        <h1 style="font-size: 2rem; margin: 0;">Budget Plan</h1>
 
-                @if (isLoading)
-                {
-                    <RadzenProgressBar Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
-                }
-                else
-                {
-                    <RadzenStack Spacing="3">
-                        <RadzenFormField Text="Monthly Limit (HUF)" Variant="Variant.Outlined">
-                            <RadzenNumeric @bind-Value="budgetModel.LimitAmount" Name="LimitAmount" style="width: 100%;" />
-                        </RadzenFormField>
-                        <RadzenRequiredValidator Component="LimitAmount" Text="Amount is required" />
-                        <RadzenNumericRangeValidator Component="LimitAmount" Min="0" Text="Amount cannot be negative" />
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem">
+            <RadzenButton Text="Add Income" Icon="attach_money" ButtonStyle="ButtonStyle.Success" Click="@(() => OpenDialog(TransactionType.Income))" />
+            <RadzenButton Text="Add Saving" Icon="savings" ButtonStyle="ButtonStyle.Info" Click="@(() => OpenDialog(TransactionType.Saving))" />
+        </RadzenStack>
+    </RadzenStack>
 
-                        <RadzenText TextStyle="TextStyle.Body2" Style="color: var(--text-secondary);">
-                            Set your total spending limit for the month to enable AI tracking.
-                        </RadzenText>
-
-                        <RadzenButton ButtonType="ButtonType.Submit" Text="Save Budget" ButtonStyle="ButtonStyle.Primary" Disabled="@isSaving" IsBusy="@isSaving" />
-                    </RadzenStack>
-                }
-            </RadzenCard>
-        </RadzenTemplateForm>
-    </RadzenColumn>
-</RadzenRow>
+    @* Financial Health Pie Chart *@
+    <div class="xtract-card" style="padding: 2rem;">
+        <h3 style="color: white; margin-bottom: 1rem;">Monthly Cash Flow</h3>
+        @if (financeData.Any(d => d.Value > 0))
+        {
+            <RadzenChart Style="height: 350px; background: transparent;">
+                <RadzenPieSeries Data="@financeData"
+                                 CategoryProperty="Label"
+                                 ValueProperty="Value"
+                                 Fills="@financeColors">
+                    <ChildContent>
+                        <RadzenSeriesDataLabels Visible="true" />
+                    </ChildContent>
+                    <TooltipTemplate Context="data">
+                        <div style="background: black; padding: 5px; border-radius: 4px; border: 1px solid #555;">
+                            @data.Label: <b>@data.Value.ToString("N0")</b>
+                        </div>
+                    </TooltipTemplate>
+                </RadzenPieSeries>
+                <RadzenLegend Visible="true" Position="LegendPosition.Right" />
+            </RadzenChart>
+        }
+        else
+        {
+            <div style="text-align: center; padding: 3rem; color: gray;">No financial data available yet.</div>
+        }
+    </div>
+</RadzenStack>
 
 @code {
-    private BudgetUpdateDto budgetModel = new();
-    private bool isLoading = true;
-    private bool isSaving = false;
+    private List<ChartItem> financeData = new();
+    private string[] financeColors = new[] { "#22c55e", "#ef4444", "#3b82f6" }; // Green, Red, Blue
 
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadBudgetAsync();
-    }
+    class ChartItem { public string Label { get; set; } = ""; public decimal Value { get; set; } }
 
-    private async Task LoadBudgetAsync()
+    protected override async Task OnInitializedAsync() => await LoadData();
+
+    private async Task LoadData()
     {
-        isLoading = true;
-        try
+        var start = new DateTime(DateTime.Now.Year, DateTime.Now.Month, 1).ToString("yyyy-MM-dd");
+        var end = DateTime.Now.ToString("yyyy-MM-dd");
+        var tx = await Http.GetFromJsonAsync<List<TransactionViewDto>>($"api/transaction?startDate={start}&endDate={end}");
+        if (tx != null)
         {
-            var currentBudget = await Http.GetFromJsonAsync<BudgetViewDto>("api/budget");
-            if (currentBudget != null)
-            {
-                budgetModel.LimitAmount = currentBudget.LimitAmount;
-            }
-        }
-        catch (Exception ex)
-        {
-            NotificationService.Notify(NotificationSeverity.Error, "Error", $"Failed to load budget: {ex.Message}");
-        }
-        finally
-        {
-            isLoading = false;
+            var inc = tx.Where(t => t.Type == TransactionType.Income).Sum(t => t.Amount);
+            var exp = tx.Where(t => t.Type == TransactionType.Expense).Sum(t => t.Amount);
+            // FIX: Sum actual Saving transactions instead of calculating difference
+            var sav = tx.Where(t => t.Type == TransactionType.Saving).Sum(t => t.Amount);
+
+            financeData = new List<ChartItem> {
+                new ChartItem { Label = "Income", Value = inc },
+                new ChartItem { Label = "Expenses", Value = exp },
+                new ChartItem { Label = "Savings", Value = sav }
+            };
         }
     }
 
-    private async Task HandleSaveBudget(BudgetUpdateDto args)
+    private async Task OpenDialog(TransactionType type)
     {
-        isSaving = true;
-        try
-        {
-            var response = await Http.PutAsJsonAsync("api/budget", budgetModel);
-            if (response.IsSuccessStatusCode)
-            {
-                NotificationService.Notify(NotificationSeverity.Success, "Success", "Budget updated successfully!");
-            }
-            else
-            {
-                var errorMsg = await response.Content.ReadAsStringAsync();
-                NotificationService.Notify(NotificationSeverity.Error, "Error", $"Failed to save: {errorMsg}");
-            }
-        }
-        catch (Exception ex)
-        {
-            NotificationService.Notify(NotificationSeverity.Error, "Error", ex.Message);
-        }
-        finally
-        {
-            isSaving = false;
-        }
+        var result = await DialogService.OpenAsync<BudgetTrackingApp.Client.Shared.TransactionDialog>($"Add {type}",
+            new Dictionary<string, object> { { "TransactionId", null }, { "ForcedType", type } },
+            new DialogOptions() { Width = "500px", CssClass = "xtract-card" });
+        if (result == true) await LoadData();
     }
 }

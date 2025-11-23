@@ -1,0 +1,48 @@
+﻿@using BudgetTrackingApp.Shared.Dtos.Budget
+@inject HttpClient Http
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+<RadzenTemplateForm TItem="BudgetUpdateDto" Data="@BudgetModel" Submit="@OnSubmit">
+    <RadzenStack Spacing="1.5rem">
+        <RadzenFormField Text="Monthly Spending Limit (HUF)" Variant="Variant.Outlined">
+            <RadzenNumeric @bind-Value="BudgetModel.LimitAmount" Name="LimitAmount" Style="width: 100%" Min="0" />
+        </RadzenFormField>
+        <RadzenRequiredValidator Component="LimitAmount" Text="Amount is required" />
+
+        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="1rem">
+            <RadzenButton ButtonType="ButtonType.Submit" Text="Save" Icon="save" ButtonStyle="ButtonStyle.Primary" IsBusy="@isSaving" />
+            <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Light" Click="@(() => DialogService.Close(false))" />
+        </RadzenStack>
+    </RadzenStack>
+</RadzenTemplateForm>
+
+@code {
+    [Parameter] public decimal CurrentLimit { get; set; }
+    public BudgetUpdateDto BudgetModel { get; set; } = new();
+    private bool isSaving = false;
+
+    protected override void OnInitialized()
+    {
+        BudgetModel.LimitAmount = CurrentLimit;
+    }
+
+    private async Task OnSubmit()
+    {
+        isSaving = true;
+        try
+        {
+            var response = await Http.PutAsJsonAsync("api/budget", BudgetModel);
+            if (response.IsSuccessStatusCode)
+            {
+                NotificationService.Notify(NotificationSeverity.Success, "Success", "Budget limit updated!");
+                DialogService.Close(true);
+            }
+            else
+            {
+                NotificationService.Notify(NotificationSeverity.Error, "Error", "Failed to save.");
+            }
+        }
+        finally { isSaving = false; }
+    }
+}

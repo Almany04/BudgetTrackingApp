@@ -8,53 +8,57 @@
 <RadzenTemplateForm TItem="TransactionUpdateDto" Data="@TransactionModel" Submit="@OnSubmit">
     <RadzenStack Spacing="1rem">
 
+        @if (ForcedType.HasValue)
+        {
+            <RadzenAlert Severity="NotificationSeverity.Info" AllowClose="false" Variant="Variant.Flat" Shade="Shade.Lighter">
+                Adding <strong>@ForcedType.Value</strong>
+            </RadzenAlert>
+        }
+
         <RadzenRow>
-            <RadzenColumn Size="6">
-                <RadzenFormField Text="Type" Variant="Variant.Outlined" Style="width:100%">
-                    @* Fix: Use TextProperty and ValueProperty properly *@
-                    <RadzenDropDown @bind-Value="TransactionModel.Type"
-                                    Data="@transactionTypes"
-                                    TextProperty="Name" ValueProperty="Value"
-                                    Name="Type" />
-                </RadzenFormField>
-            </RadzenColumn>
-            <RadzenColumn Size="6">
+            @if (!ForcedType.HasValue)
+            {
+                <RadzenColumn Size="6">
+                    <RadzenFormField Text="Type" Variant="Variant.Outlined" Style="width:100%">
+                        <RadzenDropDown @bind-Value="TransactionModel.Type" Data="@transactionTypes" TextProperty="Name" ValueProperty="Value" Name="Type" />
+                    </RadzenFormField>
+                </RadzenColumn>
+            }
+
+            <RadzenColumn Size="@(ForcedType.HasValue ? 12 : 6)">
                 <RadzenFormField Text="Payment" Variant="Variant.Outlined" Style="width:100%">
-                    <RadzenDropDown @bind-Value="TransactionModel.PaymentMethod"
-                                    Data="@paymentMethods"
-                                    TextProperty="Name" ValueProperty="Value"
-                                    Name="PaymentMethod" />
+                    <RadzenDropDown @bind-Value="TransactionModel.PaymentMethod" Data="@filteredPaymentMethods" TextProperty="Name" ValueProperty="Value" Name="PaymentMethod" />
                 </RadzenFormField>
             </RadzenColumn>
         </RadzenRow>
 
-        <RadzenFormField Text="Merchant (Shop Name)" Variant="Variant.Outlined">
-            <RadzenTextBox @bind-Value="TransactionModel.Merchant" Name="Merchant" Placeholder="e.g. Spar, Tesco" Style="width: 100%" />
-        </RadzenFormField>
-        <RadzenRequiredValidator Component="Merchant" Text="Merchant name is required!" />
+        @if (TransactionModel.Type == TransactionType.Expense)
+        {
+            <RadzenFormField Text="Merchant (Shop Name)" Variant="Variant.Outlined">
+                <RadzenTextBox @bind-Value="TransactionModel.Merchant" Name="Merchant" Placeholder="e.g. Spar, Tesco" Style="width: 100%" />
+            </RadzenFormField>
+            <RadzenRequiredValidator Component="Merchant" Text="Required" />
+        }
 
-        @* 1. Select Main Category *@
-        <RadzenFormField Text="Main Group (e.g. Groceries)" Variant="Variant.Outlined">
-            <RadzenDropDown Data="@mainCategories" TextProperty="Name" ValueProperty="Id"
-                            @bind-Value="selectedMainCategoryId" Change="@OnMainCategoryChange"
-                            Placeholder="Select Main Group..." Style="width: 100%" />
-        </RadzenFormField>
-
-        @* 2. Select Sub Category + Create Button *@
-        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End" Gap="0.5rem">
-            <RadzenFormField Text="Sub Item (e.g. Cheese)" Variant="Variant.Outlined" Style="flex-grow: 1;">
-                <RadzenDropDown Data="@filteredSubCategories" TextProperty="Name" ValueProperty="Id"
-                                @bind-Value="TransactionModel.CategoryId" Name="CategoryId"
-                                Placeholder="Select Item..."
-                                Disabled="@(selectedMainCategoryId == null)" Style="width: 100%" />
+        @if (TransactionModel.Type != TransactionType.Saving)
+        {
+            <RadzenFormField Text="Main Category" Variant="Variant.Outlined">
+                <RadzenDropDown Data="@mainCategories" TextProperty="Name" ValueProperty="Id"
+                                @bind-Value="selectedMainCategoryId" Change="@OnMainCategoryChange"
+                                Placeholder="Select Group..." Style="width: 100%" />
             </RadzenFormField>
 
-            <RadzenButton Icon="add" ButtonStyle="ButtonStyle.Secondary"
-                          ToolTip="Add new Sub-Item"
-                          Disabled="@(selectedMainCategoryId == null)"
-                          Click="@OpenCreateSubCategoryDialog" />
-        </RadzenStack>
-        <RadzenRequiredValidator Component="CategoryId" Text="Please select a sub-item" />
+            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End" Gap="0.5rem">
+                <RadzenFormField Text="Sub Item" Variant="Variant.Outlined" Style="flex-grow: 1;">
+                    <RadzenDropDown Data="@filteredSubCategories" TextProperty="Name" ValueProperty="Id"
+                                    @bind-Value="TransactionModel.CategoryId" Name="CategoryId"
+                                    Placeholder="Select..." Disabled="@(selectedMainCategoryId == null)" Style="width: 100%" />
+                </RadzenFormField>
+                <RadzenButton Icon="add" ButtonStyle="ButtonStyle.Secondary" ToolTip="New Sub-Item"
+                              Disabled="@(selectedMainCategoryId == null)" Click="@OpenCreateSubCategoryDialog" />
+            </RadzenStack>
+            <RadzenRequiredValidator Component="CategoryId" Text="Required" />
+        }
 
         <RadzenFormField Text="Amount (HUF)" Variant="Variant.Outlined">
             <RadzenNumeric @bind-Value="TransactionModel.Amount" Name="Amount" Min="1" />
@@ -66,7 +70,7 @@
         </RadzenFormField>
 
         <RadzenFormField Text="Description" Variant="Variant.Outlined">
-            <RadzenTextArea @bind-Value="TransactionModel.Description" Rows="2" Placeholder="Optional details..." />
+            <RadzenTextArea @bind-Value="TransactionModel.Description" Rows="2" />
         </RadzenFormField>
 
         <RadzenButton ButtonType="ButtonType.Submit" Text="Save" Icon="save" ButtonStyle="ButtonStyle.Primary" Style="width: 100%" IsBusy="@isProcessing" />
@@ -75,16 +79,18 @@
 
 @code {
     [Parameter] public Guid? TransactionId { get; set; }
+    [Parameter] public TransactionType? ForcedType { get; set; }
+
     public TransactionUpdateDto TransactionModel { get; set; } = new() { TransactionDate = DateTime.Today };
 
-    // Enum Helpers
     public class EnumItem<T> { public string Name { get; set; } public T Value { get; set; } }
+    private List<EnumItem<TransactionType>> transactionTypes = Enum.GetValues(typeof(TransactionType)).Cast<TransactionType>().Select(e => new EnumItem<TransactionType> { Name = e.ToString(), Value = e }).ToList();
+    private List<EnumItem<PaymentMethod>> allPaymentMethods = Enum.GetValues(typeof(PaymentMethod)).Cast<PaymentMethod>().Select(e => new EnumItem<PaymentMethod> { Name = e.ToString(), Value = e }).ToList();
 
-    private List<EnumItem<TransactionType>> transactionTypes = Enum.GetValues(typeof(TransactionType))
-        .Cast<TransactionType>().Select(e => new EnumItem<TransactionType> { Name = e.ToString(), Value = e }).ToList();
-
-    private List<EnumItem<PaymentMethod>> paymentMethods = Enum.GetValues(typeof(PaymentMethod))
-        .Cast<PaymentMethod>().Select(e => new EnumItem<PaymentMethod> { Name = e.ToString(), Value = e }).ToList();
+    private IEnumerable<EnumItem<PaymentMethod>> filteredPaymentMethods =>
+        (TransactionModel.Type == TransactionType.Saving)
+            ? allPaymentMethods.Where(p => p.Value == PaymentMethod.Card || p.Value == PaymentMethod.Cash)
+            : allPaymentMethods;
 
     private List<CategoryViewDto> allCategories = new();
     private List<CategoryViewDto> mainCategories = new();
@@ -94,6 +100,7 @@
 
     protected override async Task OnInitializedAsync()
     {
+        if (ForcedType.HasValue) TransactionModel.Type = ForcedType.Value;
         await LoadCategoriesAsync();
 
         if (TransactionId != null)
@@ -101,18 +108,7 @@
             var t = await Http.GetFromJsonAsync<TransactionViewDto>($"api/transaction/{TransactionId}");
             if (t != null)
             {
-                TransactionModel = new TransactionUpdateDto
-                {
-                    Amount = t.Amount,
-                    Description = t.Description,
-                    Merchant = t.Merchant,
-                    PaymentMethod = t.PaymentMethod,
-                    TransactionDate = t.TransactionDate,
-                    Type = t.Type,
-                    CategoryId = t.CategoryId
-                };
-
-                // Pre-select Main Category based on Sub-Category
+                TransactionModel = new TransactionUpdateDto { Amount = t.Amount, Description = t.Description, Merchant = t.Merchant, PaymentMethod = t.PaymentMethod, TransactionDate = t.TransactionDate, Type = t.Type, CategoryId = t.CategoryId };
                 var currentCat = allCategories.FirstOrDefault(c => c.Id == t.CategoryId);
                 if (currentCat?.ParentCategoryId != null)
                 {
@@ -130,8 +126,6 @@
         {
             allCategories = cats;
             mainCategories = allCategories.Where(c => c.ParentCategoryId == null).OrderBy(c => c.Name).ToList();
-
-            // If main is selected, re-filter the subs
             if (selectedMainCategoryId != null) OnMainCategoryChange();
         }
     }
@@ -147,18 +141,9 @@
     private async Task OpenCreateSubCategoryDialog()
     {
         if (selectedMainCategoryId == null) return;
-
         var model = new CategoryCreateDto { ParentCategoryId = selectedMainCategoryId };
-        // Reusing your existing CategoryDialog
-        var result = await DialogService.OpenAsync<CategoryDialog>("New Sub Item",
-            new Dictionary<string, object> { { "CategoryModel", model } },
-            new DialogOptions() { Width = "400px", Height = "auto", CssClass = "xtract-card" });
-
-        if (result == true)
-        {
-            await LoadCategoriesAsync();
-            NotificationService.Notify(NotificationSeverity.Success, "Created", "New sub-category added.");
-        }
+        var result = await DialogService.OpenAsync<CategoryDialog>("New Sub Item", new Dictionary<string, object> { { "CategoryModel", model } }, new DialogOptions() { Width = "400px", CssClass = "xtract-card" });
+        if (result == true) { await LoadCategoriesAsync(); NotificationService.Notify(NotificationSeverity.Success, "Created", "Added!"); }
     }
 
     private async Task OnSubmit(TransactionUpdateDto args)
@@ -166,19 +151,30 @@
         isProcessing = true;
         try
         {
+           
+            if (TransactionModel.Type == TransactionType.Saving)
+            {
+                var savingCat = allCategories.FirstOrDefault(c => c.Name == "General Savings");
+                if (savingCat == null)
+                {
+                    
+                    var createResponse = await Http.PostAsJsonAsync("api/categories", new CategoryCreateDto { Name = "General Savings" });
+                    if (createResponse.IsSuccessStatusCode)
+                    {
+                        var newCats = await Http.GetFromJsonAsync<List<CategoryViewDto>>("api/categories");
+                        savingCat = newCats?.FirstOrDefault(c => c.Name == "General Savings");
+                    }
+                }
+
+                if (savingCat != null) TransactionModel.CategoryId = savingCat.Id;
+                else { NotificationService.Notify(NotificationSeverity.Error, "Error", "Could not initialize Savings category."); return; }
+            }
+           
+
             HttpResponseMessage response;
             if (TransactionId == null)
             {
-                var createDto = new TransactionCreateDto
-                {
-                    Amount = TransactionModel.Amount,
-                    Type = TransactionModel.Type,
-                    Description = TransactionModel.Description,
-                    Merchant = TransactionModel.Merchant,
-                    PaymentMethod = TransactionModel.PaymentMethod,
-                    TransactionDate = TransactionModel.TransactionDate,
-                    CategoryId = TransactionModel.CategoryId
-                };
+                var createDto = new TransactionCreateDto { Amount = TransactionModel.Amount, Type = TransactionModel.Type, Description = TransactionModel.Description, Merchant = TransactionModel.Merchant, PaymentMethod = TransactionModel.PaymentMethod, TransactionDate = TransactionModel.TransactionDate, CategoryId = TransactionModel.CategoryId };
                 response = await Http.PostAsJsonAsync("api/transaction", createDto);
             }
             else

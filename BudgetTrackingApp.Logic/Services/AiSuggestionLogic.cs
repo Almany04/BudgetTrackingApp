@@ -27,56 +27,71 @@ namespace BudgetTrackingApp.Logic.Services
 
         public async Task<List<string>> GenerateSuggestionsAsync(string userId)
         {
-            // 1. Fetch Financial Data
-            var endDate = DateTime.Now;
-            var startDate = endDate.AddDays(-30);
-            var transactions = await _transactionRepository.GetTransactionsByUserIdFilteredAsync(userId, startDate, endDate);
-            var budget = await _budgetRepository.GetBudgetByUserIdAsync(userId);
-
-            if (transactions == null || !transactions.Any())
-                return new List<string> { "🤖 AI: Add some expenses to get personalized tips!" };
-
-            var expenses = transactions.Where(t => t.Type == TransactionType.Expense).ToList();
-            var totalSpent = expenses.Sum(t => t.Amount);
-            var budgetLimit = budget?.LimitAmount ?? 0;
-
-            // Group by Merchant and Category for better context
-            var topMerchants = expenses
-                .GroupBy(t => t.Merchant ?? "Unknown")
-                .OrderByDescending(g => g.Sum(x => x.Amount))
-                .Take(3)
-                .Select(g => $"{g.Key} ({g.Sum(x => x.Amount):C0})");
-
-            var categorySummary = expenses
-                .GroupBy(t => t.Category?.Name ?? "Unknown")
-                .Select(g => $"{g.Key}: {g.Sum(t => t.Amount):C0}")
-                .ToList();
-
-            // 2. Construct Prompt
-            var promptText = $@"
-                Act as a concise financial advisor. 
-                User Data (Last 30 Days):
-                - Total Budget: {budgetLimit:C0}
-                - Total Spent: {totalSpent:C0}
-                - Top Spending Places: {string.Join(", ", topMerchants)}
-                - Category Breakdown: {string.Join(", ", categorySummary)}
-
-                Task: Give 3 short, specific, and actionable financial tips based on this spending pattern.
-                - If they spend a lot at one merchant, suggest alternatives.
-                - Keep it friendly but professional.
-                - No markdown formatting (bold/italic). 
-                - Start each tip with a relevant emoji.";
-
             try
             {
-                // Using Gemini 2.5 Pro for text generation
+                // 1. Fetch Financial Data (Last 30 Days)
+                var endDate = DateTime.Now;
+                var startDate = endDate.AddDays(-30);
+                var transactions = await _transactionRepository.GetTransactionsByUserIdFilteredAsync(userId, startDate, endDate);
+                var budget = await _budgetRepository.GetBudgetByUserIdAsync(userId);
+
+                if (transactions == null || !transactions.Any())
+                    return new List<string> { "🤖 AI: Add some expenses to get personalized tips!" };
+
+                var expenses = transactions.Where(t => t.Type == TransactionType.Expense).ToList();
+                var totalSpent = expenses.Sum(t => t.Amount);
+                var budgetLimit = budget?.LimitAmount ?? 0;
+
+                // 2. PREPARE DATA FOR AI (Now with Sub-Categories!)
+
+                // Main Groups (e.g. Groceries)
+                var mainGroups = expenses
+                    .GroupBy(t => t.Category?.ParentCategory?.Name ?? t.Category?.Name ?? "Other")
+                    .OrderByDescending(g => g.Sum(t => t.Amount))
+                    .Take(5)
+                    .Select(g => $"{g.Key}: {g.Sum(t => t.Amount):C0}");
+
+                // Sub Items (e.g. Cheese, Vapsolo) - The "Real" spending
+                var specificItems = expenses
+                    .Where(t => t.Category?.ParentCategory != null) // Only look at sub-items
+                    .GroupBy(t => t.Category?.Name ?? "Unknown")
+                    .OrderByDescending(g => g.Sum(t => t.Amount))
+                    .Take(5)
+                    .Select(g => $"{g.Key}: {g.Sum(t => t.Amount):C0}");
+
+                // Top Merchants
+                var topMerchants = expenses
+                    .GroupBy(t => t.Merchant ?? "Unknown")
+                    .OrderByDescending(g => g.Sum(t => t.Amount))
+                    .Take(3)
+                    .Select(g => g.Key);
+
+                // 3. SMART PROMPT
+                var promptText = $@"
+                    Act as a ruthless but helpful financial advisor.
+                    
+                    USER DATA (30 Days):
+                    - Budget Limit: {budgetLimit:C0}
+                    - Total Spent: {totalSpent:C0}
+                    - Top Main Categories: {string.Join(", ", mainGroups)}
+                    - Top Specific Items (The Problem Areas): {string.Join(", ", specificItems)}
+                    - Favorite Shops: {string.Join(", ", topMerchants)}
+
+                    TASK:
+                    Give 5 specific, short, actionable tips to save money.
+                    - Focus heavily on the 'Specific Items' (e.g. if they spend a lot on 'Cheese', tell them to buy generic brand).
+                    - Mention specific shops if relevant.
+                    - Make predictions about the future spending and how much the person can save.
+                    - No markdown. Start each tip with an emoji.";
+
+                // Using Gemini 2.5 Pro for quality
                 var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key={_apiKey}";
                 var requestBody = new { contents = new[] { new { parts = new[] { new { text = promptText } } } } };
 
                 var response = await _httpClient.PostAsJsonAsync(url, requestBody);
 
                 if (!response.IsSuccessStatusCode)
-                    return new List<string> { "⚠️ AI is currently unavailable (High Traffic)." };
+                    return new List<string> { "⚠️ AI is currently unavailable." };
 
                 var result = await response.Content.ReadFromJsonAsync<GeminiResponse>();
                 var responseText = result?.Candidates?.FirstOrDefault()?.Content?.Parts?.FirstOrDefault()?.Text;
@@ -87,7 +102,7 @@ namespace BudgetTrackingApp.Logic.Services
                     .Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries)
                     .Select(s => CleanText(s))
                     .Where(s => s.Length > 10)
-                    .Take(3)
+                    .Take(5) // Increased to 5 tips
                     .ToList();
             }
             catch (Exception)

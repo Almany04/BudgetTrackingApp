@@ -8,6 +8,6 @@ namespace BudgetTrackingApp.Shared.Enums
 {
     public enum TransactionType
     {
-        Expense, Income
+        Expense, Income, Saving
     }
 }
