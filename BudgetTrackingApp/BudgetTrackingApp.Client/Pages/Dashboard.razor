@@ -17,36 +17,41 @@ else
 {
     <RadzenStack Gap="2rem">
 
+        @* --- HEADER SECTION --- *@
         <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" Wrap="FlexWrap.Wrap" Gap="1rem">
             <div>
                 <h1 style="font-size: 2rem; margin: 0;">Overview</h1>
                 <span style="color: var(--text-secondary);">Welcome back to your financial hub.</span>
             </div>
-            <RadzenButton Text="Add Expense" Icon="add" ButtonStyle="ButtonStyle.Primary" Click="@(() => Navigation.NavigateTo("transactions"))" />
+            <RadzenButton Text="Add Expense" Icon="add_circle" ButtonStyle="ButtonStyle.Primary" Click="@(() => Navigation.NavigateTo("transactions"))" />
         </RadzenStack>
 
         <RadzenRow Gutter="1.5rem">
 
+            @* --- CARD 1: MONTHLY SPENDING OVERVIEW --- *@
             <RadzenColumn Size="12" SizeLG="8">
                 <div class="xtract-card" style="padding: 2rem; height: 100%; position: relative; overflow: hidden;">
+                    @* Fancy background glow *@
                     <div style="position: absolute; right: -50px; top: -50px; width: 200px; height: 200px; background: radial-gradient(circle, rgba(139, 92, 246, 0.15), transparent 70%); pointer-events: none;"></div>
 
                     <RadzenStack Gap="2rem">
                         <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Start">
                             <div>
-                                <div style="text-transform: uppercase; color: var(--text-secondary); font-size: 0.75rem; letter-spacing: 1px; font-weight: 700;">Monthly Spending</div>
+                                <div style="text-transform: uppercase; color: var(--text-secondary); font-size: 0.75rem; letter-spacing: 1px; font-weight: 700;">Total Monthly Spending</div>
                                 <div style="font-size: 3rem; font-weight: 800; color: white; margin-top: 0.5rem;">
                                     @((budget?.SpentAmount ?? 0).ToString("N0")) <span style="font-size: 1rem; color: var(--text-secondary);">HUF</span>
                                 </div>
                             </div>
+                            @* Percentage Badge *@
                             <div style="background: rgba(139, 92, 246, 0.1); border: 1px solid rgba(139, 92, 246, 0.3); color: #a78bfa; padding: 0.4rem 0.8rem; border-radius: 8px; font-weight: 600;">
                                 @budgetPercentage.ToString("0")%
                             </div>
                         </RadzenStack>
 
+                        @* Progress Bar *@
                         <div>
                             <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween" Class="rz-mb-2">
-                                <span style="color: var(--text-secondary); font-size: 0.9rem;">Progress</span>
+                                <span style="color: var(--text-secondary); font-size: 0.9rem;">Budget Usage</span>
                                 <span style="color: white; font-size: 0.9rem;">@((budget?.LimitAmount ?? 0).ToString("N0")) limit</span>
                             </RadzenStack>
                             <RadzenProgressBar Value="@budgetPercentage" Max="100" ShowValue="false" Style="height: 8px; background: rgba(255,255,255,0.1); border-radius: 4px;" />
@@ -55,12 +60,13 @@ else
                 </div>
             </RadzenColumn>
 
+            @* --- CARD 2: AI INSIGHTS (Restored!) --- *@
             <RadzenColumn Size="12" SizeLG="4">
                 <div class="xtract-card" style="padding: 1.5rem; height: 100%; background: linear-gradient(180deg, rgba(124, 58, 237, 0.05), transparent) !important;">
                     <RadzenStack Gap="1rem">
                         <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
                             <RadzenIcon Icon="auto_awesome" Style="color: #a78bfa;" />
-                            <span style="font-weight: 700; letter-spacing: 1px; font-size: 0.9rem;">AI INSIGHTS</span>
+                            <span style="font-weight: 700; letter-spacing: 1px; font-size: 0.9rem;">AI ADVISOR</span>
                         </RadzenStack>
 
                         <RadzenStack Gap="1rem" Style="margin-top: 0.5rem;">
@@ -68,36 +74,48 @@ else
                             {
                                 @foreach (var suggestion in aiSuggestions.Take(3))
                                 {
-                                    <div style="font-size: 0.9rem; line-height: 1.5; color: #d1d5db; border-left: 2px solid #7c3aed; padding-left: 12px;">
+                                    <div style="font-size: 0.9rem; line-height: 1.4; color: #d1d5db; border-left: 3px solid #7c3aed; padding-left: 12px;">
                                         @suggestion
                                     </div>
                                 }
                             }
                             else
                             {
-                                <span style="color: var(--text-secondary);">No data available yet.</span>
+                                <div style="text-align: center; padding: 1rem; color: var(--text-secondary);">
+                                    <RadzenIcon Icon="hourglass_empty" />
+                                    <p style="margin: 0.5rem 0 0 0;">Waiting for data...</p>
+                                </div>
                             }
                         </RadzenStack>
                     </RadzenStack>
                 </div>
             </RadzenColumn>
 
-            <!-- NEW: Circle Diagram (Donut Chart) -->
+        </RadzenRow>
+
+        <RadzenRow Gutter="1.5rem">
+
+            @* --- CHART 1: MAIN GROUPS (MERCHANT) --- *@
             <RadzenColumn Size="12" SizeLG="6">
-                <div class="xtract-card" style="padding: 2rem; height: 100%;">
-                    <h3 style="margin-bottom: 1.5rem; font-size: 1.2rem;">Spending Breakdown</h3>
-                    @if (chartData.Any())
+                <div class="xtract-card" style="padding: 2rem; height: 100%; min-height: 450px;">
+                    <h3 style="margin: 0 0 0.5rem 0; font-size: 1.2rem; color: white;">1. Where do I spend?</h3>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem; margin-bottom: 1.5rem;">Main Groups (Shops/Merchants)</p>
+
+                    @if (merchantData.Any())
                     {
                         <RadzenChart Style="height: 300px; background: transparent; font-family: 'Inter';">
-                            <RadzenDonutSeries Data="@chartData" CategoryProperty="Category" ValueProperty="Total">
+                            <RadzenDonutSeries Data="@merchantData"
+                                               CategoryProperty="Label"
+                                               ValueProperty="Total"
+                                               Fills="@(new[] { "#8b5cf6", "#a78bfa", "#c4b5fd", "#7c3aed", "#6d28d9" })">
                                 <ChildContent>
                                     <RadzenSeriesDataLabels Visible="true" />
                                 </ChildContent>
                                 <TitleTemplate>
-                                    <div class="rz-donut-content">
-                                        <div style="color: var(--text-secondary); font-size: 0.9rem;">Total</div>
-                                        <div style="color: white; font-size: 1.5rem; font-weight: 800;">
-                                            @chartData.Sum(x => x.Total).ToString("C0")
+                                    <div class="rz-donut-content" style="text-align: center;">
+                                        <div style="color: var(--text-secondary); font-size: 0.8rem;">Top Store</div>
+                                        <div style="color: white; font-size: 1.2rem; font-weight: 800;">
+                                            @merchantData.First().Label
                                         </div>
                                     </div>
                                 </TitleTemplate>
@@ -107,35 +125,63 @@ else
                     }
                     else
                     {
-                        <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
-                            No expense data available.
+                        <div style="text-align: center; padding: 3rem; color: var(--text-secondary); border: 1px dashed rgba(255,255,255,0.1); border-radius: 12px;">
+                            Add transactions to see your spending breakdown.
                         </div>
                     }
                 </div>
             </RadzenColumn>
 
-            <!-- EXISTING: Top Categories (Bar Chart) - Now side-by-side -->
+            @* --- CHART 2: SUB GROUPS (CATEGORY) --- *@
             <RadzenColumn Size="12" SizeLG="6">
-                <div class="xtract-card" style="padding: 2rem; height: 100%;">
-                    <h3 style="margin-bottom: 1.5rem; font-size: 1.2rem;">Top Categories</h3>
-                    @if (chartData.Any())
+                <div class="xtract-card" style="padding: 2rem; height: 100%; min-height: 450px;">
+
+                    <RadzenStack Orientation="Orientation.Vertical" Gap="1rem" Class="rz-mb-4">
+                        <h3 style="margin: 0; font-size: 1.2rem; color: white;">2. What did I buy?</h3>
+
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                            <span style="color: var(--text-secondary); font-size: 0.9rem;">Details for:</span>
+                            <RadzenDropDown @bind-Value="selectedMerchant"
+                                            Data="@merchantNames"
+                                            Change="@UpdateDetailChart"
+                                            Placeholder="Select a Store..."
+                                            Style="width: 200px;" />
+                        </RadzenStack>
+                    </RadzenStack>
+
+                    @if (categoryData.Any())
                     {
                         <RadzenChart Style="height: 300px; background: transparent; font-family: 'Inter';">
-                            <RadzenColumnSeries Data="@chartData" CategoryProperty="Category" ValueProperty="Total" Fill="#8b5cf6" Stroke="none">
-                                <RadzenSeriesDataLabels Visible="false" />
-                            </RadzenColumnSeries>
-                            <RadzenCategoryAxis Padding="20" />
-                            <RadzenValueAxis Formatter="@(value => ((double)value).ToString("N0"))">
-                                <RadzenGridLines Visible="true" Stroke="rgba(255,255,255,0.1)" LineType="LineType.Dashed" />
-                                <RadzenAxisTitle Text="Amount (HUF)" />
-                            </RadzenValueAxis>
-                            <RadzenLegend Visible="false" />
+                            <RadzenDonutSeries Data="@categoryData"
+                                               CategoryProperty="Label"
+                                               ValueProperty="Total"
+                                               Fills="@(new[] { "#34d399", "#6ee7b7", "#10b981", "#059669", "#047857" })">
+                                <ChildContent>
+                                    <RadzenSeriesDataLabels Visible="true" />
+                                </ChildContent>
+                                <TitleTemplate>
+                                    <div class="rz-donut-content" style="text-align: center;">
+                                        <div style="color: var(--text-secondary); font-size: 0.8rem;">Total</div>
+                                        <div style="color: white; font-size: 1.2rem; font-weight: 800;">
+                                            @categoryData.Sum(x => x.Total).ToString("N0")
+                                        </div>
+                                    </div>
+                                </TitleTemplate>
+                            </RadzenDonutSeries>
+                            <RadzenLegend Visible="true" Position="LegendPosition.Right" />
                         </RadzenChart>
                     }
                     else
                     {
-                        <div style="text-align: center; padding: 3rem; color: var(--text-secondary);">
-                            No transactions recorded yet.
+                        <div style="text-align: center; padding: 3rem; color: var(--text-secondary); border: 1px dashed rgba(255,255,255,0.1); border-radius: 12px;">
+                            @if (string.IsNullOrEmpty(selectedMerchant))
+                            {
+                                <span>Select a Store from the dropdown to see categories.</span>
+                            }
+                            else
+                            {
+                                <span>No item details found for @selectedMerchant.</span>
+                            }
                         </div>
                     }
                 </div>
@@ -146,14 +192,26 @@ else
 }
 
 @code {
-
     private BudgetViewDto? budget;
     private double budgetPercentage = 0;
     private bool isLoading = true;
     private List<string> aiSuggestions = new();
-    private List<ChartItem> chartData = new();
 
-    class ChartItem { public string Category { get; set; } = ""; public double Total { get; set; } }
+    private List<TransactionViewDto> allTransactions = new();
+
+    // Data for Left Chart (Merchants)
+    private List<ChartItem> merchantData = new();
+    private List<string> merchantNames = new();
+
+    // Data for Right Chart (Categories)
+    private List<ChartItem> categoryData = new();
+    private string? selectedMerchant;
+
+    class ChartItem
+    {
+        public string Label { get; set; } = "";
+        public double Total { get; set; }
+    }
 
     protected override async Task OnInitializedAsync()
     {
@@ -165,35 +223,91 @@ else
         isLoading = true;
         try
         {
+            // 1. Load Budget
             var budgetTask = Http.GetFromJsonAsync<BudgetViewDto>("api/budget");
             var endDate = DateTime.Now;
             var startDate = endDate.AddDays(-30);
+
+            // 2. Load Transactions (Expenses Only logic handled later)
             var transactionsTask = Http.GetFromJsonAsync<List<TransactionViewDto>>($"api/transaction?startDate={startDate:yyyy-MM-dd}&endDate={endDate:yyyy-MM-dd}");
+
+            // 3. Load AI Suggestions (Keeping this!)
             var aiTask = Http.GetFromJsonAsync<List<string>>("api/aisuggestion");
 
             await Task.WhenAll(budgetTask, transactionsTask, aiTask);
 
             budget = await budgetTask;
-            var transactions = await transactionsTask;
+            allTransactions = await transactionsTask ?? new List<TransactionViewDto>();
             aiSuggestions = await aiTask ?? new();
 
+            // Calculate Progress
             if (budget != null && budget.LimitAmount > 0)
             {
                 budgetPercentage = Math.Min(100, (double)(budget.SpentAmount / budget.LimitAmount) * 100);
             }
 
-            if (transactions != null)
-            {
-                chartData = transactions
-                   .Where(t => t.Type == TransactionType.Expense)
-                   .GroupBy(t => t.CategoryName)
-                   .Select(g => new ChartItem { Category = g.Key ?? "Other", Total = (double)g.Sum(t => t.Amount) })
-                   .OrderByDescending(x => x.Total)
-                   .Take(5)
-                   .ToList();
-            }
+            // Prepare Initial Chart Data
+            PrepareMerchantChart();
         }
-        catch { }
-        finally { isLoading = false; }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Dashboard Load Error: {ex.Message}");
+        }
+        finally
+        {
+            isLoading = false;
+        }
+    }
+
+    private void PrepareMerchantChart()
+    {
+        // Filter for Expenses only
+        var expenses = allTransactions.Where(t => t.Type == TransactionType.Expense);
+
+        // Group by Merchant (This is your "Main Group")
+        merchantData = expenses
+            .GroupBy(t => string.IsNullOrWhiteSpace(t.Merchant) ? "Unknown" : t.Merchant)
+            .Select(g => new ChartItem
+            {
+                Label = g.Key,
+                Total = (double)g.Sum(t => t.Amount)
+            })
+            .OrderByDescending(x => x.Total)
+            .ToList();
+
+        // Populate Dropdown List
+        merchantNames = merchantData.Select(m => m.Label).ToList();
+
+        // Auto-select first merchant if data exists
+        if (merchantNames.Any())
+        {
+            selectedMerchant = merchantNames.First();
+            UpdateDetailChart();
+        }
+    }
+
+    private void UpdateDetailChart()
+    {
+        if (string.IsNullOrEmpty(selectedMerchant))
+        {
+            categoryData = new();
+            return;
+        }
+
+        // Filter transactions by the Selected Merchant
+        var storeExpenses = allTransactions
+            .Where(t => t.Type == TransactionType.Expense &&
+                       (string.IsNullOrWhiteSpace(t.Merchant) ? "Unknown" : t.Merchant) == selectedMerchant);
+
+        // Group by Category (This is your "Sub Group" - e.g., Cheese, Milk)
+        categoryData = storeExpenses
+            .GroupBy(t => t.CategoryName)
+            .Select(g => new ChartItem
+            {
+                Label = g.Key ?? "Other",
+                Total = (double)g.Sum(t => t.Amount)
+            })
+            .OrderByDescending(x => x.Total)
+            .ToList();
     }
 }

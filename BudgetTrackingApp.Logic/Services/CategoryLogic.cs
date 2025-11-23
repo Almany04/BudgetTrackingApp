@@ -23,25 +23,22 @@ namespace BudgetTrackingApp.Logic.Services
 
         public async Task CreateCategoryAsync(CategoryCreateDto categoryDto, string userId)
         {
-            if (string.IsNullOrWhiteSpace(categoryDto.Name))
-            {
-                throw new Exception("A kategória neve nem lehet üres!");
-            }
-            var existingCategories=await _categoryRepository.GetCategoriesByUserIdAsync(userId);
+            if (string.IsNullOrWhiteSpace(categoryDto.Name)) throw new Exception("Name cannot be empty!");
 
-            bool nameExists=existingCategories.Any(c=>
-                    c.Name.Equals(categoryDto.Name, StringComparison.OrdinalIgnoreCase)
-            );
+            var existingCategories = await _categoryRepository.GetCategoriesByUserIdAsync(userId);
 
-            if (nameExists)
-            {
-                throw new Exception($"Már létezik'{categoryDto.Name}' nevű kategória!");
-            }
+            // Check for duplicates (considering parent scope)
+            bool nameExists = existingCategories.Any(c =>
+                c.Name.Equals(categoryDto.Name, StringComparison.OrdinalIgnoreCase) &&
+                c.ParentCategoryId == categoryDto.ParentCategoryId);
+
+            if (nameExists) throw new Exception($"Category '{categoryDto.Name}' already exists!");
 
             var newCategoryEntity = new Category
             {
                 Name = categoryDto.Name,
                 AppUserId = userId,
+                ParentCategoryId = categoryDto.ParentCategoryId
             };
 
             await _categoryRepository.AddCategoryAsync(newCategoryEntity);
@@ -69,15 +66,17 @@ namespace BudgetTrackingApp.Logic.Services
 
         public async Task<IEnumerable<CategoryViewDto>> GetCategoriesByUserIdAsync(string userId)
         {
-            var categoryEntities= await _categoryRepository.GetCategoriesByUserIdAsync(userId);
+            var categoryEntities = await _categoryRepository.GetCategoriesByUserIdAsync(userId);
 
-            var categoryDtos = categoryEntities.Select(entity => new CategoryViewDto
+            // Map to DTO including parent info
+            return categoryEntities.Select(entity => new CategoryViewDto
             {
                 Id = entity.Id,
-                Name = entity.Name
+                Name = entity.Name,
+                ParentCategoryId = entity.ParentCategoryId,
+                // Basic manual mapping, or use Include in Repository for efficiency
+                ParentCategoryName = entity.ParentCategory?.Name
             });
-            
-            return categoryDtos;
         }
 
         public async Task<CategoryViewDto?> GetCategoryByIdAsync(Guid categoryId, string userId)

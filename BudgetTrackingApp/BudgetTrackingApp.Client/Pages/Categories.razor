@@ -8,26 +8,56 @@
 <PageTitle>Categories</PageTitle>
 
 <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" Class="rz-mb-4">
-    <RadzenText TextStyle="TextStyle.H5" Class="rz-m-0" Style="color: white;">Categories</RadzenText>
-    <RadzenButton Text="New Category" Icon="add" ButtonStyle="ButtonStyle.Primary" Click="@(args => OpenCreateDialog())" />
+    <RadzenText TextStyle="TextStyle.H5" Class="rz-m-0" Style="color: white;">Categories Management</RadzenText>
+    <RadzenButton Text="New Main Group" Icon="add_circle_outline" ButtonStyle="ButtonStyle.Primary" Click="@(() => OpenCreateDialog(null))" />
 </RadzenStack>
 
-<RadzenDataGrid Data="@categories" TItem="CategoryViewDto" AllowPaging="true" PageSize="10" AllowSorting="true" IsLoading="@isLoading" EmptyText="No categories found.">
-    <Columns>
-        <RadzenDataGridColumn TItem="CategoryViewDto" Property="Name" Title="Name" />
-
-        <RadzenDataGridColumn TItem="CategoryViewDto" Title="Actions" TextAlign="TextAlign.Center" Width="120px">
-            <Template Context="data">
-                <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.Small" Click="@(args => OpenEditDialog(data))" Class="rz-mr-1" />
-                <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small" Click="@(args => DeleteCategory(data))" />
-            </Template>
-        </RadzenDataGridColumn>
-    </Columns>
-</RadzenDataGrid>
+@if (isLoading)
+{
+    <RadzenProgressBar Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" />
+}
+else
+{
+    <div class="xtract-card" style="padding: 1rem;">
+        <RadzenDataGrid Data="@flatCategories" TItem="CategoryViewDto" AllowPaging="true" PageSize="100"
+                        RowRender="@RowRender" ExpandMode="DataGridExpandMode.Single">
+            <Columns>
+                <RadzenDataGridColumn TItem="CategoryViewDto" Property="Name" Title="Name">
+                    <Template Context="data">
+                        @if (data.ParentCategoryId == null)
+                        {
+                            <span style="font-weight: bold; color: #a78bfa; font-size: 1.1rem;">@data.Name</span>
+                        }
+                        else
+                        {
+                            <span style="margin-left: 20px; color: #d1d5db;">└ @data.Name</span>
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="CategoryViewDto" Title="Type" Width="150px">
+                    <Template Context="data">
+                        @(data.ParentCategoryId == null ? "Main Group" : "Sub Item")
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="CategoryViewDto" Title="Actions" TextAlign="TextAlign.Right" Width="200px">
+                    <Template Context="data">
+                        @if (data.ParentCategoryId == null)
+                        {
+                            <RadzenButton Text="Add Sub" Icon="add" ButtonStyle="ButtonStyle.Secondary" Size="ButtonSize.Small"
+                                          Click="@(() => OpenCreateDialog(data.Id))" Class="rz-mr-2" />
+                        }
+                        <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.Small"
+                                      Click="@(() => DeleteCategory(data))" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+    </div>
+}
 
 @code {
-    private List<CategoryViewDto>? categories;
-    private bool isLoading = false;
+    private List<CategoryViewDto> flatCategories = new();
+    private bool isLoading = true;
 
     protected override async Task OnInitializedAsync()
     {
@@ -39,68 +69,53 @@
         isLoading = true;
         try
         {
-            categories = await Http.GetFromJsonAsync<List<CategoryViewDto>>("api/categories");
+            var all = await Http.GetFromJsonAsync<List<CategoryViewDto>>("api/categories");
+
+            // Organize them visually: Main Categories first, followed by their children
+            flatCategories = new List<CategoryViewDto>();
+            var mainCats = all.Where(c => c.ParentCategoryId == null).OrderBy(c => c.Name);
+
+            foreach (var main in mainCats)
+            {
+                flatCategories.Add(main);
+                var subs = all.Where(c => c.ParentCategoryId == main.Id).OrderBy(c => c.Name);
+                flatCategories.AddRange(subs);
+            }
         }
-        catch (Exception ex)
-        {
-            NotificationService.Notify(NotificationSeverity.Error, "Error", $"Failed to load data: {ex.Message}");
-        }
-        finally
-        {
-            isLoading = false;
-        }
+        catch (Exception ex) { NotificationService.Notify(NotificationSeverity.Error, "Error", ex.Message); }
+        finally { isLoading = false; }
     }
 
-    private async Task OpenCreateDialog()
+    void RowRender(RowRenderEventArgs<CategoryViewDto> args)
     {
-        var result = await DialogService.OpenAsync<BudgetTrackingApp.Client.Shared.CategoryDialog>(
-            "New Category",
-            new Dictionary<string, object> { { "CategoryModel", new CategoryCreateDto() }, { "CategoryId", null } },
-            new DialogOptions() { Width = "400px", Height = "auto", CssClass = "xtract-card" }
-        );
-        if (result == true)
-        {
-            await LoadCategoriesAsync();
-        }
+        // Styling for rows
+        if (args.Data.ParentCategoryId == null)
+            args.Attributes.Add("style", "background-color: rgba(139, 92, 246, 0.1);");
     }
 
-    private async Task OpenEditDialog(CategoryViewDto category)
+    private async Task OpenCreateDialog(Guid? parentId)
     {
+        var title = parentId == null ? "New Main Group" : "New Sub Item";
+        var model = new CategoryCreateDto { ParentCategoryId = parentId };
+
         var result = await DialogService.OpenAsync<BudgetTrackingApp.Client.Shared.CategoryDialog>(
-            "Edit Category",
-            new Dictionary<string, object> { { "CategoryModel", new CategoryUpdateDto { Name = category.Name } }, { "CategoryId", category.Id } },
+            title,
+            new Dictionary<string, object> { { "CategoryModel", model } },
             new DialogOptions() { Width = "400px", Height = "auto", CssClass = "xtract-card" }
         );
 
-        if (result == true)
-        {
-            await LoadCategoriesAsync();
-        }
+        if (result == true) await LoadCategoriesAsync();
     }
 
     private async Task DeleteCategory(CategoryViewDto category)
     {
-        var confirm = await DialogService.Confirm($"Are you sure you want to delete '{category.Name}'?", "Delete Category", new ConfirmOptions() { OkButtonText = "Yes", CancelButtonText = "No", CssClass = "xtract-card" });
+        var confirm = await DialogService.Confirm($"Delete '{category.Name}'? {(category.ParentCategoryId == null ? "This will delete all sub-items too!" : "")}",
+            "Delete", new ConfirmOptions { OkButtonText = "Yes", CancelButtonText = "No", CssClass = "xtract-card" });
+
         if (confirm == true)
         {
-            try
-            {
-                var response = await Http.DeleteAsync($"api/categories/{category.Id}");
-                if (response.IsSuccessStatusCode)
-                {
-                    NotificationService.Notify(NotificationSeverity.Success, "Success", "Category deleted!");
-                    await LoadCategoriesAsync();
-                }
-                else
-                {
-                    var errorMsg = await response.Content.ReadAsStringAsync();
-                    NotificationService.Notify(NotificationSeverity.Error, "Error", errorMsg);
-                }
-            }
-            catch (Exception ex)
-            {
-                NotificationService.Notify(NotificationSeverity.Error, "Error", ex.Message);
-            }
+            await Http.DeleteAsync($"api/categories/{category.Id}");
+            await LoadCategoriesAsync();
         }
     }
 }

@@ -34,14 +34,18 @@ namespace BudgetTrackingApp.Repository.Implamentations
 
         public async Task<IEnumerable<Category>> GetCategoriesByUserIdAsync(string userId)
         {
-            var categories= await _context.Categories.Where(c=>c.AppUserId==userId).ToListAsync();
-            return categories;
+            return await _context.Categories
+                                 .Include(c => c.ParentCategory)
+                                 .Where(c => c.AppUserId == userId)
+                                 .ToListAsync();
         }
 
         public async Task<Category?> GetCategoryByIdAsync(Guid categoryId)
         {
-            return await _context.Categories.FirstOrDefaultAsync(c => c.Id == categoryId);
-            
+            return await _context.Categories
+                                 .Include(c => c.ParentCategory)
+                                 .FirstOrDefaultAsync(c => c.Id == categoryId);
+
         }
 
         public async Task<bool> IsCategoryOwnedByUserAsync(Guid categoryId, string userId)

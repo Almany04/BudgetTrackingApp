@@ -45,10 +45,18 @@ namespace BudgetTrackingApp.Data
             });
 
             builder.Entity<Category>(entity => {
+
+                
                 entity.HasMany(c => c.Transactions)
-                .WithOne(t => t.Category)
-                .HasForeignKey(t => t.CategoryId)
-                .OnDelete(DeleteBehavior.Restrict);
+                    .WithOne(t => t.Category)
+                    .HasForeignKey(t => t.CategoryId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                // 2. NEW Rule: Hierarchy (Parent/Child Categories)
+                entity.HasOne(c => c.ParentCategory)
+                    .WithMany(c => c.SubCategories)
+                    .HasForeignKey(c => c.ParentCategoryId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
 
         }

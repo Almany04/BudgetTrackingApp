@@ -1,231 +1,101 @@
 ﻿@inject HttpClient Http
 @inject DialogService DialogService
 @inject NotificationService NotificationService
-@using BudgetTrackingApp.Shared.Dtos.AI
 @using BudgetTrackingApp.Shared.Dtos.Transactions
 @using BudgetTrackingApp.Shared.Dtos.Category
 @using BudgetTrackingApp.Shared.Enums
-@using Microsoft.AspNetCore.Components.Forms
-@using System.Net.Http.Headers
 
-<RadzenTemplateForm TItem="TransactionUpdateDto" Data="@TransactionModel" Submit="@(args => OnSubmit(args))">
-    <RadzenStack Spacing="1.5rem">
-
-        @if (TransactionId == null) // Csak új tranzakciónál van értelme szkennelni
-        {
-            <div class="d-flex justify-content-center mb-2">
-                <InputFile id="receiptInput" OnChange="@UploadReceipt" accept="image/*" capture="environment" style="display: none;" />
-
-                <RadzenButton Text="@(isScanning ? "Scanning..." : "Scan Receipt w/ AI")"
-                              Icon="center_focus_weak"
-                              ButtonStyle="ButtonStyle.Info"
-                              IsBusy="@isScanning"
-                              Click="@TriggerFileUpload"
-                              Style="width: 100%; max-width: 300px; background: linear-gradient(90deg, #6366f1, #8b5cf6); border: none;" />
-            </div>
-        }
+<RadzenTemplateForm TItem="TransactionUpdateDto" Data="@TransactionModel" Submit="@OnSubmit">
+    <RadzenStack Spacing="1rem">
 
         <RadzenRow>
-            <RadzenColumn Size="12" SizeMD="6">
-                <RadzenFormField Text="Type" Variant="Variant.Outlined" Style="width: 100%">
-                    <RadzenDropDown @bind-Value="TransactionModel.Type"
-                                    Data="@(Enum.GetValues(typeof(TransactionType)).Cast<TransactionType>().Select(t => new { Text = t.ToString(), Value = t }))"
-                                    TextProperty="Text" ValueProperty="Value"
-                                    Name="Type" />
-                </RadzenFormField>
-            </RadzenColumn>
-            <RadzenColumn Size="12" SizeMD="6">
-                <RadzenFormField Text="Payment Method" Variant="Variant.Outlined" Style="width: 100%">
-                    <RadzenDropDown @bind-Value="TransactionModel.PaymentMethod"
-                                    Data="@(Enum.GetValues(typeof(PaymentMethod)).Cast<PaymentMethod>().Select(p => new { Text = p.ToString(), Value = p }))"
-                                    TextProperty="Text" ValueProperty="Value"
-                                    Name="PaymentMethod" />
-                </RadzenFormField>
-            </RadzenColumn>
+            <RadzenColumn Size="6"><RadzenFormField Text="Type" Variant="Variant.Outlined" Style="width:100%"><RadzenDropDown @bind-Value="TransactionModel.Type" Data="@(Enum.GetValues(typeof(TransactionType)))" Name="Type" /></RadzenFormField></RadzenColumn>
+            <RadzenColumn Size="6"><RadzenFormField Text="Payment" Variant="Variant.Outlined" Style="width:100%"><RadzenDropDown @bind-Value="TransactionModel.PaymentMethod" Data="@(Enum.GetValues(typeof(PaymentMethod)))" Name="PaymentMethod" /></RadzenFormField></RadzenColumn>
         </RadzenRow>
 
-        @* FEATURE 1: Merchant (Main Group) *@
-        <RadzenFormField Text="Merchant / Store (Main Group)" Variant="Variant.Outlined">
-            <RadzenTextBox @bind-Value="TransactionModel.Merchant" Name="Merchant" Placeholder="e.g. Spar, Tesco, OMV" Style="width: 100%" />
+        @* 1. Merchant Input *@
+        <RadzenFormField Text="Merchant (e.g. Spar)" Variant="Variant.Outlined">
+            <RadzenTextBox @bind-Value="TransactionModel.Merchant" Name="Merchant" Style="width: 100%" />
+        </RadzenFormField>
+        <RadzenRequiredValidator Component="Merchant" Text="Required" />
+
+        @* 2. Main Category Selection *@
+        <RadzenFormField Text="Main Group (e.g. Groceries)" Variant="Variant.Outlined">
+            <RadzenDropDown Data="@mainCategories" TextProperty="Name" ValueProperty="Id"
+                            @bind-Value="selectedMainCategoryId" Change="@OnMainCategoryChange"
+                            Placeholder="Select Main Group..." Style="width: 100%" />
         </RadzenFormField>
 
-        <RadzenFormField Text="Category (Analysis Group)" Variant="Variant.Outlined">
-            <RadzenDropDown @bind-Value="TransactionModel.CategoryId"
-                            Data="@categories"
-                            TextProperty="Name"
-                            ValueProperty="Id"
-                            Name="CategoryId"
-                            Placeholder="Select a category..."
-                            AllowClear="true"
-                            Style="width: 100%" />
+        @* 3. Sub Category Selection *@
+        <RadzenFormField Text="Sub Item (e.g. Cheese)" Variant="Variant.Outlined">
+            <RadzenDropDown Data="@filteredSubCategories" TextProperty="Name" ValueProperty="Id"
+                            @bind-Value="TransactionModel.CategoryId" Name="CategoryId"
+                            Placeholder="Select Specific Item..." Disabled="@(selectedMainCategoryId == null)" Style="width: 100%" />
         </RadzenFormField>
-        <RadzenRequiredValidator Component="CategoryId" Text="Category selection is required!" DefaultValue="Guid.Empty" />
+        <RadzenRequiredValidator Component="CategoryId" Text="Please select a sub-item" />
 
-        <RadzenRow>
-            <RadzenColumn Size="12">
-                <RadzenFormField Text="Amount (HUF)" Variant="Variant.Outlined" Style="width: 100%">
-                    <RadzenNumeric @bind-Value="TransactionModel.Amount" Name="Amount" Min="1" />
-                </RadzenFormField>
-                <RadzenRequiredValidator Component="Amount" Text="Amount is required!" />
-                <RadzenNumericRangeValidator Component="Amount" Min="1" Text="Amount must be greater than 0!" />
-            </RadzenColumn>
-        </RadzenRow>
+        <RadzenFormField Text="Amount (HUF)" Variant="Variant.Outlined">
+            <RadzenNumeric @bind-Value="TransactionModel.Amount" Name="Amount" />
+        </RadzenFormField>
+        <RadzenRequiredValidator Component="Amount" Text="Required" />
 
         <RadzenFormField Text="Date" Variant="Variant.Outlined">
-            <RadzenDatePicker @bind-Value="TransactionModel.TransactionDate" Name="TransactionDate" DateFormat="yyyy.MM.dd" Style="width: 100%" />
-        </RadzenFormField>
-        <RadzenRequiredValidator Component="TransactionDate" Text="Date is required!" />
-
-        <RadzenFormField Text="Items / Details (Sub Group)" Variant="Variant.Outlined">
-            <RadzenTextArea @bind-Value="TransactionModel.Description" Rows="3" Name="Description" Placeholder="e.g. Cheese, Milk, Bread" Style="width: 100%" />
+            <RadzenDatePicker @bind-Value="TransactionModel.TransactionDate" Name="TransactionDate" />
         </RadzenFormField>
 
-        <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="1rem" Class="rz-mt-2">
-            <RadzenButton ButtonType="ButtonType.Submit" Text="Save" Icon="save" ButtonStyle="ButtonStyle.Primary" Disabled="@isProcessing" IsBusy="@isProcessing" />
-            <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Light" Click="@(() => DialogService.Close(false))" Disabled="@isProcessing" />
-        </RadzenStack>
+        <RadzenButton ButtonType="ButtonType.Submit" Text="Save" Icon="save" ButtonStyle="ButtonStyle.Primary" Style="width: 100%" IsBusy="@isProcessing" />
     </RadzenStack>
 </RadzenTemplateForm>
 
-<script>
-    // Kis JS trükk, hogy a RadzenButton megnyomja a rejtett InputFile-t
-    window.triggerClick = (elementId) => {
-        document.getElementById(elementId).click();
-    }
-</script>
-
-@inject IJSRuntime JSRuntime
-
 @code {
     [Parameter] public Guid? TransactionId { get; set; }
-
     public TransactionUpdateDto TransactionModel { get; set; } = new() { TransactionDate = DateTime.Today };
-    private IEnumerable<CategoryViewDto>? categories;
+
+    private List<CategoryViewDto> allCategories = new();
+    private List<CategoryViewDto> mainCategories = new();
+    private List<CategoryViewDto> filteredSubCategories = new();
+    private Guid? selectedMainCategoryId;
     private bool isProcessing = false;
-    private bool isScanning = false;
 
     protected override async Task OnInitializedAsync()
     {
-        await LoadCategoriesAsync();
+        var cats = await Http.GetFromJsonAsync<List<CategoryViewDto>>("api/categories");
+        if (cats != null)
+        {
+            allCategories = cats;
+            mainCategories = allCategories.Where(c => c.ParentCategoryId == null).ToList();
+        }
+
         if (TransactionId != null)
         {
-            // Meglévő betöltése (Szerkesztés mód)
-            try
+            var t = await Http.GetFromJsonAsync<TransactionViewDto>($"api/transaction/{TransactionId}");
+            if (t != null)
             {
-                var t = await Http.GetFromJsonAsync<TransactionViewDto>($"api/transaction/{TransactionId}");
-                if (t != null)
+                // Map basic fields
+                TransactionModel = new TransactionUpdateDto { Amount = t.Amount, Description = t.Description, Merchant = t.Merchant, PaymentMethod = t.PaymentMethod, TransactionDate = t.TransactionDate, Type = t.Type, CategoryId = t.CategoryId };
+
+                // Find parent to pre-select dropdowns
+                var currentCat = allCategories.FirstOrDefault(c => c.Id == t.CategoryId);
+                if (currentCat?.ParentCategoryId != null)
                 {
-                    TransactionModel = new TransactionUpdateDto
-                    {
-                        Amount = t.Amount,
-                        CategoryId = t.CategoryId,
-                        Description = t.Description,
-                        // Add mapping for new properties if your ViewDto has them, otherwise defaults apply
-                        // Merchant = t.Merchant,
-                        // PaymentMethod = t.PaymentMethod,
-                        TransactionDate = t.TransactionDate,
-                        Type = t.Type
-                    };
-                    // Manual mapping if ViewDto doesn't have these yet but UpdateDto does:
-                    // Assuming ViewDto will be updated later, for now defaults are fine or you extend ViewDto.
+                    selectedMainCategoryId = currentCat.ParentCategoryId;
+                    OnMainCategoryChange(); // Filter subs
                 }
             }
-            catch
-            {
-                NotificationService.Notify(NotificationSeverity.Error, "Error", "Failed to load transaction data.");
-                DialogService.Close(false);
-            }
-        }
-        else if (categories?.Any() == true)
-        {
-            TransactionModel.CategoryId = categories.First().Id;
         }
     }
 
-    private async Task LoadCategoriesAsync()
+    private void OnMainCategoryChange()
     {
-        try
+        if (selectedMainCategoryId != null)
         {
-            categories = await Http.GetFromJsonAsync<List<CategoryViewDto>>("api/categories");
+            filteredSubCategories = allCategories.Where(c => c.ParentCategoryId == selectedMainCategoryId).ToList();
         }
-        catch { }
-    }
-
-
-    private async Task TriggerFileUpload()
-    {
-        // Ez a JS hívás nyitja meg a fájlválasztót/kamerát
-        await JSRuntime.InvokeVoidAsync("triggerClick", "receiptInput");
-    }
-
-    private async Task UploadReceipt(InputFileChangeEventArgs e)
-    {
-        var file = e.File;
-        if (file == null) return;
-
-        isScanning = true;
-        try
+        else
         {
-            // Fájl előkészítése küldésre
-            using var content = new MultipartFormDataContent();
-            var fileContent = new StreamContent(file.OpenReadStream(maxAllowedSize: 10 * 1024 * 1024)); // 10MB limit
-            fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
-            content.Add(fileContent, "file", file.Name);
-
-            // API hívás (a Backendhez, amit előbb írtunk)
-            var response = await Http.PostAsync("api/aisuggestion/scan-receipt", content);
-
-            if (response.IsSuccessStatusCode)
-            {
-                var result = await response.Content.ReadFromJsonAsync<ReceiptScanResultDto>();
-
-                if (result != null && result.IsSuccess)
-                {
-                    // 1. Kitöltjük a mezőket az AI adataival
-                    if (result.Amount.HasValue) TransactionModel.Amount = result.Amount.Value;
-                    if (result.TransactionDate.HasValue) TransactionModel.TransactionDate = result.TransactionDate.Value;
-
-                    // AI Mapping for new fields
-                    if (!string.IsNullOrEmpty(result.Merchant)) TransactionModel.Merchant = result.Merchant;
-                    if (!string.IsNullOrEmpty(result.Description)) TransactionModel.Description = result.Description;
-
-                    // 2. Kategória kitalálása (szöveges egyezés alapján)
-                    if (!string.IsNullOrEmpty(result.SuggestedCategory) && categories != null)
-                    {
-                        // Próbálunk keresni egy hasonló nevű kategóriát a listánkban
-                        var match = categories.FirstOrDefault(c =>
-                            c.Name.Contains(result.SuggestedCategory, StringComparison.OrdinalIgnoreCase) ||
-                            result.SuggestedCategory.Contains(c.Name, StringComparison.OrdinalIgnoreCase));
-
-                        if (match != null)
-                        {
-                            TransactionModel.CategoryId = match.Id;
-                            NotificationService.Notify(NotificationSeverity.Info, "AI Suggestion", $"Category matched: {match.Name}");
-                        }
-                    }
-
-                    NotificationService.Notify(NotificationSeverity.Success, "Success", "Receipt scanned successfully!");
-                }
-                else
-                {
-                    NotificationService.Notify(NotificationSeverity.Warning, "AI Warning", result?.ErrorMessage ?? "Could not read receipt.");
-                }
-            }
-            else
-            {
-                NotificationService.Notify(NotificationSeverity.Error, "Error", "Scan failed.");
-            }
-        }
-        catch (Exception ex)
-        {
-            NotificationService.Notify(NotificationSeverity.Error, "Upload Error", ex.Message);
-        }
-        finally
-        {
-            isScanning = false;
+            filteredSubCategories.Clear();
         }
     }
-    // --------------------------
 
     private async Task OnSubmit(TransactionUpdateDto args)
     {
@@ -240,8 +110,8 @@
                     Amount = TransactionModel.Amount,
                     Type = TransactionModel.Type,
                     Description = TransactionModel.Description,
-                    Merchant = TransactionModel.Merchant, // Save Merchant
-                    PaymentMethod = TransactionModel.PaymentMethod, // Save Payment Method
+                    Merchant = TransactionModel.Merchant,
+                    PaymentMethod = TransactionModel.PaymentMethod,
                     TransactionDate = TransactionModel.TransactionDate,
                     CategoryId = TransactionModel.CategoryId
                 };
@@ -252,24 +122,9 @@
                 response = await Http.PutAsJsonAsync($"api/transaction/{TransactionId}", TransactionModel);
             }
 
-            if (response.IsSuccessStatusCode)
-            {
-                NotificationService.Notify(NotificationSeverity.Success, "Success", "Saved successfully!");
-                DialogService.Close(true);
-            }
-            else
-            {
-                var errorMsg = await response.Content.ReadAsStringAsync();
-                NotificationService.Notify(NotificationSeverity.Error, "Error", errorMsg);
-            }
+            if (response.IsSuccessStatusCode) { DialogService.Close(true); NotificationService.Notify(NotificationSeverity.Success, "Saved!"); }
+            else { NotificationService.Notify(NotificationSeverity.Error, "Error", await response.Content.ReadAsStringAsync()); }
         }
-        catch (Exception ex)
-        {
-            NotificationService.Notify(NotificationSeverity.Error, "Error", ex.Message);
-        }
-        finally
-        {
-            isProcessing = false;
-        }
+        finally { isProcessing = false; }
     }
 }

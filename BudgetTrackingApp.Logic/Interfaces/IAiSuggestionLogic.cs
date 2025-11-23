@@ -1,12 +1,11 @@
-﻿using BudgetTrackingApp.Shared.Dtos.AI;
-using BudgetTrackingApp.Shared.Dtos.Budget;
-using BudgetTrackingApp.Shared.Dtos.Transactions;
+﻿using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace BudgetTrackingApp.Logic.Interfaces
 {
     public interface IAiSuggestionLogic
     {
+        // Only keep the text suggestion method
         Task<List<string>> GenerateSuggestionsAsync(string userId);
-        Task<ReceiptScanResultDto> ScanReceiptAsync(byte[] imageBytes, string contentType);
     }
 }

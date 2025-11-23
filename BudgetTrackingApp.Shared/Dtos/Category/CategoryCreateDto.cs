@@ -12,5 +12,6 @@ namespace BudgetTrackingApp.Shared.Dtos.Category
         [Required(ErrorMessage ="A kategoria név kötelező!")]
         [StringLength(100)]
         public string Name { get; set; }
+        public Guid? ParentCategoryId { get; set; }
     }
 }

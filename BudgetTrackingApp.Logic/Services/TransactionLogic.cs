@@ -39,7 +39,8 @@ namespace BudgetTrackingApp.Logic.Services
                 TransactionDate= transactiondto.TransactionDate,
                 Type = transactiondto.Type,
                 Description= transactiondto.Description,
-                CategoryId= transactiondto.CategoryId,
+                Merchant = transactiondto.Merchant,
+                CategoryId = transactiondto.CategoryId,
                 AppUserId=userId,
                 
             };
@@ -109,7 +110,9 @@ namespace BudgetTrackingApp.Logic.Services
                 Amount = entity.Amount,
                 TransactionDate = entity.TransactionDate,
                 Description = entity.Description,
-                CategoryName=entity.Category?.Name ?? "Ismeretlen",
+                CategoryName = (entity.Category?.ParentCategory != null
+                        ? $"{entity.Category.ParentCategory.Name} > {entity.Category.Name}"
+                        : entity.Category?.Name) ?? "Unknown",
                 Type = entity.Type,
                 CategoryId = entity.CategoryId
             });
@@ -144,6 +147,7 @@ namespace BudgetTrackingApp.Logic.Services
             transactionToUpdate.TransactionDate = transactiondto.TransactionDate;
             transactionToUpdate.Description = transactiondto.Description;
             transactionToUpdate.Type = transactiondto.Type;
+            transactionToUpdate.Merchant = transactiondto.Merchant;
             transactionToUpdate.CategoryId = transactiondto.CategoryId;
 
             await _transactionRepository.UpdateTransactionAsync(transactionToUpdate);

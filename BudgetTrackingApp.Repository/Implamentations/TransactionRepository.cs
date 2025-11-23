@@ -35,6 +35,7 @@ namespace BudgetTrackingApp.Repository.Implamentations
         {
             return await _context.Transactions
                                  .Include(t=>t.Category)
+                                 .ThenInclude(c => c.ParentCategory)
                                  .FirstOrDefaultAsync(t => t.Id == transactionId);
         }
 
@@ -42,6 +43,7 @@ namespace BudgetTrackingApp.Repository.Implamentations
         {
             var transactions= await _context.Transactions
                                     .Include(t => t.Category)
+                                    .ThenInclude(c => c.ParentCategory)
                                     .Where(t=>t.AppUserId==userId)
                                     .ToListAsync();
             return transactions;
@@ -51,6 +53,7 @@ namespace BudgetTrackingApp.Repository.Implamentations
         {
             var transactions= await _context.Transactions.
                                       Include(t=>t.Category)
+                                      .ThenInclude(c => c.ParentCategory)
                                       .Where(t=>t.AppUserId==userId)
                                       .Where(t=>t.TransactionDate>=startDate&&t.TransactionDate<=endDate)
                                       .OrderByDescending(t=>t.TransactionDate)

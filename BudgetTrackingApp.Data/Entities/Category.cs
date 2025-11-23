@@ -12,22 +12,34 @@ namespace BudgetTrackingApp.Data.Entities
 {
     public class Category
     {
-
         public Category()
         {
             Id = Guid.NewGuid();
             Transactions = new HashSet<Transactions>();
-
+            SubCategories = new HashSet<Category>();
         }
+
         [Key]
         public Guid Id { get; set; }
+
         [Required]
         [StringLength(100)]
-        public string Name { get;set; }
+        public string Name { get; set; }
+
         [Required]
-        public string AppUserId {  get; set; }
+        public string AppUserId { get; set; }
+
         [ForeignKey("AppUserId")]
         public virtual AppUser? AppUser { get; set; }
+
+        
+        public Guid? ParentCategoryId { get; set; }
+        
+
+        [ForeignKey("ParentCategoryId")]
+        public virtual Category? ParentCategory { get; set; }
+
+        public virtual ICollection<Category> SubCategories { get; set; }
 
         public virtual ICollection<Transactions> Transactions { get; set; }
     }
