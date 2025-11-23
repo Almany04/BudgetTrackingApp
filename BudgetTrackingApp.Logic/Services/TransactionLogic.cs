@@ -3,19 +3,11 @@ using BudgetTrackingApp.Logic.Interfaces;
 using BudgetTrackingApp.Repository.Interfaces;
 using BudgetTrackingApp.Shared.Dtos.Transactions;
 using BudgetTrackingApp.Shared.Enums;
-using Microsoft.AspNetCore.Identity;
-using System;
-using System.Collections.Generic;
-using System.Globalization;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace BudgetTrackingApp.Logic.Services
 {
     public class TransactionLogic : ITransactionLogic
     {
-        
         private readonly ITransactionRepository _transactionRepository;
         private readonly ICategoryRepository _categoryRepository;
         private readonly IBudgetRepository _budgetRepository;
@@ -26,69 +18,109 @@ namespace BudgetTrackingApp.Logic.Services
             _categoryRepository = categoryRepository;
             _budgetRepository = budgetRepository;
         }
+
         public async Task CreateTransactionAsync(TransactionCreateDto transactiondto, string userId)
         {
             var valid = await _categoryRepository.IsCategoryOwnedByUserAsync(transactiondto.CategoryId, userId);
-            if (!valid)
-            {
-                throw new Exception("Nem hozzá tartozó kategória!");
-            }
+            if (!valid) throw new Exception("Access denied to this category.");
+
             var newTransaction = new Transactions
             {
                 Amount = transactiondto.Amount,
-                TransactionDate= transactiondto.TransactionDate,
+                TransactionDate = transactiondto.TransactionDate,
                 Type = transactiondto.Type,
-                Description= transactiondto.Description,
-                Merchant = transactiondto.Merchant,
+                Description = transactiondto.Description,
                 CategoryId = transactiondto.CategoryId,
-                AppUserId=userId,
-                
+                AppUserId = userId,
+                // --- IMPORTANT: Map these fields ---
+                Merchant = transactiondto.Merchant,
+                PaymentMethod = transactiondto.PaymentMethod
+                // ----------------------------------
             };
+
             await _transactionRepository.AddTransactionAsync(newTransaction);
 
             if (newTransaction.Type == TransactionType.Expense)
             {
-                var budgetCurrent= await _budgetRepository.GetBudgetByUserIdAsync(userId);
-                if (budgetCurrent != null) 
+                var budgetCurrent = await _budgetRepository.GetBudgetByUserIdAsync(userId);
+                if (budgetCurrent != null)
                 {
                     budgetCurrent.SpentAmount += transactiondto.Amount;
                     await _budgetRepository.UpdateBudgetAsync(budgetCurrent);
                 }
-                
             }
+        }
+
+        public async Task UpdateTransactionAsync(Guid Id, TransactionUpdateDto transactiondto, string userId)
+        {
+            var IsOwned = await _transactionRepository.IsTransactionOwnedByIdAsync(Id, userId);
+            if (!IsOwned) throw new Exception("Access denied!");
+
+            var tx = await _transactionRepository.GetTransactionByIdAsync(Id);
+            var budget = await _budgetRepository.GetBudgetByUserIdAsync(userId);
+
+            if (tx == null || budget == null) throw new Exception("Not found.");
+
+            // Update budget logic
+            if (tx.Type == TransactionType.Expense) budget.SpentAmount -= tx.Amount;
+            if (transactiondto.Type == TransactionType.Expense) budget.SpentAmount += transactiondto.Amount;
+
+            // Update fields
+            tx.Amount = transactiondto.Amount;
+            tx.TransactionDate = transactiondto.TransactionDate;
+            tx.Description = transactiondto.Description;
+            tx.Type = transactiondto.Type;
+            tx.CategoryId = transactiondto.CategoryId;
+            tx.Merchant = transactiondto.Merchant;           // <--- Update Merchant
+            tx.PaymentMethod = transactiondto.PaymentMethod; // <--- Update Payment
+
+            await _transactionRepository.UpdateTransactionAsync(tx);
+            await _budgetRepository.UpdateBudgetAsync(budget);
         }
 
         public async Task DeleteTransactionAsync(Guid Id, string userId)
         {
-            var IsOwned=await _transactionRepository.IsTransactionOwnedByIdAsync(Id, userId);
-            if (!IsOwned)
+            var IsOwned = await _transactionRepository.IsTransactionOwnedByIdAsync(Id, userId);
+            if (!IsOwned) return;
+
+            var tx = await _transactionRepository.GetTransactionByIdAsync(Id);
+            if (tx == null) return;
+
+            if (tx.Type == TransactionType.Expense)
             {
-                throw new Exception("Nincs jogosultsága törölni ezt a tranzakciót!");
-            }
-            
-            var transactionentity=await _transactionRepository.GetTransactionByIdAsync(Id);
-            if (transactionentity==null) throw new Exception("Nincs ilyen tranzakció!");
-            if (transactionentity?.Type==TransactionType.Expense)
-            {
-                var budgetCurrent = await _budgetRepository.GetBudgetByUserIdAsync(userId);
-                if (budgetCurrent != null)
+                var budget = await _budgetRepository.GetBudgetByUserIdAsync(userId);
+                if (budget != null)
                 {
-                    budgetCurrent.SpentAmount -= transactionentity.Amount;
-                    await _budgetRepository.UpdateBudgetAsync(budgetCurrent);
+                    budget.SpentAmount -= tx.Amount;
+                    await _budgetRepository.UpdateBudgetAsync(budget);
                 }
             }
-            await _transactionRepository.DeleteTransactionAsync(transactionentity);
+            await _transactionRepository.DeleteTransactionAsync(tx);
         }
 
         public async Task<TransactionViewDto?> GetTransactionByIdAsync(Guid Id, string userId)
         {
             var IsOwned = await _transactionRepository.IsTransactionOwnedByIdAsync(Id, userId);
-            if (!IsOwned)
-            {
-               return null;
-            }
+            if (!IsOwned) return null;
             var entity = await _transactionRepository.GetTransactionByIdAsync(Id);
-            if (entity == null) return null;
+            return entity == null ? null : MapToDto(entity);
+        }
+
+        public async Task<IEnumerable<TransactionViewDto?>> GetTransactionsByUserIdFilteredAsync(string userId, DateTime startDate, DateTime endDate)
+        {
+            var entities = await _transactionRepository.GetTransactionsByUserIdFilteredAsync(userId, startDate, endDate);
+            return entities.Select(MapToDto);
+        }
+
+        private TransactionViewDto MapToDto(Transactions entity)
+        {
+            string catName = entity.Category?.Name ?? "Unknown";
+            // Format: Main > Sub
+            if (entity.Category?.ParentCategory != null)
+            {
+                catName = $"{entity.Category.ParentCategory.Name} > {entity.Category.Name}";
+            }
+
             return new TransactionViewDto
             {
                 Id = entity.Id,
@@ -96,75 +128,11 @@ namespace BudgetTrackingApp.Logic.Services
                 Description = entity.Description,
                 TransactionDate = entity.TransactionDate,
                 Type = entity.Type,
-                CategoryName=entity.Category?.Name??"Ismeretlen",
-                CategoryId = entity.CategoryId
+                CategoryName = catName,
+                CategoryId = entity.CategoryId,
+                Merchant = entity.Merchant,
+                PaymentMethod = entity.PaymentMethod
             };
-        }
-
-        public async Task<IEnumerable<TransactionViewDto?>> GetTransactionsByUserIdFilteredAsync(string userId, DateTime startDate, DateTime endDate)
-        {
-            var transactionEntites=await _transactionRepository.GetTransactionsByUserIdFilteredAsync(userId, startDate, endDate);
-            var transactionDto = transactionEntites.Select(entity => new TransactionViewDto
-            {
-                Id = entity.Id,
-                Amount = entity.Amount,
-                TransactionDate = entity.TransactionDate,
-                Description = entity.Description,
-                CategoryName = (entity.Category?.ParentCategory != null
-                        ? $"{entity.Category.ParentCategory.Name} > {entity.Category.Name}"
-                        : entity.Category?.Name) ?? "Unknown",
-                Type = entity.Type,
-                CategoryId = entity.CategoryId
-            });
-
-            return transactionDto;
-            
-        }
-
-        public async Task UpdateTransactionAsync(Guid Id, TransactionUpdateDto transactiondto, string userId)
-        {
-            var IsOwned= await _transactionRepository.IsTransactionOwnedByIdAsync(Id, userId);
-            if (!IsOwned)
-            {
-                throw new Exception("Nincs jogosultsága ezt a tranzakciót módosítani!");
-
-            }
-            var IsCategoryValid=await _categoryRepository.IsCategoryOwnedByUserAsync(transactiondto.CategoryId, userId);
-            if (!IsCategoryValid)
-            {
-                throw new Exception("Érvénytelen kategóriára próbálja áthelyezni a tranzakciót!");
-            }
-            var budget = await _budgetRepository.GetBudgetByUserIdAsync(userId);
-            var transactionToUpdate = await _transactionRepository.GetTransactionByIdAsync(Id);
-            if (transactionToUpdate == null||budget==null)
-            {
-                throw new Exception("A tranzakció vagy a hozzá tartozó budget nem található.");
-            }
-
-            UpdateBudgetTransactionChange(budget,transactionToUpdate, transactiondto);
-
-            transactionToUpdate.Amount = transactiondto.Amount;
-            transactionToUpdate.TransactionDate = transactiondto.TransactionDate;
-            transactionToUpdate.Description = transactiondto.Description;
-            transactionToUpdate.Type = transactiondto.Type;
-            transactionToUpdate.Merchant = transactiondto.Merchant;
-            transactionToUpdate.CategoryId = transactiondto.CategoryId;
-
-            await _transactionRepository.UpdateTransactionAsync(transactionToUpdate);
-            await _budgetRepository.UpdateBudgetAsync(budget);
-        }
-
-        private void UpdateBudgetTransactionChange(Budget budget, Transactions oldtransaction, TransactionUpdateDto newtransactionData)
-        {
-            if (oldtransaction.Type == TransactionType.Expense)
-            {
-                budget.SpentAmount-=oldtransaction.Amount;
-            }
-
-            if (newtransactionData.Type == TransactionType.Expense)
-            {
-                budget.SpentAmount+=newtransactionData.Amount;
-            }
         }
     }
 }
