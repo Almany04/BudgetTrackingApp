@@ -15,5 +15,6 @@ namespace BudgetTrackingApp.Logic.Interfaces
         Task CreateTransactionAsync(TransactionCreateDto transactiondto, string userId);
         Task<TransactionViewDto?> GetTransactionByIdAsync(Guid Id, string userId);
         Task<IEnumerable<TransactionViewDto?>> GetTransactionsByUserIdFilteredAsync(string userId, DateTime startDate, DateTime endDate);
+        Task CreateBulkTransactionsAsync(BulkTransactionCreateDto bulkDto, string userId);
     }
 }

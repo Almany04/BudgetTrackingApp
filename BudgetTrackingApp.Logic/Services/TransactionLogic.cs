@@ -112,6 +112,51 @@ namespace BudgetTrackingApp.Logic.Services
             return entities.Select(MapToDto);
         }
 
+        public async Task CreateBulkTransactionsAsync(BulkTransactionCreateDto bulkDto, string userId)
+        {
+            if (bulkDto.Items == null || !bulkDto.Items.Any()) return;
+
+            decimal totalExpense = 0;
+            decimal totalIncome = 0;
+
+            foreach (var item in bulkDto.Items)
+            {
+                // Verify category ownership
+                var valid = await _categoryRepository.IsCategoryOwnedByUserAsync(item.CategoryId, userId);
+                if (!valid) throw new Exception($"Access denied to category for item: {item.Description}");
+
+                var tx = new Transactions
+                {
+                    AppUserId = userId,
+                    TransactionDate = bulkDto.TransactionDate,
+                    Merchant = bulkDto.Merchant,
+                    PaymentMethod = bulkDto.PaymentMethod,
+                    Amount = item.Amount,
+                    Description = item.Description,
+                    CategoryId = item.CategoryId,
+                    Type = item.Type
+                };
+
+                if (item.Type == TransactionType.Expense) totalExpense += item.Amount;
+                if (item.Type == TransactionType.Income) totalIncome += item.Amount;
+
+                await _transactionRepository.AddTransactionAsync(tx);
+            }
+
+            // Update Budget once
+            if (totalExpense > 0 || totalIncome > 0)
+            {
+                var budget = await _budgetRepository.GetBudgetByUserIdAsync(userId);
+                if (budget != null)
+                {
+                    // Assuming budget tracks expenses. 
+                    // If you track 'balance', you would add income and subtract expense.
+                    // Based on your Entity, 'SpentAmount' tracks expenses against a limit.
+                    budget.SpentAmount += totalExpense;
+                    await _budgetRepository.UpdateBudgetAsync(budget);
+                }
+            }
+        }
         private TransactionViewDto MapToDto(Transactions entity)
         {
             string catName = entity.Category?.Name ?? "Unknown";

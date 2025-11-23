@@ -60,5 +60,16 @@ namespace BudgetTrackingApp.Api.Controllers
             try { await _transactionLogic.DeleteTransactionAsync(id, GetUserId()); return NoContent(); }
             catch (Exception ex) { return BadRequest("Váratlan hiba történt."); }
         }
+
+        [HttpPost("bulk")]
+        public async Task<IActionResult> CreateBulkTransactionsAsync([FromBody] BulkTransactionCreateDto dto)
+        {
+            try
+            {
+                await _transactionLogic.CreateBulkTransactionsAsync(dto, GetUserId());
+                return StatusCode(201);
+            }
+            catch (Exception ex) { return BadRequest(ex.Message); }
+        }
     }
 }

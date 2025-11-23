@@ -3,6 +3,7 @@ using BudgetTrackingApp.Repository.Interfaces;
 using BudgetTrackingApp.Shared.Enums;
 using Microsoft.Extensions.Configuration;
 using System.Net.Http.Json;
+using System.Text.Json;
 using System.Text.Json.Serialization;
 
 namespace BudgetTrackingApp.Logic.Services
@@ -21,6 +22,7 @@ namespace BudgetTrackingApp.Logic.Services
         {
             _transactionRepository = transactionRepository;
             _budgetRepository = budgetRepository;
+            // Retrieves key from secrets.json (local) or Azure App Settings (production)
             _apiKey = configuration["Gemini:ApiKey"] ?? throw new Exception("Gemini API Key missing!");
             _httpClient = new HttpClient();
         }
@@ -36,90 +38,78 @@ namespace BudgetTrackingApp.Logic.Services
                 var budget = await _budgetRepository.GetBudgetByUserIdAsync(userId);
 
                 if (transactions == null || !transactions.Any())
-                    return new List<string> { "🤖 AI: Add some expenses to get personalized tips!" };
+                    return new List<string> { "🤖 AI: Not enough data. Add income and expenses to get started." };
 
+                // 2. Calculate Financial Health
                 var expenses = transactions.Where(t => t.Type == TransactionType.Expense).ToList();
+                var income = transactions.Where(t => t.Type == TransactionType.Income).Sum(t => t.Amount);
                 var totalSpent = expenses.Sum(t => t.Amount);
                 var budgetLimit = budget?.LimitAmount ?? 0;
+                var savings = income - totalSpent;
+                var savingsRate = income > 0 ? (savings / income) * 100 : 0;
 
-                // 2. PREPARE DATA FOR AI (Now with Sub-Categories!)
-
-                // Main Groups (e.g. Groceries)
-                var mainGroups = expenses
-                    .GroupBy(t => t.Category?.ParentCategory?.Name ?? t.Category?.Name ?? "Other")
+                // Prepare Granular Data (Top Spending Areas)
+                var topCategories = expenses
+                    .GroupBy(t => t.Category?.Name ?? "Uncategorized")
                     .OrderByDescending(g => g.Sum(t => t.Amount))
                     .Take(5)
-                    .Select(g => $"{g.Key}: {g.Sum(t => t.Amount):C0}");
+                    .Select(g => $"{g.Key} ({g.Sum(t => t.Amount):C0})");
 
-                // Sub Items (e.g. Cheese, Vapsolo) - The "Real" spending
-                var specificItems = expenses
-                    .Where(t => t.Category?.ParentCategory != null) // Only look at sub-items
-                    .GroupBy(t => t.Category?.Name ?? "Unknown")
-                    .OrderByDescending(g => g.Sum(t => t.Amount))
-                    .Take(5)
-                    .Select(g => $"{g.Key}: {g.Sum(t => t.Amount):C0}");
-
-                // Top Merchants
-                var topMerchants = expenses
-                    .GroupBy(t => t.Merchant ?? "Unknown")
-                    .OrderByDescending(g => g.Sum(t => t.Amount))
-                    .Take(3)
-                    .Select(g => g.Key);
-
-                // 3. SMART PROMPT
+                // 3. Advanced Strategic Prompt for Gemini 2.5 Flash
+                // Note: Double quotes inside the $@ string are escaped as ""
                 var promptText = $@"
-                    Act as a ruthless but helpful financial advisor.
+                    Act as a ruthless Financial Strategist. Analyze this 30-day snapshot:
                     
-                    USER DATA (30 Days):
+                    FINANCIAL DATA:
+                    - Income: {income:C0}
+                    - Expenses: {totalSpent:C0}
+                    - Net Savings: {savings:C0} (Savings Rate: {savingsRate:F1}%)
                     - Budget Limit: {budgetLimit:C0}
-                    - Total Spent: {totalSpent:C0}
-                    - Top Main Categories: {string.Join(", ", mainGroups)}
-                    - Top Specific Items (The Problem Areas): {string.Join(", ", specificItems)}
-                    - Favorite Shops: {string.Join(", ", topMerchants)}
+                    - Top Spending: {string.Join(", ", topCategories)}
 
                     TASK:
-                    Give 5 specific, short, actionable tips to save money.
-                    - Focus heavily on the 'Specific Items' (e.g. if they spend a lot on 'Cheese', tell them to buy generic brand).
-                    - Mention specific shops if relevant.
-                    - Make predictions about the future spending and how much the person can save.
-                    - No markdown. Start each tip with an emoji.";
+                    Provide 4 distinct, short sections using emojis:
 
-                // Using Gemini 2.5 Pro for quality
-                var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-pro:generateContent?key={_apiKey}";
+                    1. 🔮 **Prediction**: Forecast my financial status next month based on these habits.
+                    2. 📉 **Cut Costs**: Identify exactly one area to slash spending immediately.
+                    3. 📈 **Investment Strategy**: 
+                       - If savings > 0: Suggest a specific portfolio allocation (e.g., ""60% S&P500 ETF, 20% Bonds, 20% Crypto"") based on the savings amount of {savings:C0}.
+                       - If savings <= 0: Give a harsh ""Debt Payoff"" plan.
+                    4. 💡 **Immediate Action**: One task to perform today.
+
+                    Keep it concise. No markdown bolding (**), just plain text.";
+
+                // 4. Call Gemini 2.5 Flash API
+                var url = $"https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key={_apiKey}";
+
                 var requestBody = new { contents = new[] { new { parts = new[] { new { text = promptText } } } } };
 
                 var response = await _httpClient.PostAsJsonAsync(url, requestBody);
 
                 if (!response.IsSuccessStatusCode)
-                    return new List<string> { "⚠️ AI is currently unavailable." };
+                {
+                    return new List<string> { $"⚠️ AI Unavailable ({response.StatusCode}): Check Quota." };
+                }
 
                 var result = await response.Content.ReadFromJsonAsync<GeminiResponse>();
                 var responseText = result?.Candidates?.FirstOrDefault()?.Content?.Parts?.FirstOrDefault()?.Text;
 
-                if (string.IsNullOrEmpty(responseText)) return new List<string>();
+                if (string.IsNullOrEmpty(responseText)) return new List<string> { "⚠️ AI returned no insights." };
 
+                // Clean up response
                 return responseText
                     .Split(new[] { '\n' }, StringSplitOptions.RemoveEmptyEntries)
-                    .Select(s => CleanText(s))
-                    .Where(s => s.Length > 10)
-                    .Take(5) // Increased to 5 tips
+                    .Select(s => s.Trim().Replace("*", "").Replace("#", ""))
+                    .Where(s => s.Length > 5)
                     .ToList();
             }
-            catch (Exception)
+            catch (Exception ex)
             {
-                return new List<string> { "⚠️ AI connection error." };
+                return new List<string> { $"⚠️ Error: {ex.Message}" };
             }
         }
 
-        private string CleanText(string input)
-        {
-            if (string.IsNullOrWhiteSpace(input)) return "";
-            var clean = input.Replace("**", "").Replace("*", "").Replace("#", "").Trim();
-            if (clean.StartsWith("- ")) clean = clean.Substring(2);
-            return clean;
-        }
-
-        // DTOs
+        // Internal DTOs for Gemini Response
         private class GeminiResponse { [JsonPropertyName("candidates")] public List<Candidate>? Candidates { get; set; } }
         private class Candidate { [JsonPropertyName("content")] public Content? Content { get; set; } }
         private class Content { [JsonPropertyName("parts")] public List<Part>? Parts { get; set; } }
