@@ -1,0 +1,93 @@
+﻿@using BudgetTrackingApp.Shared.Dtos.AI
+@inject DialogService DialogService
+
+<RadzenStack Gap="1rem" Style="height: 500px;">
+
+    @if (Advice == null)
+    {
+        <RadzenStack AlignItems="AlignItems.Center" JustifyContent="JustifyContent.Center" Style="height: 100%;">
+            <RadzenProgressBar Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" Style="width: 200px;" />
+            <RadzenText TextStyle="TextStyle.Body1" Style="color: var(--text-secondary);">Consulting the AI...</RadzenText>
+        </RadzenStack>
+    }
+    else
+    {
+        <RadzenTabs RenderMode="TabRenderMode.Client" Style="height: 100%;">
+            <Tabs>
+                <RadzenTabsItem Text="Patterns" Icon="analytics">
+                    <RadzenCard Class="xtract-card" Style="background: rgba(0,0,0,0.3);">
+                        <RadzenStack Gap="0.5rem">
+                            @foreach (var tip in Advice.SpendingPatterns)
+                            {
+                                <div style="padding: 10px; border-left: 3px solid #8b5cf6; background: rgba(139, 92, 246, 0.1); border-radius: 4px; color: #e5e7eb;">
+                                    @tip
+                                </div>
+                            }
+                        </RadzenStack>
+                    </RadzenCard>
+                </RadzenTabsItem>
+
+                <RadzenTabsItem Text="Cuts" Icon="content_cut">
+                    <RadzenCard Class="xtract-card" Style="background: rgba(0,0,0,0.3);">
+                        <RadzenStack Gap="0.5rem">
+                            @foreach (var tip in Advice.CostCutting)
+                            {
+                                <div style="padding: 10px; border-left: 3px solid #ef4444; background: rgba(239, 68, 68, 0.1); border-radius: 4px; color: #e5e7eb;">
+                                    @tip
+                                </div>
+                            }
+                        </RadzenStack>
+                    </RadzenCard>
+                </RadzenTabsItem>
+
+                <RadzenTabsItem Text="Future" Icon="timeline">
+                    <RadzenCard Class="xtract-card" Style="background: rgba(0,0,0,0.3);">
+                        <RadzenStack Gap="0.5rem">
+                            @foreach (var tip in Advice.FutureForecast)
+                            {
+                                <div style="padding: 10px; border-left: 3px solid #3b82f6; background: rgba(59, 130, 246, 0.1); border-radius: 4px; color: #e5e7eb;">
+                                    @tip
+                                </div>
+                            }
+                        </RadzenStack>
+                    </RadzenCard>
+                </RadzenTabsItem>
+
+                <RadzenTabsItem Text="Invest" Icon="trending_up">
+                    <RadzenCard Class="xtract-card" Style="background: rgba(0,0,0,0.3);">
+                        <RadzenStack Gap="0.5rem">
+                            @foreach (var tip in Advice.SmartInvestments)
+                            {
+                                <div style="padding: 10px; border-left: 3px solid #10b981; background: rgba(16, 185, 129, 0.1); border-radius: 4px; color: #e5e7eb;">
+                                    @tip
+                                </div>
+                            }
+                        </RadzenStack>
+                    </RadzenCard>
+                </RadzenTabsItem>
+
+                <RadzenTabsItem Text="Do It" Icon="check_circle">
+                    <RadzenCard Class="xtract-card" Style="background: rgba(0,0,0,0.3);">
+                        <RadzenStack Gap="0.5rem">
+                            @foreach (var tip in Advice.ImmediateActions)
+                            {
+                                <div style="padding: 10px; border-left: 3px solid #f59e0b; background: rgba(245, 158, 11, 0.1); border-radius: 4px; color: #e5e7eb;">
+                                    <RadzenIcon Icon="check_box_outline_blank" Style="vertical-align: middle; margin-right: 5px; font-size: 1rem;" />
+                                    @tip
+                                </div>
+                            }
+                        </RadzenStack>
+                    </RadzenCard>
+                </RadzenTabsItem>
+            </Tabs>
+        </RadzenTabs>
+    }
+
+    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="1rem">
+        <RadzenButton Text="Close" ButtonStyle="ButtonStyle.Light" Click="@(() => DialogService.Close(null))" />
+    </RadzenStack>
+</RadzenStack>
+
+@code {
+    [Parameter] public AiAdviceDto? Advice { get; set; }
+}

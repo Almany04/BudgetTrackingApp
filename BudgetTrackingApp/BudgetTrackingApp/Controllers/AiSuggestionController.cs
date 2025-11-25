@@ -19,7 +19,7 @@ namespace BudgetTrackingApp.Api.Controllers
             _aiLogic = aiLogic;
         }
 
-        [HttpGet]
+        [HttpGet] // Now returns the DTO
         public async Task<IActionResult> GetSuggestions()
         {
             try
@@ -27,7 +27,7 @@ namespace BudgetTrackingApp.Api.Controllers
                 var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 if (userId == null) return Unauthorized();
 
-                var suggestions = await _aiLogic.GenerateSuggestionsAsync(userId);
+                var suggestions = await _aiLogic.GenerateStructuredAdviceAsync(userId);
                 return Ok(suggestions);
             }
             catch (Exception)
@@ -35,7 +35,5 @@ namespace BudgetTrackingApp.Api.Controllers
                 return BadRequest("Unable to generate suggestions.");
             }
         }
-
-        
     }
 }

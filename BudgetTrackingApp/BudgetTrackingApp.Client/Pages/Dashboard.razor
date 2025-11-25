@@ -1,10 +1,12 @@
 ﻿@page "/dashboard"
 @using BudgetTrackingApp.Shared.Dtos.Budget
 @using BudgetTrackingApp.Shared.Dtos.Transactions
+@using BudgetTrackingApp.Shared.Dtos.AI
 @using BudgetTrackingApp.Shared.Enums
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject DialogService DialogService
+@inject NotificationService NotificationService
 
 <PageTitle>Dashboard</PageTitle>
 
@@ -85,43 +87,23 @@ else
                     </div>
                 </RadzenColumn>
 
-                @* 2. AI ADVISOR (Async Load) *@
+                @* 2. AI ADVISOR (Status Card) *@
                 <RadzenColumn Size="12" SizeMD="6">
-                    <div class="xtract-card" style="padding: 1.5rem; height: 100%; min-height: 400px; background: linear-gradient(160deg, rgba(124, 58, 237, 0.08), transparent) !important; border: 1px solid rgba(139, 92, 246, 0.2);">
-                        <RadzenStack Gap="1rem" Style="height: 100%;">
-                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
-                                <RadzenIcon Icon="auto_awesome" Style="color: #a78bfa;" />
-                                <span style="font-weight: 800; letter-spacing: 1px; font-size: 0.9rem; color: #a78bfa;">AI ADVISOR</span>
-                            </RadzenStack>
+                    <div class="xtract-card" style="padding: 1.5rem; height: 100%; min-height: 400px; background: linear-gradient(160deg, rgba(124, 58, 237, 0.1), transparent) !important; border: 1px solid rgba(139, 92, 246, 0.2); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
 
-                            <div style="flex-grow: 1; overflow-y: auto; max-height: 320px;">
-                                @if (isAiLoading)
-                                {
-                                    <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; height: 100%; color: #a78bfa;">
-                                        <RadzenProgressBar Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" Style="width: 50px; height: 4px; margin-bottom: 10px;" />
-                                        <span style="font-size: 0.8rem;">Analyzing your spending...</span>
-                                    </div>
-                                }
-                                else if (aiSuggestions.Any())
-                                {
-                                    <RadzenStack Gap="0.8rem">
-                                        @foreach (var suggestion in aiSuggestions)
-                                        {
-                                            <div style="font-size: 0.9rem; line-height: 1.5; color: #e5e7eb; border-left: 3px solid #7c3aed; padding-left: 12px; background: rgba(0,0,0,0.2); padding: 10px; border-radius: 0 8px 8px 0;">
-                                                @suggestion
-                                            </div>
-                                        }
-                                    </RadzenStack>
-                                }
-                                else
-                                {
-                                    <div style="height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; color: var(--text-secondary); opacity: 0.7;">
-                                        <RadzenIcon Icon="psychology" Style="font-size: 3rem; margin-bottom: 1rem;" />
-                                        <span style="font-size: 1rem;">Add expenses to unlock AI tips!</span>
-                                    </div>
-                                }
-                            </div>
-                        </RadzenStack>
+                        <div style="width: 80px; height: 80px; background: rgba(139, 92, 246, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem; box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);">
+                            <RadzenIcon Icon="psychology" Style="font-size: 3rem; color: #a78bfa;" />
+                        </div>
+
+                        <h3 style="color: white; margin-bottom: 0.5rem;">AI Financial Consultant</h3>
+                        <p style="color: var(--text-secondary); max-width: 80%; margin-bottom: 2rem;">
+                            Get a deep dive analysis of your spending, forecast for next month, and a 5-step action plan.
+                        </p>
+
+                        <RadzenButton Text="Open Analysis Window" Icon="auto_awesome"
+                                      ButtonStyle="ButtonStyle.Primary"
+                                      Click="@OpenAiWindow"
+                                      IsBusy="@isAiLoading" BusyText="Analyzing..." />
                     </div>
                 </RadzenColumn>
 
@@ -130,7 +112,7 @@ else
             @* --- ROW 2: MERCHANTS + BUDGET --- *@
             <RadzenRow Gutter="1.5rem">
 
-                @* 3. MERCHANT CHART *@
+                @* 3. MERCHANT CHART (Horizontal Bar) *@
                 <RadzenColumn Size="12" SizeMD="6">
                     <div class="xtract-card" style="padding: 1.5rem; height: 100%; min-height: 350px;">
                         <h3 style="margin: 0 0 0.5rem 0; font-size: 1.2rem; color: white; font-weight: 700;">Where do I spend?</h3>
@@ -219,10 +201,10 @@ else
     private BudgetViewDto? budget;
     private double budgetPercentage = 0;
 
-    private bool isCriticalLoading = true; 
-    private bool isAiLoading = true;       
+    private bool isCriticalLoading = true;
+    private bool isAiLoading = false;
 
-    private List<string> aiSuggestions = new();
+    private AiAdviceDto? aiAdvice = null;
     private List<TransactionViewDto> allTransactions = new();
 
     private List<ChartItem> merchantData = new();
@@ -230,7 +212,7 @@ else
     private List<ChartItem> categoryData = new();
     private string? selectedMerchant;
 
-    private string[] merchantColors = new[] { "#8b5cf6", "#6366f1", "#a855f7", "#d946ef", "#ec4899", "#f43f5e" };
+    private string[] merchantColors = new[] { "#8b5cf6", "#6366f1", "#a855f7", "#d946ef", "#ec4899", "#f43f5e", "#10b981", "#06b6d4", "#3b82f6", "#f59e0b" };
     private string[] categoryColors = new[] { "#10b981", "#06b6d4", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6" };
 
     class ChartItem { public string Label { get; set; } = ""; public double Total { get; set; } }
@@ -238,8 +220,6 @@ else
     protected override async Task OnInitializedAsync()
     {
         await LoadMainDataAsync();
-        
-        _ = LoadAiDataAsync();
     }
 
     private async Task LoadMainDataAsync()
@@ -264,20 +244,28 @@ else
         finally { isCriticalLoading = false; }
     }
 
-    // Separate AI Loader so it doesn't block
-    private async Task LoadAiDataAsync()
+    private async Task OpenAiWindow()
     {
         isAiLoading = true;
-        StateHasChanged(); 
         try
         {
-            aiSuggestions = await Http.GetFromJsonAsync<List<string>>("api/aisuggestion") ?? new();
+            if (aiAdvice == null)
+            {
+                aiAdvice = await Http.GetFromJsonAsync<AiAdviceDto>("api/aisuggestion");
+            }
+
+            await DialogService.OpenAsync<BudgetTrackingApp.Client.Shared.AiAdviceDialog>("Financial Analysis",
+                new Dictionary<string, object> { { "Advice", aiAdvice } },
+                new DialogOptions() { Width = "800px", Height = "600px", CssClass = "xtract-card", Resizable = true, Draggable = true }
+            );
         }
-        catch { /* Silent fail */ }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "AI Error", "Could not fetch advice.");
+        }
         finally
         {
             isAiLoading = false;
-            StateHasChanged(); 
         }
     }
 
@@ -290,24 +278,22 @@ else
     private void PrepareMerchantChart()
     {
         var expenses = allTransactions.Where(t => t.Type == TransactionType.Expense).ToList();
-
         merchantData = expenses
             .GroupBy(t => string.IsNullOrWhiteSpace(t.Merchant) ? "Unknown" : t.Merchant)
             .Select(g => new ChartItem { Label = g.Key, Total = (double)g.Sum(t => t.Amount) })
-            .OrderByDescending(x => x.Total) // Sort highest first
-            .Take(10) // <--- NEW: Limit to top 10 to prevent overcrowding
-            .OrderBy(x => x.Total) // Re-sort ascending for Bar Chart (so biggest is at top visually)
+            .OrderByDescending(x => x.Total)
+            .Take(10)
+            .OrderBy(x => x.Total)
             .ToList();
 
-        merchantNames = merchantData.Select(m => m.Label).ToList();
-
-        // Select the biggest spender by default for the detail chart
+        merchantNames = merchantData.OrderByDescending(x => x.Total).Select(m => m.Label).ToList();
         if (merchantNames.Any())
         {
-            selectedMerchant = merchantNames.Last(); // Last because we re-sorted for the chart
+            selectedMerchant = merchantNames.First();
             UpdateDetailChart();
         }
     }
+
     private void UpdateDetailChart()
     {
         if (string.IsNullOrEmpty(selectedMerchant)) { categoryData = new(); return; }
@@ -333,12 +319,11 @@ else
             new DialogOptions() { Width = "400px", CssClass = "xtract-card" }
         );
 
-        // If saved, RELOAD budget specifically
         if (result == true)
         {
             budget = await Http.GetFromJsonAsync<BudgetViewDto>("api/budget");
             RefreshBudgetCalculations();
-            StateHasChanged(); // Force UI Refresh
+            StateHasChanged();
         }
     }
 }
