@@ -134,28 +134,33 @@ else
                 <RadzenColumn Size="12" SizeMD="6">
                     <div class="xtract-card" style="padding: 1.5rem; height: 100%; min-height: 350px;">
                         <h3 style="margin: 0 0 0.5rem 0; font-size: 1.2rem; color: white; font-weight: 700;">Where do I spend?</h3>
-                        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">Top Shops</p>
+                        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">Top 10 Shops</p>
 
                         @if (merchantData.Any())
                         {
-                            <RadzenChart Style="height: 250px; background: transparent; font-family: 'Inter';">
-                                <RadzenColumnSeries Data="@merchantData"
-                                                    CategoryProperty="Label"
-                                                    ValueProperty="Total"
-                                                    Fills="@merchantColors">
-                                    @* HIDDEN LABELS *@
-                                    <ChildContent>
-                                        <RadzenSeriesDataLabels Visible="false" />
-                                    </ChildContent>
+                            <RadzenChart Style="height: 300px; background: transparent; font-family: 'Inter';">
+                                <RadzenBarSeries Data="@merchantData"
+                                                 CategoryProperty="Label"
+                                                 ValueProperty="Total"
+                                                 Fills="@merchantColors">
                                     <TooltipTemplate Context="data">
-                                        <div style="background: rgba(0,0,0,0.8); padding: 5px; border: 1px solid #8b5cf6; border-radius: 4px;">
-                                            <strong style="color: #fff">@data.Label</strong>: <span style="color: #a78bfa">@data.Total.ToString("N0")</span>
+                                        <div style="background: rgba(0,0,0,0.9); padding: 8px; border: 1px solid #8b5cf6; border-radius: 4px;">
+                                            <strong style="color: #fff">@data.Label</strong><br />
+                                            <span style="color: #a78bfa">@data.Total.ToString("N0") HUF</span>
                                         </div>
                                     </TooltipTemplate>
-                                </RadzenColumnSeries>
-                                <RadzenValueAxis Formatter="@(value => ((double)value).ToString("N0"))">
-                                    <RadzenGridLines Visible="true" Stroke="rgba(255,255,255,0.1)" />
+                                </RadzenBarSeries>
+
+                                <RadzenValueAxis Visible="false">
+                                    <RadzenGridLines Visible="false" />
                                 </RadzenValueAxis>
+
+                                <RadzenCategoryAxis>
+                                    <RadzenAxisTitle Text="" />
+                                    <RadzenGridLines Visible="false" />
+                                    <RadzenTicks Visible="false" />
+                                </RadzenCategoryAxis>
+
                                 <RadzenLegend Visible="false" />
                             </RadzenChart>
                         }
@@ -285,20 +290,24 @@ else
     private void PrepareMerchantChart()
     {
         var expenses = allTransactions.Where(t => t.Type == TransactionType.Expense).ToList();
+
         merchantData = expenses
             .GroupBy(t => string.IsNullOrWhiteSpace(t.Merchant) ? "Unknown" : t.Merchant)
             .Select(g => new ChartItem { Label = g.Key, Total = (double)g.Sum(t => t.Amount) })
-            .OrderByDescending(x => x.Total)
+            .OrderByDescending(x => x.Total) // Sort highest first
+            .Take(10) // <--- NEW: Limit to top 10 to prevent overcrowding
+            .OrderBy(x => x.Total) // Re-sort ascending for Bar Chart (so biggest is at top visually)
             .ToList();
 
         merchantNames = merchantData.Select(m => m.Label).ToList();
+
+        // Select the biggest spender by default for the detail chart
         if (merchantNames.Any())
         {
-            selectedMerchant = merchantNames.First();
+            selectedMerchant = merchantNames.Last(); // Last because we re-sorted for the chart
             UpdateDetailChart();
         }
     }
-
     private void UpdateDetailChart()
     {
         if (string.IsNullOrEmpty(selectedMerchant)) { categoryData = new(); return; }
