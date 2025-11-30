@@ -22,7 +22,7 @@ namespace BudgetTrackingApp.Shared.Dtos.Transactions
         public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Card;
 
         public DateTime TransactionDate { get; set; }
-        [Required]
+    
         public Guid CategoryId { get; set; }
         public PaidBy PaidBy { get; set; } = PaidBy.Me;
         public bool IsSplit { get; set; }
