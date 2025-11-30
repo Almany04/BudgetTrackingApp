@@ -10,14 +10,17 @@ namespace BudgetTrackingApp.Api.Controllers
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
-    [IgnoreAntiforgeryToken]
+    [IgnoreAntiforgeryToken] // Note: Consider removing this if you implement proper CSRF tokens later
     [EnableRateLimiting("General")]
     public class CategoriesController : ControllerBase
     {
         private readonly ICategoryLogic _categoryLogic;
-        public CategoriesController(ICategoryLogic categoryLogic)
+        private readonly ILogger<CategoriesController> _logger;
+
+        public CategoriesController(ICategoryLogic categoryLogic, ILogger<CategoriesController> logger)
         {
             _categoryLogic = categoryLogic;
+            _logger = logger;
         }
 
         private string GetUserId() => User.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new Exception("User not found");
@@ -26,7 +29,11 @@ namespace BudgetTrackingApp.Api.Controllers
         public async Task<IActionResult> GetUserCategories()
         {
             try { return Ok(await _categoryLogic.GetCategoriesByUserIdAsync(GetUserId())); }
-            catch (Exception ex) { return BadRequest("Váratlan hiba történt."); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error fetching categories");
+                return StatusCode(500, "An error occurred.");
+            }
         }
 
         [HttpPost]
@@ -35,30 +42,40 @@ namespace BudgetTrackingApp.Api.Controllers
             try
             {
                 await _categoryLogic.CreateCategoryAsync(dto, GetUserId());
-
-                // FIX: Return the created object (or at least the list) so client doesn't have to guess
-                // In a perfect world, CreateCategoryAsync returns the Guid. 
-                // For now, let's fetch the created item to return it.
                 var categories = await _categoryLogic.GetCategoriesByUserIdAsync(GetUserId());
                 var created = categories.FirstOrDefault(c => c.Name == dto.Name);
-
-                return StatusCode(201, created); // Return the DTO
+                return StatusCode(201, created);
             }
-            catch (Exception ex) { return BadRequest("Váratlan hiba történt."); }
+            catch (UnauthorizedAccessException) { return Forbid(); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error creating category");
+                return BadRequest(ex.Message); // Safe to return Logic messages like "Duplicate name"
+            }
         }
 
         [HttpPut("{id}")]
         public async Task<IActionResult> UpdateCategory(Guid id, [FromBody] CategoryUpdateDto dto)
         {
             try { await _categoryLogic.UpdateCategoryAsync(id, dto, GetUserId()); return Ok(); }
-            catch (Exception ex) { return BadRequest("Váratlan hiba történt."); }
+            catch (UnauthorizedAccessException) { return Forbid(); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error updating category");
+                return BadRequest(ex.Message);
+            }
         }
 
         [HttpDelete("{id}")]
         public async Task<IActionResult> DeleteCategory(Guid id)
         {
             try { await _categoryLogic.DeleteCategoryAsync(id, GetUserId()); return NoContent(); }
-            catch (Exception ex) { return BadRequest("Váratlan hiba történt."); }
+            catch (UnauthorizedAccessException) { return Forbid(); }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Error deleting category");
+                return BadRequest(ex.Message);
+            }
         }
     }
 }

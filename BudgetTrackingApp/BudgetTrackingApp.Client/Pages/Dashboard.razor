@@ -28,38 +28,26 @@ else
                     <span style="color: var(--text-secondary); font-size: 0.9rem;">Financial Overview</span>
                 </div>
                 <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem">
+                    @* Small AI Button *@
+                    <RadzenButton Icon="psychology" ButtonStyle="ButtonStyle.Info" Variant="Variant.Outlined" Click="@OpenAiWindow" ToolTip="AI Analysis" Size="ButtonSize.Small" />
+
                     <RadzenButton Text="Scan Receipt" Icon="qr_code_scanner" ButtonStyle="ButtonStyle.Secondary" Click="@OpenScannerDialog" />
                     <RadzenButton Text="Add Expense" Icon="add_circle" ButtonStyle="ButtonStyle.Primary" Click="@(() => Navigation.NavigateTo("transactions"))" />
                 </RadzenStack>
             </RadzenStack>
 
-            @* --- ROW 1: AI & CATEGORIES --- *@
+            @* --- ROW 1: CHARTS (50/50) --- *@
             <RadzenRow Gutter="1.5rem">
 
-                @* 1. AI ADVISOR *@
+                @* 1. MERCHANT BAR CHART *@
                 <RadzenColumn Size="12" SizeMD="6">
-                    <div class="xtract-card" style="padding: 1.5rem; height: 100%; min-height: 300px; background: linear-gradient(160deg, rgba(124, 58, 237, 0.15), transparent) !important; border: 1px solid rgba(139, 92, 246, 0.3); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
-                        <div style="width: 70px; height: 70px; background: rgba(139, 92, 246, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);">
-                            <RadzenIcon Icon="psychology" Style="font-size: 2.5rem; color: #a78bfa;" />
-                        </div>
-                        <h3 style="color: white; margin-bottom: 0.5rem;">AI Financial Consultant</h3>
-                        <p style="color: var(--text-secondary); margin-bottom: 1.5rem; max-width: 90%;">Get a deep analysis of your spending habits and personalized saving tips.</p>
-                        <RadzenButton Text="Open Analysis" Icon="auto_awesome"
-                                      ButtonStyle="ButtonStyle.Primary"
-                                      Click="@OpenAiWindow"
-                                      IsBusy="@isAiLoading" BusyText="Analyzing..." />
-                    </div>
-                </RadzenColumn>
-
-                @* 2. MERCHANT CHART (Where do I spend?) *@
-                <RadzenColumn Size="12" SizeMD="6">
-                    <div class="xtract-card" style="padding: 1.5rem; height: 100%; min-height: 300px;">
-                        <h3 style="margin: 0 0 0.5rem 0; font-size: 1.2rem; color: white; font-weight: 700;">Where do I spend?</h3>
-                        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">Top Shops</p>
+                    <div class="xtract-card" style="padding: 1.5rem; height: 100%; min-height: 400px;">
+                        <h3 style="margin: 0 0 0.5rem 0; font-size: 1.2rem; color: white; font-weight: 700;">Top Shops</h3>
+                        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">Where do I spend?</p>
 
                         @if (merchantData.Any())
                         {
-                            <RadzenChart Style="height: 250px; background: transparent;">
+                            <RadzenChart Style="height: 300px; background: transparent;">
                                 <RadzenBarSeries Data="@merchantData" CategoryProperty="Label" ValueProperty="Total" Fills="@merchantColors">
                                     <TooltipTemplate Context="data">
                                         <div style="background: rgba(0,0,0,0.9); padding: 8px; border: 1px solid #8b5cf6; border-radius: 4px;">
@@ -69,10 +57,6 @@ else
                                     </TooltipTemplate>
                                 </RadzenBarSeries>
                                 <RadzenValueAxis Visible="false" />
-                                <RadzenCategoryAxis>
-                                    <RadzenGridLines Visible="false" />
-                                    <RadzenTicks Visible="false" />
-                                </RadzenCategoryAxis>
                                 <RadzenLegend Visible="false" />
                             </RadzenChart>
                         }
@@ -83,11 +67,56 @@ else
                     </div>
                 </RadzenColumn>
 
+                @* 2. CATEGORY BY MERCHANT DONUT *@
+                <RadzenColumn Size="12" SizeMD="6">
+                    <div class="xtract-card" style="padding: 1.5rem; height: 100%; min-height: 400px;">
+                        <h3 style="margin: 0 0 0.5rem 0; font-size: 1.2rem; color: white; font-weight: 700;">What did I buy?</h3>
+                        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">Items at selected shop</p>
+
+                        @* Dropdown for Merchants *@
+                        <div style="background: rgba(255,255,255,0.05); padding: 0.8rem; border-radius: 10px; margin-bottom: 1rem;">
+                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
+                                <span style="color: white; font-weight: 600; white-space: nowrap; font-size: 0.9rem;">Store:</span>
+                                <RadzenDropDown @bind-Value="selectedMerchant" Data="@merchantNames" Change="@UpdateDetailChart" Placeholder="Select..." Style="width: 100%;" />
+                            </RadzenStack>
+                        </div>
+
+                        @if (categoryData.Any())
+                        {
+                            <RadzenChart Style="height: 260px; background: transparent;">
+                                <RadzenDonutSeries Data="@categoryData" CategoryProperty="Label" ValueProperty="Total"
+                                                   Fills="@categoryColors" Title="Spending" InnerRadius="70">
+                                    <TitleTemplate>
+                                        <div style="display: flex; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%;">
+                                            <div style="color: var(--text-secondary); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px;">Total</div>
+                                            <div style="color: white; font-size: 1.3rem; font-weight: 800; margin-top: 2px;">@categoryData.Sum(x => x.Total).ToString("N0")</div>
+                                        </div>
+                                    </TitleTemplate>
+                                    <TooltipTemplate Context="data">
+                                        <div style="background: rgba(0,0,0,0.9); padding: 8px; border: 1px solid #8b5cf6; border-radius: 4px;">
+                                            <div style="color: #fff; font-weight: 600;">@data.Label</div>
+                                            <div style="color: #a78bfa;">@data.Total.ToString("N0") HUF</div>
+                                        </div>
+                                    </TooltipTemplate>
+                                </RadzenDonutSeries>
+                                <RadzenLegend Visible="true" Position="LegendPosition.Right" />
+                            </RadzenChart>
+                        }
+                        else
+                        {
+                            <div style="height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center; color: var(--text-secondary); border: 2px dashed rgba(255,255,255,0.1); border-radius: 12px;">
+                                <RadzenIcon Icon="filter_list" Style="font-size: 2rem; margin-bottom: 0.5rem; opacity: 0.5;" />
+                                <span style="font-size: 0.9rem;">@(string.IsNullOrEmpty(selectedMerchant) ? "Select a store above." : "No details found.")</span>
+                            </div>
+                        }
+                    </div>
+                </RadzenColumn>
+
             </RadzenRow>
 
-            @* --- ROW 2: BUDGET STATUS --- *@
+            @* --- ROW 2: BUDGET STATUS (100% WIDTH) --- *@
             <RadzenColumn Size="12">
-                <div class="xtract-card" style="padding: 1.5rem; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: center;">
+                <div class="xtract-card" style="padding: 1.5rem; height: 100%; min-height: 200px; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: center;">
                     <div style="position: absolute; right: -40px; top: -40px; width: 180px; height: 180px; background: radial-gradient(circle, rgba(139, 92, 246, 0.15), transparent 70%); pointer-events: none;"></div>
 
                     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
@@ -96,12 +125,10 @@ else
                     </RadzenStack>
 
                     <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End" Gap="1rem" Class="rz-mt-2">
-                        <div style="font-size: 3rem; font-weight: 800; color: white; line-height: 1;">
+                        <div style="font-size: 2.5rem; font-weight: 800; color: white; line-height: 1;">
                             @((budget?.SpentAmount ?? 0).ToString("N0"))
                         </div>
-                        <span style="font-size: 1.2rem; color: var(--text-secondary); font-weight: 500; margin-bottom: 8px;">
-                            / @((budget?.LimitAmount ?? 0).ToString("N0")) HUF
-                        </span>
+                        <span style="font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 6px;">/ @((budget?.LimitAmount ?? 0).ToString("N0")) HUF</span>
                     </RadzenStack>
 
                     <div class="rz-mt-3">
@@ -112,6 +139,7 @@ else
                     </div>
                 </div>
             </RadzenColumn>
+
         </RadzenStack>
     </div>
 }
@@ -123,9 +151,15 @@ else
     private bool isAiLoading = false;
     private AiAdviceDto? aiAdvice = null;
     private List<TransactionViewDto> allTransactions = new();
+
+    // Chart Data
     private List<ChartItem> merchantData = new();
+    private List<string> merchantNames = new();
+    private List<ChartItem> categoryData = new();
+    private string? selectedMerchant;
 
     private string[] merchantColors = new[] { "#8b5cf6", "#6366f1", "#a855f7", "#d946ef", "#ec4899", "#f43f5e", "#10b981", "#06b6d4", "#3b82f6", "#f59e0b" };
+    private string[] categoryColors = new[] { "#10b981", "#06b6d4", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6" };
     class ChartItem { public string Label { get; set; } = ""; public double Total { get; set; } }
 
     protected override async Task OnInitializedAsync() => await LoadMainDataAsync();
@@ -146,10 +180,46 @@ else
             allTransactions = await transactionsTask ?? new();
 
             RefreshBudgetCalculations();
-            PrepareMerchantChart();
+            PrepareCharts();
         }
         catch (Exception ex) { Console.WriteLine($"Err: {ex.Message}"); }
         finally { isCriticalLoading = false; }
+    }
+
+    private void PrepareCharts()
+    {
+        var expenses = allTransactions.Where(t => t.Type == TransactionType.Expense).ToList();
+
+        // 1. Top Shops Bar Chart
+        merchantData = expenses
+            .GroupBy(t => string.IsNullOrWhiteSpace(t.Merchant) ? "Unknown" : t.Merchant)
+            .Select(g => new ChartItem { Label = g.Key, Total = (double)g.Sum(t => t.Amount) })
+            .OrderByDescending(x => x.Total)
+            .Take(10)
+            .ToList();
+
+        // 2. Populate Dropdown
+        merchantNames = merchantData.Select(m => m.Label).ToList();
+        if (merchantNames.Any())
+        {
+            selectedMerchant = merchantNames.First();
+            UpdateDetailChart();
+        }
+    }
+
+    private void UpdateDetailChart()
+    {
+        if (string.IsNullOrEmpty(selectedMerchant)) { categoryData = new(); return; }
+
+        var storeExpenses = allTransactions
+            .Where(t => t.Type == TransactionType.Expense &&
+                       (string.IsNullOrWhiteSpace(t.Merchant) ? "Unknown" : t.Merchant) == selectedMerchant);
+
+        categoryData = storeExpenses
+            .GroupBy(t => t.CategoryName.Contains(">") ? t.CategoryName.Split('>')[1].Trim() : t.CategoryName)
+            .Select(g => new ChartItem { Label = g.Key, Total = (double)g.Sum(t => t.Amount) })
+            .OrderByDescending(x => x.Total)
+            .ToList();
     }
 
     private async Task OpenAiWindow()
@@ -178,17 +248,6 @@ else
     {
         if (budget != null && budget.LimitAmount > 0)
             budgetPercentage = Math.Min(100, (double)(budget.SpentAmount / budget.LimitAmount) * 100);
-    }
-
-    private void PrepareMerchantChart()
-    {
-        var expenses = allTransactions.Where(t => t.Type == TransactionType.Expense).ToList();
-        merchantData = expenses
-            .GroupBy(t => string.IsNullOrWhiteSpace(t.Merchant) ? "Unknown" : t.Merchant)
-            .Select(g => new ChartItem { Label = g.Key, Total = (double)g.Sum(t => t.Amount) })
-            .OrderByDescending(x => x.Total)
-            .Take(10) // Show top 10
-            .ToList();
     }
 
     private async Task OpenBudgetDialog()

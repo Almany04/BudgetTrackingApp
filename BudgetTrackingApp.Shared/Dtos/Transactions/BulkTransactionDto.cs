@@ -16,6 +16,9 @@ namespace BudgetTrackingApp.Shared.Dtos.Transactions
         public PaymentMethod PaymentMethod { get; set; } = PaymentMethod.Card;
 
         public List<TransactionItemDto> Items { get; set; } = new();
+        public PaidBy PaidBy { get; set; } = PaidBy.Me;
+        public bool IsSplit { get; set; } = false;
+        public decimal MyShareRatio { get; set; } = 1.0m; // Default 100%
     }
 
     public class TransactionItemDto

@@ -40,32 +40,26 @@ builder.Services.AddScoped(sp =>
 builder.Services.AddDbContext<BudgetTrackerDbContext>(options =>
     options.UseSqlite("Data Source=budget.db"));
 
-// 5. Identity Configuration
+// 5. Identity Configuration - SECURITY ENHANCED
 builder.Services.AddIdentity<AppUser, IdentityRole>(options =>
 {
     options.Password.RequireDigit = true;
     options.Password.RequireLowercase = true;
     options.Password.RequireUppercase = true;
-    options.Password.RequireNonAlphanumeric = false; // Speciális karakter (@#!) opcionális maradhat
-    options.Password.RequiredLength = 8; // Minimum 8 karakter!
+    options.Password.RequireNonAlphanumeric = true; // SECURITY FIX: Enforce special chars
+    options.Password.RequiredLength = 10; // SECURITY FIX: Increase length
+    options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15); // SECURITY FIX: Brute force protection
+    options.Lockout.MaxFailedAccessAttempts = 5;
 })
 .AddEntityFrameworkStores<BudgetTrackerDbContext>()
 .AddDefaultTokenProviders();
 
-
 builder.Services.ConfigureApplicationCookie(options =>
 {
-
     options.Cookie.Name = "BudgetAppSession";
-    options.Cookie.HttpOnly = true; // JavaScript nem férhet hozzá (XSS védelem)
-
-    // FONTOS: A Strict a legbiztonságosabb, de a Lax kényelmesebb.
-    // Mivel SPA (Single Page App) vagyunk, a Strict általában mûködik és ajánlott!
-    options.Cookie.SameSite = SameSiteMode.Strict;
-
-    options.Cookie.SecurePolicy = CookieSecurePolicy.Always;
-
-
+    options.Cookie.HttpOnly = true;
+    options.Cookie.SameSite = SameSiteMode.Strict; // Strong CSRF protection
+    options.Cookie.SecurePolicy = CookieSecurePolicy.Always; // Require HTTPS
     options.ExpireTimeSpan = TimeSpan.FromMinutes(60);
     options.SlidingExpiration = true;
 
@@ -92,43 +86,51 @@ builder.Services.AddScoped<IBudgetLogic, BudgetLogic>();
 builder.Services.AddScoped<ICategoryLogic, CategoryLogic>();
 builder.Services.AddScoped<ITransactionLogic, TransactionLogic>();
 builder.Services.AddScoped<IAiSuggestionLogic, AiSuggestionLogic>();
+
 builder.Services.AddRateLimiter(options =>
 {
     options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
 
-    
     options.AddFixedWindowLimiter("General", options =>
     {
-        options.PermitLimit = 60;
+        options.PermitLimit = 100;
         options.Window = TimeSpan.FromMinutes(1);
         options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-        options.QueueLimit = 2;
+        options.QueueLimit = 5;
     });
-
 
     options.AddFixedWindowLimiter("Strict", options =>
     {
-        // INCREASED LIMIT: 5 -> 20 to prevent 429 errors during testing
-        options.PermitLimit = 20;
+        options.PermitLimit = 10; // Login/Register limit
         options.Window = TimeSpan.FromMinutes(1);
         options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
         options.QueueLimit = 2;
     });
 });
+
 var app = builder.Build();
+
+// SECURITY FIX: Security Headers
+app.Use(async (context, next) =>
+{
+    context.Response.Headers.Append("X-Content-Type-Options", "nosniff");
+    context.Response.Headers.Append("X-Frame-Options", "DENY");
+    context.Response.Headers.Append("X-XSS-Protection", "1; mode=block");
+    // context.Response.Headers.Append("Content-Security-Policy", "default-src 'self'; ..."); // Needs careful tuning for Blazor/Radzen
+    await next();
+});
+
 app.UseRateLimiter();
+
 using (var scope = app.Services.CreateScope())
 {
     var dbContext = scope.ServiceProvider.GetRequiredService<BudgetTrackerDbContext>();
-
-    // Csak akkor migrálunk, ha ez egy relációs adatbázis (pl. SQLite vagy SQL Server)
-    // Ha InMemory (tesztelés), akkor ezt átugorjuk.
     if (dbContext.Database.IsRelational())
     {
         dbContext.Database.Migrate();
     }
 }
-// 8. Pipeline
+
 if (app.Environment.IsDevelopment())
 {
     app.UseWebAssemblyDebugging();
@@ -139,6 +141,7 @@ else
     app.UseHsts();
 }
 
+app.UseHttpsRedirection(); // Ensure HTTPS
 app.UseStaticFiles();
 app.UseAntiforgery();
 

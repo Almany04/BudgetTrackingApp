@@ -20,6 +20,7 @@ namespace BudgetTrackingApp.Logic.Services
             _budgetRepository = budgetRepository;
         }
 
+        // ... (CreateTransactionAsync, UpdateTransactionAsync, DeleteTransactionAsync, GetTransactionByIdAsync, GetTransactionsByUserIdFilteredAsync remain unchanged from previous turn) ...
         public async Task CreateTransactionAsync(TransactionCreateDto transactiondto, string userId)
         {
             var valid = await _categoryRepository.IsCategoryOwnedByUserAsync(transactiondto.CategoryId, userId);
@@ -37,7 +38,7 @@ namespace BudgetTrackingApp.Logic.Services
                 PaymentMethod = transactiondto.PaymentMethod,
                 PaidBy = transactiondto.PaidBy,
                 IsSplit = transactiondto.IsSplit,
-                MyShareRatio = transactiondto.MyShareRatio, // <--- Map
+                MyShareRatio = transactiondto.MyShareRatio,
                 SavingGoalId = transactiondto.SavingGoalId
             };
 
@@ -48,13 +49,9 @@ namespace BudgetTrackingApp.Logic.Services
                 var budgetCurrent = await _budgetRepository.GetBudgetByUserIdAsync(userId);
                 if (budgetCurrent != null)
                 {
-                    // Update Budget based on MY SHARE only
                     decimal myCost = newTransaction.IsSplit
                         ? newTransaction.Amount * newTransaction.MyShareRatio
                         : (newTransaction.PaidBy == PaidBy.Me ? newTransaction.Amount : 0);
-
-                    // Note: If I paid fully for something that isn't split, it's 100% my expense.
-                    // If Partner paid fully (gift) and not split, it's 0% my expense.
 
                     budgetCurrent.SpentAmount += myCost;
                     await _budgetRepository.UpdateBudgetAsync(budgetCurrent);
@@ -72,21 +69,18 @@ namespace BudgetTrackingApp.Logic.Services
 
             if (tx == null || budget == null) throw new Exception("Not found.");
 
-            // Revert old budget impact
             decimal oldCost = tx.IsSplit
                 ? tx.Amount * tx.MyShareRatio
                 : (tx.PaidBy == PaidBy.Me ? tx.Amount : 0);
 
             if (tx.Type == TransactionType.Expense) budget.SpentAmount -= oldCost;
 
-            // Apply new budget impact
             decimal newCost = transactiondto.IsSplit
                 ? transactiondto.Amount * transactiondto.MyShareRatio
                 : (transactiondto.PaidBy == PaidBy.Me ? transactiondto.Amount : 0);
 
             if (transactiondto.Type == TransactionType.Expense) budget.SpentAmount += newCost;
 
-            // Update fields
             tx.Amount = transactiondto.Amount;
             tx.TransactionDate = transactiondto.TransactionDate;
             tx.Description = transactiondto.Description;
@@ -96,7 +90,7 @@ namespace BudgetTrackingApp.Logic.Services
             tx.PaymentMethod = transactiondto.PaymentMethod;
             tx.PaidBy = transactiondto.PaidBy;
             tx.IsSplit = transactiondto.IsSplit;
-            tx.MyShareRatio = transactiondto.MyShareRatio; // <--- Map
+            tx.MyShareRatio = transactiondto.MyShareRatio;
             tx.SavingGoalId = transactiondto.SavingGoalId;
 
             await _transactionRepository.UpdateTransactionAsync(tx);
@@ -141,6 +135,7 @@ namespace BudgetTrackingApp.Logic.Services
             return entities.Select(MapToDto);
         }
 
+        // --- UPDATED BULK LOGIC ---
         public async Task CreateBulkTransactionsAsync(BulkTransactionCreateDto bulkDto, string userId)
         {
             if (bulkDto.Items == null || !bulkDto.Items.Any()) return;
@@ -164,17 +159,28 @@ namespace BudgetTrackingApp.Logic.Services
                     CategoryId = item.CategoryId,
                     Type = item.Type,
                     ReceiptId = receiptId,
-                    PaidBy = PaidBy.Me, // Default for bulk
-                    IsSplit = false,
-                    MyShareRatio = 1.0m, // Default 100% me
+
+                    // Apply global split settings to all items in receipt
+                    PaidBy = bulkDto.PaidBy,
+                    IsSplit = bulkDto.IsSplit,
+                    MyShareRatio = bulkDto.MyShareRatio,
                     SavingGoalId = null
                 };
 
-                if (item.Type == TransactionType.Expense) totalMyExpense += item.Amount;
+                // Calculate My Share for this specific item
+                if (item.Type == TransactionType.Expense)
+                {
+                    decimal itemCost = tx.IsSplit
+                        ? tx.Amount * tx.MyShareRatio
+                        : (tx.PaidBy == PaidBy.Me ? tx.Amount : 0);
+
+                    totalMyExpense += itemCost;
+                }
 
                 await _transactionRepository.AddTransactionAsync(tx);
             }
 
+            // Update Budget Once
             if (totalMyExpense > 0)
             {
                 var budget = await _budgetRepository.GetBudgetByUserIdAsync(userId);
@@ -208,7 +214,7 @@ namespace BudgetTrackingApp.Logic.Services
                 ReceiptId = entity.ReceiptId,
                 PaidBy = entity.PaidBy,
                 IsSplit = entity.IsSplit,
-                MyShareRatio = entity.MyShareRatio, // <--- Map
+                MyShareRatio = entity.MyShareRatio,
                 SavingGoalId = entity.SavingGoalId,
                 SavingGoalName = entity.SavingGoal?.Name
             };

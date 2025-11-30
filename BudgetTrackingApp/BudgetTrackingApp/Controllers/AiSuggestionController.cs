@@ -3,13 +3,13 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 using System.Security.Claims;
+using System.Text.RegularExpressions;
 
 namespace BudgetTrackingApp.Api.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
-    // CHANGED: Use "General" (60 req/min) instead of "Strict" to fix 429 errors
     [EnableRateLimiting("General")]
     public class AiSuggestionController : ControllerBase
     {
@@ -32,15 +32,27 @@ namespace BudgetTrackingApp.Api.Controllers
                 var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
                 if (userId == null) return Unauthorized();
 
+                // SECURITY FIX: Basic Base64 Validation
+                if (string.IsNullOrEmpty(request.ImageBase64) || request.ImageBase64.Length > 10_000_000) // 10MB Limit
+                {
+                    return BadRequest("Invalid image data.");
+                }
+
+                // Simple check to see if it looks like an image (starts with /9j/ for JPG, iVBOR for PNG, etc.)
+                // This is not fool-proof but filters obvious garbage.
+                if (!Regex.IsMatch(request.ImageBase64, @"^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$"))
+                {
+                    return BadRequest("Invalid Base64 format.");
+                }
+
                 var result = await _aiLogic.ScanReceiptAsync(request.ImageBase64, userId);
                 return Ok(result);
             }
             catch (Exception ex)
             {
-                // Log the actual error to the server console
                 _logger.LogError(ex, "Receipt Scan Failed");
-                // Return the specific message so you can see it in the browser network tab
-                return BadRequest($"Scan failed: {ex.Message}");
+                // SECURITY FIX: Do not return raw exception to client
+                return StatusCode(500, "An error occurred while scanning the receipt.");
             }
         }
 
@@ -50,11 +62,14 @@ namespace BudgetTrackingApp.Api.Controllers
             try
             {
                 var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
-                return Ok(await _aiLogic.GenerateStructuredAdviceAsync(userId!));
+                if (userId == null) return Unauthorized();
+
+                return Ok(await _aiLogic.GenerateStructuredAdviceAsync(userId));
             }
             catch (Exception ex)
             {
-                return BadRequest(ex.Message);
+                _logger.LogError(ex, "AI Advice Failed");
+                return StatusCode(500, "An error occurred while generating advice.");
             }
         }
     }

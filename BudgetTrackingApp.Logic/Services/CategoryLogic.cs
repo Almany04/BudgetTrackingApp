@@ -18,12 +18,22 @@ namespace BudgetTrackingApp.Logic.Services
         public CategoryLogic(ICategoryRepository categoryRepository, ITransactionRepository transactionRepository)
         {
             _categoryRepository = categoryRepository;
-            _transactionRepository= transactionRepository;
+            _transactionRepository = transactionRepository;
         }
 
         public async Task CreateCategoryAsync(CategoryCreateDto categoryDto, string userId)
         {
             if (string.IsNullOrWhiteSpace(categoryDto.Name)) throw new Exception("Name cannot be empty!");
+
+            // SECURITY FIX: Verify Parent Category Ownership
+            if (categoryDto.ParentCategoryId.HasValue)
+            {
+                var isParentOwned = await _categoryRepository.IsCategoryOwnedByUserAsync(categoryDto.ParentCategoryId.Value, userId);
+                if (!isParentOwned)
+                {
+                    throw new UnauthorizedAccessException("Invalid Parent Category.");
+                }
+            }
 
             var existingCategories = await _categoryRepository.GetCategoriesByUserIdAsync(userId);
 
@@ -49,18 +59,19 @@ namespace BudgetTrackingApp.Logic.Services
             var isOwned = await _categoryRepository.IsCategoryOwnedByUserAsync(categoryId, userId);
             if (!isOwned)
             {
-                throw new Exception("Nincs jogosultsága törölni ezt a kategóriát!");
+                // SECURITY FIX: Use specific exception
+                throw new UnauthorizedAccessException("Access denied.");
             }
             var hasTransaction = await _transactionRepository.HasTransactionsForCategoryAsync(categoryId);
-            if (hasTransaction) 
+            if (hasTransaction)
             {
-                throw new Exception("A kategória nem törölhető, mert tranzakciók hivatkoznak rá!");
+                throw new Exception("Cannot delete category with existing transactions.");
             }
 
-            var entityToDelete=await _categoryRepository.GetCategoryByIdAsync(categoryId);
+            var entityToDelete = await _categoryRepository.GetCategoryByIdAsync(categoryId);
             if (entityToDelete != null)
             {
-                    await _categoryRepository.DeleteCategoryAsync(entityToDelete);
+                await _categoryRepository.DeleteCategoryAsync(entityToDelete);
             }
         }
 
@@ -68,13 +79,11 @@ namespace BudgetTrackingApp.Logic.Services
         {
             var categoryEntities = await _categoryRepository.GetCategoriesByUserIdAsync(userId);
 
-            // Map to DTO including parent info
             return categoryEntities.Select(entity => new CategoryViewDto
             {
                 Id = entity.Id,
                 Name = entity.Name,
                 ParentCategoryId = entity.ParentCategoryId,
-                // Basic manual mapping, or use Include in Repository for efficiency
                 ParentCategoryName = entity.ParentCategory?.Name
             });
         }
@@ -87,12 +96,14 @@ namespace BudgetTrackingApp.Logic.Services
                 return null;
             }
             var entity = await _categoryRepository.GetCategoryByIdAsync(categoryId);
-            if(entity == null) return null;
+            if (entity == null) return null;
 
             return new CategoryViewDto
             {
                 Id = entity.Id,
-                Name = entity.Name
+                Name = entity.Name,
+                ParentCategoryId = entity.ParentCategoryId,
+                ParentCategoryName = entity.ParentCategory?.Name
             };
         }
 
@@ -103,28 +114,28 @@ namespace BudgetTrackingApp.Logic.Services
 
         public async Task UpdateCategoryAsync(Guid categoryId, CategoryUpdateDto categoryDto, string userId)
         {
-            var IsOwned=await _categoryRepository.IsCategoryOwnedByUserAsync(categoryId, userId);
-            if (!IsOwned) 
+            var IsOwned = await _categoryRepository.IsCategoryOwnedByUserAsync(categoryId, userId);
+            if (!IsOwned)
             {
-                throw new Exception("Nincs jogosultsága módosítani ezt a kategóriát!");
+                throw new UnauthorizedAccessException("Access denied.");
             }
             if (string.IsNullOrWhiteSpace(categoryDto.Name))
             {
-                throw new Exception("A kategória neve nem lehet üres!");
+                throw new Exception("Category name cannot be empty.");
             }
 
-            var existingCategories=await _categoryRepository.GetCategoriesByUserIdAsync(userId);
+            var existingCategories = await _categoryRepository.GetCategoriesByUserIdAsync(userId);
 
             bool nameCollision = existingCategories.Any(c => c.Name.Equals(categoryDto.Name, StringComparison.OrdinalIgnoreCase) && c.Id != categoryId);
             if (nameCollision)
             {
-                throw new Exception($"Már létezik'{categoryDto.Name}' nevű kategória!");
+                throw new Exception($"Category '{categoryDto.Name}' already exists!");
             }
 
             var entityToUpdate = await _categoryRepository.GetCategoryByIdAsync(categoryId);
             if (entityToUpdate == null)
             {
-                throw new Exception("A kategória nem található.");
+                throw new Exception("Category not found.");
             }
             entityToUpdate.Name = categoryDto.Name;
 
