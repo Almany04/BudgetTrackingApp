@@ -40,5 +40,12 @@ namespace BudgetTrackingApp.Data.Entities
         public virtual AppUser? AppUser { get; set; }
         [ForeignKey("CategoryId")]
         public virtual Category? Category { get; set; }
+        public PaidBy PaidBy { get; set; } = PaidBy.Me;
+        public bool IsSplit { get; set; } = false;
+        [Column(TypeName = "decimal(5, 4)")]
+        public decimal MyShareRatio { get; set; } = 0.5m;
+        public Guid? SavingGoalId { get; set; }
+        [ForeignKey("SavingGoalId")]
+        public virtual SavingGoal? SavingGoal { get; set; }
     }
 }

@@ -3,6 +3,7 @@ using System;
 using BudgetTrackingApp.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -10,9 +11,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace BudgetTrackingApp.Data.Migrations
 {
     [DbContext(typeof(BudgetTrackerDbContext))]
-    partial class BudgetTrackerDbContextModelSnapshot : ModelSnapshot
+    [Migration("20251130170428_AddCouplesFeatures")]
+    partial class AddCouplesFeatures
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder.HasAnnotation("ProductVersion", "8.0.22");
@@ -208,9 +211,6 @@ namespace BudgetTrackingApp.Data.Migrations
                     b.Property<string>("Merchant")
                         .HasMaxLength(100)
                         .HasColumnType("TEXT");
-
-                    b.Property<decimal>("MyShareRatio")
-                        .HasColumnType("decimal(5, 4)");
 
                     b.Property<int>("PaidBy")
                         .HasColumnType("INTEGER");

@@ -1,0 +1,72 @@
+﻿@page "/shopping"
+@attribute [Authorize]
+@using BudgetTrackingApp.Shared.Dtos
+@inject HttpClient Http
+@inject NotificationService NotificationService
+
+<PageTitle>Shopping List</PageTitle>
+
+<div class="animate-in" style="max-width: 600px; margin: 0 auto;">
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" Class="rz-mb-4">
+        <h1 style="color: white; font-weight: 800;">Shopping List</h1>
+    </RadzenStack>
+
+    <RadzenCard Class="xtract-card" Style="padding: 1rem;">
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem">
+            <RadzenTextBox @bind-Value="newItemName" Placeholder="Add item (e.g. Milk)" Style="flex-grow: 1;" @onkeydown="@Enter" />
+            <RadzenButton Icon="add" ButtonStyle="ButtonStyle.Primary" Click="@AddItem" Disabled="@string.IsNullOrWhiteSpace(newItemName)" />
+        </RadzenStack>
+    </RadzenCard>
+
+    <RadzenStack Gap="0.5rem" Class="rz-mt-3">
+        @if (items.Any())
+        {
+            @foreach (var item in items.OrderBy(i => i.IsBought))
+            {
+                <div style="display: flex; align-items: center; padding: 12px; background: rgba(255,255,255,0.05); border-radius: 8px; opacity: @(item.IsBought ? "0.5" : "1"); transition: opacity 0.3s;">
+                    <RadzenCheckBox TValue="bool" Value="@item.IsBought" Change="@(() => ToggleItem(item))" />
+                    <span style="margin-left: 15px; color: white; font-size:1.1rem; text-decoration: @(item.IsBought ? "line-through" : "none"); flex-grow: 1;">@item.Name</span>
+                    <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Text" Click="@(() => DeleteItem(item))" />
+                </div>
+            }
+        }
+        else
+        {
+            <div style="text-align: center; color: var(--text-secondary); margin-top: 2rem;">List is empty. Time to restock!</div>
+        }
+    </RadzenStack>
+</div>
+
+@code {
+    private List<ShoppingItemDto> items = new();
+    private string newItemName = "";
+
+    protected override async Task OnInitializedAsync() => await LoadItems();
+
+    private async Task LoadItems()
+    {
+        try { items = await Http.GetFromJsonAsync<List<ShoppingItemDto>>("api/features/shopping") ?? new(); } catch { }
+    }
+
+    private async Task AddItem()
+    {
+        if (string.IsNullOrWhiteSpace(newItemName)) return;
+        await Http.PostAsJsonAsync("api/features/shopping", new ShoppingItemDto { Name = newItemName });
+        newItemName = "";
+        await LoadItems();
+    }
+
+    private async Task ToggleItem(ShoppingItemDto item)
+    {
+        item.IsBought = !item.IsBought; // Optimistic UI update
+        await Http.PutAsync($"api/features/shopping/{item.Id}", null);
+    }
+
+    private async Task DeleteItem(ShoppingItemDto item)
+    {
+        items.Remove(item); // Optimistic UI
+        await Http.DeleteAsync($"api/features/shopping/{item.Id}");
+    }
+
+    private async Task Enter(KeyboardEventArgs e) { if (e.Code == "Enter" || e.Code == "NumpadEnter") await AddItem(); }
+}

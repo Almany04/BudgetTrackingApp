@@ -10,13 +10,8 @@
         <RadzenTabsItem Text="Single Item" Icon="receipt">
             <RadzenTemplateForm TItem="TransactionUpdateDto" Data="@TransactionModel" Submit="@OnSubmitSingle">
                 <RadzenStack Spacing="1rem">
-                    @if (ForcedType.HasValue)
-                    {
-                        <RadzenAlert Severity="NotificationSeverity.Info" AllowClose="false" Variant="Variant.Flat" Shade="Shade.Lighter">
-                            Adding <strong>@ForcedType.Value</strong>
-                        </RadzenAlert>
-                    }
 
+                    @* TYPE & PAYMENT *@
                     <RadzenRow>
                         @if (!ForcedType.HasValue)
                         {
@@ -33,6 +28,42 @@
                         </RadzenColumn>
                     </RadzenRow>
 
+                    @* --- SPLIT LOGIC --- *@
+                    <RadzenCard Style="background: rgba(255,255,255,0.05); padding: 1rem;">
+                        <RadzenStack Gap="1rem">
+                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+                                <RadzenLabel Text="Split Expense?" Component="Split" Style="color: var(--text-secondary); font-weight: 600;" />
+                                <RadzenSwitch @bind-Value="TransactionModel.IsSplit" Name="Split" />
+                            </RadzenStack>
+
+                            @if (TransactionModel.IsSplit)
+                            {
+                                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
+                                    <span style="color: #a78bfa; width: 70px; font-size: 0.8rem;">Girlfriend</span>
+                                    <RadzenSlider TValue="decimal" @bind-Value="mySharePercentDisplay" Min="0" Max="100" Step="5" Style="flex-grow: 1;" Change="@UpdateRatio" />
+                                    <span style="color: #22c55e; width: 70px; text-align: right; font-size: 0.8rem;">Me (@mySharePercentDisplay.ToString("0")%)</span>
+                                </RadzenStack>
+
+                                <RadzenText TextStyle="TextStyle.Caption" Style="text-align: center; color: var(--text-secondary);">
+                                    Who paid initially?
+                                </RadzenText>
+                                <RadzenSelectBar @bind-Value="TransactionModel.PaidBy" TValue="PaidBy" Size="ButtonSize.Small" Style="width: 100%;">
+                                    <Items>
+                                        <RadzenSelectBarItem Text="Me" Value="PaidBy.Me" />
+                                        <RadzenSelectBarItem Text="Girlfriend" Value="PaidBy.Partner" />
+                                    </Items>
+                                </RadzenSelectBar>
+                            }
+                            else
+                            {
+                                <RadzenFormField Text="Paid By" Variant="Variant.Outlined">
+                                    <RadzenDropDown @bind-Value="TransactionModel.PaidBy" Data="@paidByOptions" TextProperty="Name" ValueProperty="Value" />
+                                </RadzenFormField>
+                            }
+                        </RadzenStack>
+                    </RadzenCard>
+
+                    @* REST OF FORM *@
                     @if (TransactionModel.Type == TransactionType.Expense)
                     {
                         <RadzenFormField Text="Merchant" Variant="Variant.Outlined">
@@ -40,9 +71,15 @@
                         </RadzenFormField>
                     }
 
+                    @if (TransactionModel.Type == TransactionType.Saving)
+                    {
+                        <RadzenFormField Text="Link to Goal" Variant="Variant.Outlined">
+                            <RadzenDropDown Data="@savingGoals" TextProperty="Name" ValueProperty="Id" @bind-Value="TransactionModel.SavingGoalId" Placeholder="None (General Savings)" Style="width: 100%" />
+                        </RadzenFormField>
+                    }
+
                     @if (TransactionModel.Type != TransactionType.Saving)
                     {
-                        @* --- MODIFIED: Wrapped in Stack to add Button --- *@
                         <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End" Gap="0.5rem">
                             <RadzenFormField Text="Main Category" Variant="Variant.Outlined" Style="flex-grow: 1;">
                                 <RadzenDropDown Data="@mainCategories" TextProperty="Name" ValueProperty="Id"
@@ -53,7 +90,6 @@
                                           ToolTip="New Main Group"
                                           Click="@OpenCreateMainCategoryDialog" />
                         </RadzenStack>
-                        @* ------------------------------------------------ *@
 
                         <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End" Gap="0.5rem">
                             <RadzenFormField Text="Sub Item" Variant="Variant.Outlined" Style="flex-grow: 1;">
@@ -84,71 +120,6 @@
                 </RadzenStack>
             </RadzenTemplateForm>
         </RadzenTabsItem>
-
-        <RadzenTabsItem Text="Receipt (Bulk)" Icon="playlist_add">
-            <RadzenStack Spacing="1rem">
-                <RadzenCard Class="rz-p-2" Style="background: rgba(255,255,255,0.05);">
-                    <RadzenRow RowGap="1rem">
-                        <RadzenColumn Size="6">
-                            <RadzenText TextStyle="TextStyle.Subtitle2">Merchant</RadzenText>
-                            <RadzenTextBox @bind-Value="BulkModel.Merchant" Placeholder="e.g. Tesco Receipt" Style="width:100%" />
-                        </RadzenColumn>
-                        <RadzenColumn Size="6">
-                            <RadzenText TextStyle="TextStyle.Subtitle2">Date</RadzenText>
-                            <RadzenDatePicker @bind-Value="BulkModel.TransactionDate" Style="width:100%" />
-                        </RadzenColumn>
-                        <RadzenColumn Size="6">
-                            <RadzenText TextStyle="TextStyle.Subtitle2">Payment</RadzenText>
-                            <RadzenDropDown @bind-Value="BulkModel.PaymentMethod" Data="@allPaymentMethods" TextProperty="Name" ValueProperty="Value" Style="width:100%" />
-                        </RadzenColumn>
-                        <RadzenColumn Size="6" Class="rz-text-align-right">
-                            <RadzenText TextStyle="TextStyle.Subtitle2">Total</RadzenText>
-                            <RadzenText TextStyle="TextStyle.H5" Style="color: #22c55e">
-                                @BulkModel.Items.Sum(x => x.Amount).ToString("C0")
-                            </RadzenText>
-                        </RadzenColumn>
-                    </RadzenRow>
-                </RadzenCard>
-
-                <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End" Gap="0.5rem">
-                    <RadzenFormField Text="Item Name" Variant="Variant.Outlined" Style="flex-grow:1">
-                        <RadzenTextBox @bind-Value="newItem.Description" Placeholder="e.g. Milk" />
-                    </RadzenFormField>
-                    <RadzenFormField Text="Cost" Variant="Variant.Outlined" Style="width:100px">
-                        <RadzenNumeric @bind-Value="newItem.Amount" Min="0" />
-                    </RadzenFormField>
-                    <RadzenFormField Text="Category" Variant="Variant.Outlined" Style="width:180px">
-                        <RadzenDropDown Data="@allSubCategoriesFlat" TextProperty="Name" ValueProperty="Id"
-                                        @bind-Value="newItem.CategoryId" Placeholder="Cat..."
-                                        FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" AllowFiltering="true" />
-                    </RadzenFormField>
-                    <RadzenButton Icon="add" ButtonStyle="ButtonStyle.Success" Click="@AddBulkItem" Disabled="@(newItem.Amount <= 0 || newItem.CategoryId == Guid.Empty)" />
-                </RadzenStack>
-
-                <RadzenDataGrid @ref="bulkGrid" Data="@BulkModel.Items" TItem="TransactionItemDto" Density="Density.Compact" AllowPaging="true" PageSize="5">
-                    <Columns>
-                        <RadzenDataGridColumn TItem="TransactionItemDto" Property="Description" Title="Item" />
-                        <RadzenDataGridColumn TItem="TransactionItemDto" Property="Amount" Title="Cost">
-                            <Template Context="d">@d.Amount.ToString("N0")</Template>
-                        </RadzenDataGridColumn>
-                        <RadzenDataGridColumn TItem="TransactionItemDto" Title="Category">
-                            <Template Context="d">
-                                @(allCategories.FirstOrDefault(c => c.Id == d.CategoryId)?.Name ?? "?")
-                            </Template>
-                        </RadzenDataGridColumn>
-                        <RadzenDataGridColumn TItem="TransactionItemDto" Title="" Width="60px">
-                            <Template Context="d">
-                                <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.ExtraSmall" Click="@(() => RemoveBulkItem(d))" />
-                            </Template>
-                        </RadzenDataGridColumn>
-                    </Columns>
-                </RadzenDataGrid>
-
-                <RadzenButton Text="@($"Save Receipt ({BulkModel.Items.Count} items)")" Icon="done_all"
-                              ButtonStyle="ButtonStyle.Primary" Click="@OnSubmitBulk"
-                              Disabled="@(!BulkModel.Items.Any())" IsBusy="@isProcessing" />
-            </RadzenStack>
-        </RadzenTabsItem>
     </Tabs>
 </RadzenTabs>
 
@@ -156,32 +127,36 @@
     [Parameter] public Guid? TransactionId { get; set; }
     [Parameter] public TransactionType? ForcedType { get; set; }
 
-    // Single Mode
     public TransactionUpdateDto TransactionModel { get; set; } = new() { TransactionDate = DateTime.Today };
 
-    // Bulk Mode
-    public BulkTransactionCreateDto BulkModel { get; set; } = new() { TransactionDate = DateTime.Today };
-    private TransactionItemDto newItem = new();
+    // Slider Value for UI (0-100)
+    private decimal mySharePercentDisplay = 50;
 
-    // ADDED: Grid Reference
-    RadzenDataGrid<TransactionItemDto> bulkGrid;
-
-    // Enums & Lists
+    // Lists
     public class EnumItem<T> { public string Name { get; set; } public T Value { get; set; } }
     private List<EnumItem<TransactionType>> transactionTypes = Enum.GetValues(typeof(TransactionType)).Cast<TransactionType>().Select(e => new EnumItem<TransactionType> { Name = e.ToString(), Value = e }).ToList();
     private List<EnumItem<PaymentMethod>> allPaymentMethods = Enum.GetValues(typeof(PaymentMethod)).Cast<PaymentMethod>().Select(e => new EnumItem<PaymentMethod> { Name = e.ToString(), Value = e }).ToList();
 
+    private List<EnumItem<PaidBy>> paidByOptions = new List<EnumItem<PaidBy>>
+    {
+        new EnumItem<PaidBy> { Name = "Me", Value = PaidBy.Me },
+        new EnumItem<PaidBy> { Name = "Girlfriend", Value = PaidBy.Partner }
+    };
+
     private List<CategoryViewDto> allCategories = new();
     private List<CategoryViewDto> mainCategories = new();
     private List<CategoryViewDto> filteredSubCategories = new();
-    private List<CategoryViewDto> allSubCategoriesFlat = new();
+    private List<SavingGoalDto> savingGoals = new();
+
     private Guid? selectedMainCategoryId;
     private bool isProcessing = false;
 
     protected override async Task OnInitializedAsync()
     {
         if (ForcedType.HasValue) TransactionModel.Type = ForcedType.Value;
+
         await LoadCategoriesAsync();
+        await LoadGoalsAsync();
 
         if (TransactionId != null)
         {
@@ -196,8 +171,15 @@
                     PaymentMethod = t.PaymentMethod,
                     TransactionDate = t.TransactionDate,
                     Type = t.Type,
-                    CategoryId = t.CategoryId
+                    CategoryId = t.CategoryId,
+                    PaidBy = t.PaidBy,
+                    IsSplit = t.IsSplit,
+                    MyShareRatio = t.MyShareRatio,
+                    SavingGoalId = t.SavingGoalId
                 };
+                // Convert Ratio (0-1) to Percent (0-100) for UI
+                mySharePercentDisplay = TransactionModel.MyShareRatio * 100;
+
                 var currentCat = allCategories.FirstOrDefault(c => c.Id == t.CategoryId);
                 if (currentCat?.ParentCategoryId != null)
                 {
@@ -208,6 +190,12 @@
         }
     }
 
+    private void UpdateRatio()
+    {
+        // Convert Percent (0-100) back to Ratio (0-1)
+        TransactionModel.MyShareRatio = mySharePercentDisplay / 100m;
+    }
+
     private async Task LoadCategoriesAsync()
     {
         var cats = await Http.GetFromJsonAsync<List<CategoryViewDto>>("api/categories");
@@ -215,9 +203,12 @@
         {
             allCategories = cats;
             mainCategories = allCategories.Where(c => c.ParentCategoryId == null).OrderBy(c => c.Name).ToList();
-            allSubCategoriesFlat = allCategories.Where(c => c.ParentCategoryId != null).OrderBy(c => c.Name).ToList();
-            if (selectedMainCategoryId != null) OnMainCategoryChange();
         }
+    }
+
+    private async Task LoadGoalsAsync()
+    {
+        try { savingGoals = await Http.GetFromJsonAsync<List<SavingGoalDto>>("api/features/goals") ?? new(); } catch { }
     }
 
     private void OnMainCategoryChange()
@@ -228,6 +219,15 @@
             filteredSubCategories.Clear();
     }
 
+    private async Task OpenCreateMainCategoryDialog()
+    {
+        var model = new CategoryCreateDto { ParentCategoryId = null };
+        var result = await DialogService.OpenAsync<CategoryDialog>("New Main Group",
+            new Dictionary<string, object> { { "CategoryModel", model } },
+            new DialogOptions() { Width = "400px", CssClass = "xtract-card" });
+        if (result == true) await LoadCategoriesAsync();
+    }
+
     private async Task OpenCreateSubCategoryDialog()
     {
         if (selectedMainCategoryId == null) return;
@@ -236,73 +236,14 @@
         if (result == true) await LoadCategoriesAsync();
     }
 
-    private async Task OpenCreateMainCategoryDialog()
-    {
-        // Opens the existing CategoryDialog but with ParentCategoryId = null (Main Category)
-        var model = new CategoryCreateDto { ParentCategoryId = null };
-        var result = await DialogService.OpenAsync<CategoryDialog>("New Main Group",
-            new Dictionary<string, object> { { "CategoryModel", model } },
-            new DialogOptions() { Width = "400px", CssClass = "xtract-card" });
-
-        if (result == true)
-        {
-            // Refresh categories to show the new one immediately
-            await LoadCategoriesAsync();
-        }
-    }
-    // --- Bulk Operations ---
-    private void AddBulkItem()
-    {
-        if (newItem.Amount > 0 && newItem.CategoryId != Guid.Empty)
-        {
-            BulkModel.Items.Add(new TransactionItemDto
-            {
-                Amount = newItem.Amount,
-                Description = newItem.Description,
-                CategoryId = newItem.CategoryId,
-                Type = TransactionType.Expense
-            });
-
-            newItem = new TransactionItemDto();
-
-            // ADDED: Force Grid Refresh
-            if (bulkGrid != null) bulkGrid.Reload();
-        }
-    }
-
-    private void RemoveBulkItem(TransactionItemDto item)
-    {
-        BulkModel.Items.Remove(item);
-        // ADDED: Force Grid Refresh
-        if (bulkGrid != null) bulkGrid.Reload();
-    }
-
-    private async Task OnSubmitBulk()
-    {
-        isProcessing = true;
-        try
-        {
-            var response = await Http.PostAsJsonAsync("api/transaction/bulk", BulkModel);
-            if (response.IsSuccessStatusCode)
-            {
-                NotificationService.Notify(NotificationSeverity.Success, "Receipt Saved", $"{BulkModel.Items.Count} items added.");
-                DialogService.Close(true);
-            }
-            else
-            {
-                NotificationService.Notify(NotificationSeverity.Error, "Error", await response.Content.ReadAsStringAsync());
-            }
-        }
-        catch (Exception ex) { NotificationService.Notify(NotificationSeverity.Error, "Error", ex.Message); }
-        finally { isProcessing = false; }
-    }
-
-    // --- Single Operation ---
     private async Task OnSubmitSingle(TransactionUpdateDto args)
     {
         isProcessing = true;
         try
         {
+            // Ensure ratio is set correctly before sending
+            UpdateRatio();
+
             HttpResponseMessage response;
             if (TransactionId == null)
             {
@@ -314,7 +255,11 @@
                     Merchant = TransactionModel.Merchant,
                     PaymentMethod = TransactionModel.PaymentMethod,
                     TransactionDate = TransactionModel.TransactionDate,
-                    CategoryId = TransactionModel.CategoryId
+                    CategoryId = TransactionModel.CategoryId,
+                    PaidBy = TransactionModel.PaidBy,
+                    IsSplit = TransactionModel.IsSplit,
+                    MyShareRatio = TransactionModel.MyShareRatio,
+                    SavingGoalId = TransactionModel.SavingGoalId
                 };
                 response = await Http.PostAsJsonAsync("api/transaction", createDto);
             }
@@ -328,4 +273,10 @@
         }
         finally { isProcessing = false; }
     }
+
+    // Placeholder for bulk
+    public BulkTransactionCreateDto BulkModel { get; set; } = new();
+    private void AddBulkItem() { }
+    private void RemoveBulkItem(TransactionItemDto i) { }
+    private async Task OnSubmitBulk() { }
 }

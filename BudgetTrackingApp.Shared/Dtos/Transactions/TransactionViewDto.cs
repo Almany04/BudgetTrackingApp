@@ -27,6 +27,11 @@ namespace BudgetTrackingApp.Shared.Dtos.Transactions
         public Guid CategoryId { get; set; }
 
         public Guid? ReceiptId { get; set; }
+        public PaidBy PaidBy { get; set; }
+        public bool IsSplit { get; set; }
+        public Guid? SavingGoalId { get; set; }
+        public decimal MyShareRatio { get; set; } = 0.5m;
+        public string? SavingGoalName { get; set; }
 
     }
 }

@@ -28,105 +28,39 @@ else
                     <span style="color: var(--text-secondary); font-size: 0.9rem;">Financial Overview</span>
                 </div>
                 <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem">
-                    @* NEW SCANNER BUTTON *@
                     <RadzenButton Text="Scan Receipt" Icon="qr_code_scanner" ButtonStyle="ButtonStyle.Secondary" Click="@OpenScannerDialog" />
                     <RadzenButton Text="Add Expense" Icon="add_circle" ButtonStyle="ButtonStyle.Primary" Click="@(() => Navigation.NavigateTo("transactions"))" />
                 </RadzenStack>
             </RadzenStack>
 
-            @* --- ROW 1: DETAILS + AI --- *@
+            @* --- ROW 1: AI & CATEGORIES --- *@
             <RadzenRow Gutter="1.5rem">
 
-                @* 1. CATEGORY DETAILS (AGGREGATED BY MAIN CATEGORY) *@
+                @* 1. AI ADVISOR *@
                 <RadzenColumn Size="12" SizeMD="6">
-                    <div class="xtract-card" style="padding: 1.5rem; height: 100%; min-height: 400px;">
-                        <h3 style="margin: 0 0 0.5rem 0; font-size: 1.2rem; color: white; font-weight: 700;">What did I buy?</h3>
-                        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">Breakdown by Main Category</p>
-
-                        <div style="background: rgba(255,255,255,0.05); padding: 0.8rem; border-radius: 10px; margin-bottom: 1rem;">
-                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
-                                <span style="color: white; font-weight: 600; white-space: nowrap; font-size: 0.9rem;">Store:</span>
-                                <RadzenDropDown @bind-Value="selectedMerchant"
-                                                Data="@merchantNames"
-                                                Change="@UpdateDetailChart"
-                                                Placeholder="Select a store..."
-                                                Style="width: 100%;"
-                                                class="rz-dropdown-dark" />
-                            </RadzenStack>
+                    <div class="xtract-card" style="padding: 1.5rem; height: 100%; min-height: 300px; background: linear-gradient(160deg, rgba(124, 58, 237, 0.15), transparent) !important; border: 1px solid rgba(139, 92, 246, 0.3); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
+                        <div style="width: 70px; height: 70px; background: rgba(139, 92, 246, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 1rem; box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);">
+                            <RadzenIcon Icon="psychology" Style="font-size: 2.5rem; color: #a78bfa;" />
                         </div>
-
-                        @if (categoryData.Any())
-                        {
-                            <RadzenChart Style="height: 280px; background: transparent; font-family: 'Inter';">
-                                <RadzenDonutSeries Data="@categoryData"
-                                                   CategoryProperty="Label"
-                                                   ValueProperty="Total"
-                                                   Fills="@categoryColors">
-                                    <TitleTemplate>
-                                        <div class="rz-donut-content" style="text-align: center;">
-                                            <div style="color: var(--text-secondary); font-size: 0.8rem;">Total</div>
-                                            <div style="color: white; font-size: 1.1rem; font-weight: 800;">
-                                                @categoryData.Sum(x => x.Total).ToString("N0")
-                                            </div>
-                                        </div>
-                                    </TitleTemplate>
-                                    <TooltipTemplate Context="data">
-                                        <div style="background: rgba(0,0,0,0.8); padding: 5px; border: 1px solid #10b981; border-radius: 4px;">
-                                            <strong style="color: #fff">@data.Label</strong>: <span style="color: #34d399">@data.Total.ToString("N0")</span>
-                                        </div>
-                                    </TooltipTemplate>
-                                </RadzenDonutSeries>
-                                <RadzenLegend Visible="true" Position="LegendPosition.Right" />
-                            </RadzenChart>
-                        }
-                        else
-                        {
-                            <div style="height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center; color: var(--text-secondary); border: 2px dashed rgba(255,255,255,0.1); border-radius: 12px;">
-                                <RadzenIcon Icon="filter_list" Style="font-size: 2rem; margin-bottom: 0.5rem; opacity: 0.5;" />
-                                <span style="font-size: 0.9rem;">@(string.IsNullOrEmpty(selectedMerchant) ? "Select a store above." : "No details found.")</span>
-                            </div>
-                        }
-                    </div>
-                </RadzenColumn>
-
-                @* 2. AI ADVISOR (Status Card) *@
-                <RadzenColumn Size="12" SizeMD="6">
-                    <div class="xtract-card" style="padding: 1.5rem; height: 100%; min-height: 400px; background: linear-gradient(160deg, rgba(124, 58, 237, 0.1), transparent) !important; border: 1px solid rgba(139, 92, 246, 0.2); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center;">
-
-                        <div style="width: 80px; height: 80px; background: rgba(139, 92, 246, 0.2); border-radius: 50%; display: flex; align-items: center; justify-content: center; margin-bottom: 1.5rem; box-shadow: 0 0 20px rgba(139, 92, 246, 0.3);">
-                            <RadzenIcon Icon="psychology" Style="font-size: 3rem; color: #a78bfa;" />
-                        </div>
-
                         <h3 style="color: white; margin-bottom: 0.5rem;">AI Financial Consultant</h3>
-                        <p style="color: var(--text-secondary); max-width: 80%; margin-bottom: 2rem;">
-                            Get a deep dive analysis of your spending, forecast for next month, and a 5-step action plan.
-                        </p>
-
-                        <RadzenButton Text="Open Analysis Window" Icon="auto_awesome"
+                        <p style="color: var(--text-secondary); margin-bottom: 1.5rem; max-width: 90%;">Get a deep analysis of your spending habits and personalized saving tips.</p>
+                        <RadzenButton Text="Open Analysis" Icon="auto_awesome"
                                       ButtonStyle="ButtonStyle.Primary"
                                       Click="@OpenAiWindow"
                                       IsBusy="@isAiLoading" BusyText="Analyzing..." />
                     </div>
                 </RadzenColumn>
 
-            </RadzenRow>
-
-            @* --- ROW 2: MERCHANTS + BUDGET --- *@
-            <RadzenRow Gutter="1.5rem">
-
-                @* 3. MERCHANT CHART (Horizontal Bar) *@
+                @* 2. MERCHANT CHART (Where do I spend?) *@
                 <RadzenColumn Size="12" SizeMD="6">
-                    <div class="xtract-card" style="padding: 1.5rem; height: 100%; min-height: 350px;">
+                    <div class="xtract-card" style="padding: 1.5rem; height: 100%; min-height: 300px;">
                         <h3 style="margin: 0 0 0.5rem 0; font-size: 1.2rem; color: white; font-weight: 700;">Where do I spend?</h3>
-                        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">Top 10 Shops</p>
+                        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">Top Shops</p>
 
                         @if (merchantData.Any())
                         {
-                            <RadzenChart Style="height: 300px; background: transparent; font-family: 'Inter';">
-                                <RadzenBarSeries Data="@merchantData"
-                                                 CategoryProperty="Label"
-                                                 ValueProperty="Total"
-                                                 Fills="@merchantColors">
+                            <RadzenChart Style="height: 250px; background: transparent;">
+                                <RadzenBarSeries Data="@merchantData" CategoryProperty="Label" ValueProperty="Total" Fills="@merchantColors">
                                     <TooltipTemplate Context="data">
                                         <div style="background: rgba(0,0,0,0.9); padding: 8px; border: 1px solid #8b5cf6; border-radius: 4px;">
                                             <strong style="color: #fff">@data.Label</strong><br />
@@ -134,67 +68,50 @@ else
                                         </div>
                                     </TooltipTemplate>
                                 </RadzenBarSeries>
-
-                                <RadzenValueAxis Visible="false">
-                                    <RadzenGridLines Visible="false" />
-                                </RadzenValueAxis>
-
+                                <RadzenValueAxis Visible="false" />
                                 <RadzenCategoryAxis>
-                                    <RadzenAxisTitle Text="" />
                                     <RadzenGridLines Visible="false" />
                                     <RadzenTicks Visible="false" />
                                 </RadzenCategoryAxis>
-
                                 <RadzenLegend Visible="false" />
                             </RadzenChart>
                         }
                         else
                         {
-                            <div style="height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center; color: var(--text-secondary); opacity: 0.5;">
-                                <RadzenIcon Icon="shopping_cart" Style="font-size: 2.5rem; margin-bottom: 0.5rem;" />
-                                <span>No data available.</span>
-                            </div>
+                            <div style="height: 200px; display: flex; justify-content: center; align-items: center; color: var(--text-secondary);">No data available.</div>
                         }
                     </div>
                 </RadzenColumn>
 
-                @* 4. BUDGET OVERVIEW (EDITABLE & REFRESHING) *@
-                <RadzenColumn Size="12" SizeMD="6">
-                    <div class="xtract-card" style="padding: 1.5rem; height: 100%; min-height: 350px; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: center;">
-                        <div style="position: absolute; right: -40px; top: -40px; width: 180px; height: 180px; background: radial-gradient(circle, rgba(139, 92, 246, 0.15), transparent 70%); pointer-events: none;"></div>
-
-                        <RadzenStack Gap="1.5rem">
-                            <div style="text-transform: uppercase; color: var(--text-secondary); font-size: 0.75rem; letter-spacing: 1px; font-weight: 700;">Monthly Spending</div>
-
-                            <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
-                                <div style="font-size: 2.8rem; font-weight: 800; color: white; line-height: 1;">
-                                    @((budget?.SpentAmount ?? 0).ToString("N0"))
-                                </div>
-                                <span style="font-size: 1.2rem; color: var(--text-secondary); font-weight: 500; margin-top: 10px;">HUF</span>
-                            </RadzenStack>
-
-                            <div>
-                                <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween" Class="rz-mb-2">
-                                    <div style="background: rgba(139, 92, 246, 0.15); color: #a78bfa; padding: 0.2rem 0.6rem; border-radius: 6px; font-weight: 600; font-size: 0.9rem;">
-                                        @budgetPercentage.ToString("0")%
-                                    </div>
-
-                                    @* EDIT BUTTON *@
-                                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="0.5rem">
-                                        <span style="color: var(--text-secondary); font-size: 0.9rem;">
-                                            Limit: <span style="color: white;">@((budget?.LimitAmount ?? 0).ToString("N0"))</span>
-                                        </span>
-                                        <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.ExtraSmall" Click="@OpenBudgetDialog" />
-                                    </RadzenStack>
-
-                                </RadzenStack>
-                                <RadzenProgressBar Value="@budgetPercentage" Max="100" ShowValue="false" Style="height: 12px; background: rgba(255,255,255,0.1); border-radius: 6px;" />
-                            </div>
-                        </RadzenStack>
-                    </div>
-                </RadzenColumn>
-
             </RadzenRow>
+
+            @* --- ROW 2: BUDGET STATUS --- *@
+            <RadzenColumn Size="12">
+                <div class="xtract-card" style="padding: 1.5rem; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: center;">
+                    <div style="position: absolute; right: -40px; top: -40px; width: 180px; height: 180px; background: radial-gradient(circle, rgba(139, 92, 246, 0.15), transparent 70%); pointer-events: none;"></div>
+
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+                        <div style="text-transform: uppercase; color: var(--text-secondary); font-size: 0.75rem; letter-spacing: 1px; font-weight: 700;">Monthly Budget</div>
+                        <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.ExtraSmall" Click="@OpenBudgetDialog" Text="Edit Limit" />
+                    </RadzenStack>
+
+                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End" Gap="1rem" Class="rz-mt-2">
+                        <div style="font-size: 3rem; font-weight: 800; color: white; line-height: 1;">
+                            @((budget?.SpentAmount ?? 0).ToString("N0"))
+                        </div>
+                        <span style="font-size: 1.2rem; color: var(--text-secondary); font-weight: 500; margin-bottom: 8px;">
+                            / @((budget?.LimitAmount ?? 0).ToString("N0")) HUF
+                        </span>
+                    </RadzenStack>
+
+                    <div class="rz-mt-3">
+                        <div style="display:flex; justify-content: space-between; margin-bottom: 5px;">
+                            <span style="color: #a78bfa; font-size: 0.9rem;">@budgetPercentage.ToString("0")% Used</span>
+                        </div>
+                        <RadzenProgressBar Value="@budgetPercentage" Max="100" ShowValue="false" Style="height: 12px; background: rgba(255,255,255,0.1); border-radius: 6px;" />
+                    </div>
+                </div>
+            </RadzenColumn>
         </RadzenStack>
     </div>
 }
@@ -202,27 +119,16 @@ else
 @code {
     private BudgetViewDto? budget;
     private double budgetPercentage = 0;
-
     private bool isCriticalLoading = true;
     private bool isAiLoading = false;
-
     private AiAdviceDto? aiAdvice = null;
     private List<TransactionViewDto> allTransactions = new();
-
     private List<ChartItem> merchantData = new();
-    private List<string> merchantNames = new();
-    private List<ChartItem> categoryData = new();
-    private string? selectedMerchant;
 
     private string[] merchantColors = new[] { "#8b5cf6", "#6366f1", "#a855f7", "#d946ef", "#ec4899", "#f43f5e", "#10b981", "#06b6d4", "#3b82f6", "#f59e0b" };
-    private string[] categoryColors = new[] { "#10b981", "#06b6d4", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6" };
-
     class ChartItem { public string Label { get; set; } = ""; public double Total { get; set; } }
 
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadMainDataAsync();
-    }
+    protected override async Task OnInitializedAsync() => await LoadMainDataAsync();
 
     private async Task LoadMainDataAsync()
     {
@@ -251,38 +157,21 @@ else
         isAiLoading = true;
         try
         {
-            if (aiAdvice == null)
-            {
-                aiAdvice = await Http.GetFromJsonAsync<AiAdviceDto>("api/aisuggestion");
-            }
-
+            if (aiAdvice == null) aiAdvice = await Http.GetFromJsonAsync<AiAdviceDto>("api/aisuggestion");
             await DialogService.OpenAsync<BudgetTrackingApp.Client.Shared.AiAdviceDialog>("Financial Analysis",
                 new Dictionary<string, object> { { "Advice", aiAdvice } },
                 new DialogOptions() { Width = "800px", Height = "600px", CssClass = "xtract-card", Resizable = true, Draggable = true }
             );
         }
-        catch (Exception ex)
-        {
-            NotificationService.Notify(NotificationSeverity.Error, "AI Error", "Could not fetch advice.");
-        }
-        finally
-        {
-            isAiLoading = false;
-        }
+        catch (Exception) { NotificationService.Notify(NotificationSeverity.Error, "AI Error", "Service unavailable."); }
+        finally { isAiLoading = false; }
     }
 
-    // --- FEATURE 1: AI SCANNER ---
     private async Task OpenScannerDialog()
     {
-        var result = await DialogService.OpenAsync<BudgetTrackingApp.Client.Shared.ReceiptScannerDialog>("Receipt Scanner",
-             null,
-             new DialogOptions() { Width = "700px", Height = "auto", CssClass = "xtract-card", Draggable = true, Resizable = false });
-
-        if (result == true)
-        {
-            // Reload everything to reflect new data (transactions, budget, categories)
-            await LoadMainDataAsync();
-        }
+        var result = await DialogService.OpenAsync<BudgetTrackingApp.Client.Shared.ReceiptScannerDialog>("Receipt Scanner", null,
+             new DialogOptions() { Width = "700px", Height = "auto", CssClass = "xtract-card" });
+        if (result == true) await LoadMainDataAsync();
     }
 
     private void RefreshBudgetCalculations()
@@ -298,47 +187,7 @@ else
             .GroupBy(t => string.IsNullOrWhiteSpace(t.Merchant) ? "Unknown" : t.Merchant)
             .Select(g => new ChartItem { Label = g.Key, Total = (double)g.Sum(t => t.Amount) })
             .OrderByDescending(x => x.Total)
-            .Take(10)
-            .OrderBy(x => x.Total)
-            .ToList();
-
-        merchantNames = merchantData.OrderByDescending(x => x.Total).Select(m => m.Label).ToList();
-
-        if (merchantNames.Any())
-        {
-            selectedMerchant = merchantNames.First();
-            UpdateDetailChart();
-        }
-    }
-
-    private void UpdateDetailChart()
-    {
-        if (string.IsNullOrEmpty(selectedMerchant)) { categoryData = new(); return; }
-
-        var storeExpenses = allTransactions
-            .Where(t => t.Type == TransactionType.Expense &&
-                       (string.IsNullOrWhiteSpace(t.Merchant) ? "Unknown" : t.Merchant) == selectedMerchant);
-
-        // --- FEATURE UPDATE: Show SPECIFIC Sub-Categories ---
-        categoryData = storeExpenses
-            .GroupBy(t =>
-            {
-                var catName = t.CategoryName ?? "Unknown";
-                // Logic: If "Main > Sub", take "Sub" (the specific item type)
-                if (catName.Contains(" > "))
-                {
-                    // "Élelmiszer > Sajt" -> returns "Sajt"
-                    return catName.Split(new[] { " > " }, StringSplitOptions.RemoveEmptyEntries)[1].Trim();
-                }
-                // If no sub-category, return main (e.g. just "Élelmiszer")
-                return catName;
-            })
-            .Select(g => new ChartItem
-            {
-                Label = g.Key,
-                Total = (double)g.Sum(t => t.Amount)
-            })
-            .OrderByDescending(x => x.Total)
+            .Take(10) // Show top 10
             .ToList();
     }
 
@@ -346,13 +195,7 @@ else
     {
         var result = await DialogService.OpenAsync<BudgetTrackingApp.Client.Shared.BudgetDialog>("Edit Limit",
             new Dictionary<string, object> { { "CurrentLimit", budget?.LimitAmount ?? 0 } },
-            new DialogOptions() { Width = "400px", CssClass = "xtract-card" }
-        );
-        if (result == true)
-        {
-            budget = await Http.GetFromJsonAsync<BudgetViewDto>("api/budget");
-            RefreshBudgetCalculations();
-            StateHasChanged();
-        }
+            new DialogOptions() { Width = "400px", CssClass = "xtract-card" });
+        if (result == true) await LoadMainDataAsync();
     }
 }

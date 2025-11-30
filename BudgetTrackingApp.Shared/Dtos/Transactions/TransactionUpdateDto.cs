@@ -24,5 +24,9 @@ namespace BudgetTrackingApp.Shared.Dtos.Transactions
         public DateTime TransactionDate { get; set; }
         [Required]
         public Guid CategoryId { get; set; }
+        public PaidBy PaidBy { get; set; } = PaidBy.Me;
+        public bool IsSplit { get; set; }
+        public decimal MyShareRatio { get; set; } = 0.5m;
+        public Guid? SavingGoalId { get; set; }
     }
 }
