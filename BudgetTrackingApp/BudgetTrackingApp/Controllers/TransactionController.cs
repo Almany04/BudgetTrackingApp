@@ -25,8 +25,21 @@ namespace BudgetTrackingApp.Api.Controllers
         [HttpGet]
         public async Task<IActionResult> GetTransactionsAsync([FromQuery] DateTime? startDate, [FromQuery] DateTime? endDate)
         {
-            try { return Ok(await _transactionLogic.GetTransactionsByUserIdFilteredAsync(GetUserId(), startDate ?? DateTime.Now.AddDays(-30), endDate ?? DateTime.Now)); }
-            catch (Exception ex) { return BadRequest("Váratlan hiba történt."); }
+            try
+            {
+                // FIX: Ensure the date range includes the full 'End Date' (up to 23:59:59)
+                // When the UI sends "2025-11-30", it binds as "2025-11-30 00:00:00".
+                // Transactions created "Today" (e.g. 14:00) would be excluded without this adjustment.
+                var finalStart = (startDate ?? DateTime.Now.AddDays(-30)).Date;
+                var finalEnd = (endDate ?? DateTime.Now).Date.AddDays(1).AddTicks(-1);
+
+                return Ok(await _transactionLogic.GetTransactionsByUserIdFilteredAsync(GetUserId(), finalStart, finalEnd));
+            }
+            catch (Exception ex)
+            {
+                // Ideally log ex here
+                return BadRequest("Váratlan hiba történt.");
+            }
         }
 
         [HttpPost]
