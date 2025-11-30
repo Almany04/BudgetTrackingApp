@@ -105,13 +105,14 @@ builder.Services.AddRateLimiter(options =>
         options.QueueLimit = 2;
     });
 
-    
+
     options.AddFixedWindowLimiter("Strict", options =>
     {
-        options.PermitLimit = 5;
+        // INCREASED LIMIT: 5 -> 20 to prevent 429 errors during testing
+        options.PermitLimit = 20;
         options.Window = TimeSpan.FromMinutes(1);
         options.QueueProcessingOrder = QueueProcessingOrder.OldestFirst;
-        options.QueueLimit = 0;
+        options.QueueLimit = 2;
     });
 });
 var app = builder.Build();

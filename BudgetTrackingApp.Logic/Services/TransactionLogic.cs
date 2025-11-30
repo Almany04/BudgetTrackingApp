@@ -119,9 +119,11 @@ namespace BudgetTrackingApp.Logic.Services
             decimal totalExpense = 0;
             decimal totalIncome = 0;
 
+            // Generate a unique ID for this entire batch
+            var receiptId = Guid.NewGuid();
+
             foreach (var item in bulkDto.Items)
             {
-                // Verify category ownership
                 var valid = await _categoryRepository.IsCategoryOwnedByUserAsync(item.CategoryId, userId);
                 if (!valid) throw new Exception($"Access denied to category for item: {item.Description}");
 
@@ -134,7 +136,8 @@ namespace BudgetTrackingApp.Logic.Services
                     Amount = item.Amount,
                     Description = item.Description,
                     CategoryId = item.CategoryId,
-                    Type = item.Type
+                    Type = item.Type,
+                    ReceiptId = receiptId // <--- Assign the group ID
                 };
 
                 if (item.Type == TransactionType.Expense) totalExpense += item.Amount;
@@ -176,7 +179,8 @@ namespace BudgetTrackingApp.Logic.Services
                 CategoryName = catName,
                 CategoryId = entity.CategoryId,
                 Merchant = entity.Merchant,
-                PaymentMethod = entity.PaymentMethod
+                PaymentMethod = entity.PaymentMethod,
+                ReceiptId = entity.ReceiptId
             };
         }
     }

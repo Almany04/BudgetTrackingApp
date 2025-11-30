@@ -21,54 +21,110 @@
         <RadzenFormField Text="End Date" Variant="Variant.Outlined">
             <RadzenDatePicker @bind-Value="endDate" DateFormat="yyyy.MM.dd" />
         </RadzenFormField>
-        <RadzenButton Text="Refresh List" Click="@(args => LoadTransactionsAsync())" Icon="refresh" ButtonStyle="ButtonStyle.Secondary" />
+        <RadzenButton Text="Refresh" Click="@(args => LoadTransactionsAsync())" Icon="refresh" ButtonStyle="ButtonStyle.Secondary" />
     </RadzenStack>
 </RadzenCard>
 
-<RadzenDataGrid Data="@transactions" TItem="TransactionViewDto"
-                AllowPaging="true" PageSize="10"
-                AllowSorting="true"
-                AllowFiltering="true" FilterMode="FilterMode.Simple"
+<RadzenDataGrid Data="@groupedTransactions" TItem="GroupedTransaction"
+                AllowPaging="true" PageSize="15"
+                RowRender="@RowRender"
+                ExpandMode="DataGridExpandMode.Single"
                 IsLoading="@isLoading" EmptyText="No transactions found.">
     <Columns>
-        <RadzenDataGridColumn TItem="TransactionViewDto" Property="TransactionDate" Title="Date" Width="120px">
+        <RadzenDataGridColumn TItem="GroupedTransaction" Property="Date" Title="Date" Width="120px">
             <Template Context="data">
-                <span style="color: var(--text-secondary);">@data.TransactionDate.ToString("yyyy.MM.dd")</span>
+                <span style="color: var(--text-secondary);">@data.Date.ToString("yyyy.MM.dd")</span>
             </Template>
         </RadzenDataGridColumn>
 
-        <RadzenDataGridColumn TItem="TransactionViewDto" Property="CategoryName" Title="Category" Width="150px" />
+        <RadzenDataGridColumn TItem="GroupedTransaction" Title="Details">
+            <Template Context="data">
+                @if (data.IsGroup)
+                {
+                    <span style="font-weight: bold; color: #a78bfa;">
+                        <RadzenIcon Icon="receipt" Style="vertical-align: middle; margin-right: 5px;" />
+                        @data.Merchant (Receipt)
+                    </span>
+                    <span style="font-size: 0.8rem; color: var(--text-secondary); margin-left: 10px;">
+                        @data.Items.Count items
+                    </span>
+                }
+                else
+                {
+                    <span>@data.Description</span>
+                    @if (!string.IsNullOrEmpty(data.Merchant))
+                    {
+                        <span style="color: var(--text-secondary); font-size: 0.8rem;"> - @data.Merchant</span>
+                    }
+                }
+            </Template>
+        </RadzenDataGridColumn>
 
-        <RadzenDataGridColumn TItem="TransactionViewDto" Property="Description" Title="Description" />
+        <RadzenDataGridColumn TItem="GroupedTransaction" Property="CategoryName" Title="Category" Width="180px">
+            <Template Context="data">
+                @if (data.IsGroup)
+                {
+                    <span style="font-style: italic; opacity: 0.7;">Mixed</span>
+                }
+                else
+                {
+                    @data.CategoryName
+                }
+            </Template>
+        </RadzenDataGridColumn>
 
-        <RadzenDataGridColumn TItem="TransactionViewDto" Property="Amount" Title="Amount" TextAlign="TextAlign.Right" Width="140px">
+        <RadzenDataGridColumn TItem="GroupedTransaction" Property="TotalAmount" Title="Amount" TextAlign="TextAlign.Right" Width="140px">
             <Template Context="data">
                 <RadzenText TextStyle="TextStyle.Body1" Style="@(data.Type == TransactionType.Expense ? "color: #ef4444;" : "color: #22c55e; font-weight:bold;")">
-                    @(data.Type == TransactionType.Expense ? "-" : "+") @data.Amount.ToString("C0")
+                    @(data.Type == TransactionType.Expense ? "-" : "+") @data.TotalAmount.ToString("N0")
                 </RadzenText>
             </Template>
         </RadzenDataGridColumn>
-
-        <RadzenDataGridColumn TItem="TransactionViewDto" Title="Actions" TextAlign="TextAlign.Center" Width="120px" Sortable="false" Filterable="false">
-            <Template Context="data">
-                <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => OpenTransactionDialog(data))" Class="rz-mr-1" />
-                <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Flat" Size="ButtonSize.Medium" Click="@(args => DeleteTransaction(data))" />
-            </Template>
-        </RadzenDataGridColumn>
     </Columns>
+
+    @* --- EXPANSION TEMPLATE FOR RECEIPT ITEMS --- *@
+    <Template Context="data">
+        @if (data.IsGroup)
+        {
+            <RadzenDataGrid Data="@data.Items" TItem="TransactionViewDto" Density="Density.Compact" Style="background: rgba(0,0,0,0.2); margin: 10px; border-radius: 8px;">
+                <Columns>
+                    <RadzenDataGridColumn TItem="TransactionViewDto" Property="Description" Title="Item" />
+                    <RadzenDataGridColumn TItem="TransactionViewDto" Property="CategoryName" Title="Category" />
+                    <RadzenDataGridColumn TItem="TransactionViewDto" Property="Amount" Title="Cost" TextAlign="TextAlign.Right">
+                        <Template Context="item">@item.Amount.ToString("N0")</Template>
+                    </RadzenDataGridColumn>
+                    <RadzenDataGridColumn TItem="TransactionViewDto" Width="60px">
+                        <Template Context="item">
+                            <RadzenButton Icon="delete" ButtonStyle="ButtonStyle.Danger" Size="ButtonSize.ExtraSmall" Click="@(() => DeleteTransaction(item))" />
+                        </Template>
+                    </RadzenDataGridColumn>
+                </Columns>
+            </RadzenDataGrid>
+        }
+    </Template>
 </RadzenDataGrid>
 
 @code {
-    
-    private IEnumerable<TransactionViewDto>? transactions;
+    // UI Helper Class to manage grouping
+    public class GroupedTransaction
+    {
+        public bool IsGroup { get; set; }
+        public Guid Id { get; set; } // ReceiptId or TransactionId
+        public DateTime Date { get; set; }
+        public string Merchant { get; set; }
+        public string Description { get; set; }
+        public string CategoryName { get; set; }
+        public decimal TotalAmount { get; set; }
+        public TransactionType Type { get; set; }
+        public List<TransactionViewDto> Items { get; set; } = new();
+    }
+
+    private List<GroupedTransaction> groupedTransactions = new();
     private bool isLoading = false;
     private DateTime? startDate = DateTime.Now.AddDays(-30);
     private DateTime? endDate = DateTime.Now;
 
-    protected override async Task OnInitializedAsync()
-    {
-        await LoadTransactionsAsync();
-    }
+    protected override async Task OnInitializedAsync() => await LoadTransactionsAsync();
 
     private async Task LoadTransactionsAsync()
     {
@@ -77,53 +133,85 @@
         {
             var start = startDate?.ToString("yyyy-MM-dd");
             var end = endDate?.ToString("yyyy-MM-dd");
-            var url = $"api/transaction?startDate={start}&endDate={end}";
-            transactions = await Http.GetFromJsonAsync<List<TransactionViewDto>>(url);
+            var rawList = await Http.GetFromJsonAsync<List<TransactionViewDto>>($"api/transaction?startDate={start}&endDate={end}");
+
+            if (rawList != null)
+            {
+                groupedTransactions = new List<GroupedTransaction>();
+
+                // 1. Group items that have a ReceiptId
+                var receiptGroups = rawList
+                    .Where(t => t.ReceiptId.HasValue)
+                    .GroupBy(t => t.ReceiptId.Value);
+
+                foreach (var group in receiptGroups)
+                {
+                    var first = group.First();
+                    groupedTransactions.Add(new GroupedTransaction
+                    {
+                        IsGroup = true,
+                        Id = group.Key,
+                        Date = first.TransactionDate,
+                        Merchant = first.Merchant ?? "Receipt",
+                        Type = first.Type,
+                        TotalAmount = group.Sum(x => x.Amount),
+                        Items = group.ToList()
+                    });
+                }
+
+                // 2. Add single items (no ReceiptId)
+                var singles = rawList.Where(t => !t.ReceiptId.HasValue);
+                foreach (var t in singles)
+                {
+                    groupedTransactions.Add(new GroupedTransaction
+                    {
+                        IsGroup = false,
+                        Id = t.Id,
+                        Date = t.TransactionDate,
+                        Description = t.Description,
+                        Merchant = t.Merchant,
+                        CategoryName = t.CategoryName,
+                        TotalAmount = t.Amount,
+                        Type = t.Type
+                    });
+                }
+
+                // Sort by date descending
+                groupedTransactions = groupedTransactions.OrderByDescending(x => x.Date).ToList();
+            }
         }
-        catch (Exception ex)
+        catch (Exception ex) { NotificationService.Notify(NotificationSeverity.Error, "Error", ex.Message); }
+        finally { isLoading = false; }
+    }
+
+    // Styling for Receipt rows
+    void RowRender(RowRenderEventArgs<GroupedTransaction> args)
+    {
+        if (args.Data.IsGroup)
         {
-            NotificationService.Notify(NotificationSeverity.Error, "Error", $"Failed to load data: {ex.Message}");
+            args.Attributes.Add("style", "background-color: rgba(139, 92, 246, 0.05); font-weight: 500;");
         }
-        finally
+    }
+
+    // ... (OpenTransactionDialog and DeleteTransaction similar to before)
+    private async Task DeleteTransaction(TransactionViewDto transaction)
+    {
+        var confirm = await DialogService.Confirm("Delete this item?", "Delete", new ConfirmOptions { OkButtonText = "Yes", CancelButtonText = "No", CssClass = "xtract-card" });
+        if (confirm == true)
         {
-            isLoading = false;
+            await Http.DeleteAsync($"api/transaction/{transaction.Id}");
+            await LoadTransactionsAsync();
         }
     }
 
     private async Task OpenTransactionDialog(TransactionViewDto? transaction)
     {
+        // ... existing logic ...
         var result = await DialogService.OpenAsync<BudgetTrackingApp.Client.Shared.TransactionDialog>(
             transaction == null ? "New Transaction" : "Edit Transaction",
             new Dictionary<string, object> { { "TransactionId", transaction?.Id } },
-            new DialogOptions() { Width = "500px", Height = "auto", Draggable = true, Resizable = false, CssClass = "xtract-card" }
+            new DialogOptions() { Width = "500px", CssClass = "xtract-card" }
         );
-
-        if (result == true)
-        {
-            await LoadTransactionsAsync();
-        }
-    }
-
-    private async Task DeleteTransaction(TransactionViewDto transaction)
-    {
-        var confirm = await DialogService.Confirm("Are you sure you want to delete this item?", "Confirm Delete",
-            new ConfirmOptions() { OkButtonText = "Yes", CancelButtonText = "No", CssClass = "xtract-card" });
-
-        if (confirm == true)
-        {
-            try
-            {
-                var response = await Http.DeleteAsync($"api/transaction/{transaction.Id}");
-                if (response.IsSuccessStatusCode)
-                {
-                    NotificationService.Notify(NotificationSeverity.Success, "Success", "Transaction deleted!");
-                    await LoadTransactionsAsync();
-                }
-            }
-            catch (Exception ex)
-            {
-                NotificationService.Notify(NotificationSeverity.Error, "Error", ex.Message);
-            }
-        }
+        if (result == true) await LoadTransactionsAsync();
     }
 }

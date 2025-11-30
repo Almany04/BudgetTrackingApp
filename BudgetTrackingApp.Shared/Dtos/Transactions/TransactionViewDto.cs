@@ -26,5 +26,7 @@ namespace BudgetTrackingApp.Shared.Dtos.Transactions
         public string CategoryName { get; set; }
         public Guid CategoryId { get; set; }
 
+        public Guid? ReceiptId { get; set; }
+
     }
 }

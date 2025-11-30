@@ -1,0 +1,252 @@
+﻿@using BudgetTrackingApp.Shared.Dtos.AI
+@using BudgetTrackingApp.Shared.Dtos.Transactions
+@using BudgetTrackingApp.Shared.Dtos.Category
+@using BudgetTrackingApp.Shared.Enums
+@inject HttpClient Http
+@inject DialogService DialogService
+@inject NotificationService NotificationService
+
+<RadzenStack>
+    @if (scanResult == null)
+    {
+        @* --- UPLOAD STEP (No Changes) --- *@
+        <RadzenCard Class="xtract-card" Style="text-align: center; padding: 3rem; border: 2px dashed rgba(255,255,255,0.2);">
+            <RadzenIcon Icon="qr_code_scanner" Style="font-size: 4rem; color: #a78bfa; margin-bottom: 1rem;" />
+            <RadzenText TextStyle="TextStyle.H5" Style="color: white;">AI Receipt Scanner</RadzenText>
+            <div style="position: relative; width: 200px; margin: 1rem auto;">
+                <RadzenButton Text="Select Image" Icon="upload" ButtonStyle="ButtonStyle.Primary" Style="width: 100%;" />
+                <RadzenFileInput TValue="string" @bind-Value="uploadedImageBase64" Change="@OnUploadChange" Accept="image/*" Style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; opacity: 0; cursor: pointer;" />
+            </div>
+            @if (isScanning)
+            {
+                <RadzenProgressBar Value="100" ShowValue="false" Mode="ProgressBarMode.Indeterminate" Class="rz-mt-4" />
+                <span style="color: #a78bfa;">Applying discounts & extracting data...</span>
+            }
+        </RadzenCard>
+    }
+    else
+    {
+        @* --- REVIEW STEP --- *@
+        <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem" Class="rz-mb-3" AlignItems="AlignItems.Center">
+            <RadzenTextBox @bind-Value="scanResult.Merchant" Placeholder="Merchant" Style="flex-grow: 1;" />
+            <RadzenDatePicker @bind-Value="scanResult.Date" Style="width: 130px;" />
+
+            @* NEW: Payment Method Dropdown *@
+            <RadzenDropDown @bind-Value="selectedPaymentMethod" Data="@paymentMethods"
+                            TextProperty="Name" ValueProperty="Value"
+                            Style="width: 140px;" />
+        </RadzenStack>
+
+        <RadzenDataGrid Data="@scanResult.Items" TItem="ReceiptItemDto" Density="Density.Compact" AllowPaging="false" Style="height: 350px; overflow: auto; border: 1px solid rgba(255,255,255,0.1); border-radius: 8px;">
+            <Columns>
+                <RadzenDataGridColumn TItem="ReceiptItemDto" Property="ItemName" Title="Item">
+                    <Template Context="item">
+                        <RadzenTextBox @bind-Value="item.ItemName" Style="width: 100%; background: transparent; border: none; color: white;" />
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="ReceiptItemDto" Property="Price" Title="HUF" Width="90px">
+                    <Template Context="item">
+                        <RadzenNumeric @bind-Value="item.Price" ShowUpDown="false" Style="width: 100%; text-align: right; background: transparent; border: none;" />
+                    </Template>
+                </RadzenDataGridColumn>
+
+                <RadzenDataGridColumn TItem="ReceiptItemDto" Title="Hierarchy" Width="240px">
+                    <Template Context="item">
+                        @if (item.IsNewCategory)
+                        {
+                            <div style="display: flex; gap: 5px; align-items: center;">
+                                <RadzenBadge BadgeStyle="BadgeStyle.Info" Text="NEW" />
+                                <div style="display: flex; flex-direction: column; width: 100%;">
+                                    <RadzenTextBox @bind-Value="item.SuggestedMainCategory" Placeholder="Main" Style="font-size: 0.8rem; height: 25px; margin-bottom: 2px;" />
+                                    <RadzenTextBox @bind-Value="item.SuggestedSubCategory" Placeholder="Sub" Style="font-size: 0.8rem; height: 25px; color: #a78bfa;" />
+                                </div>
+                            </div>
+                        }
+                        else
+                        {
+                            <RadzenDropDown Data="@allCategories" TextProperty="Name" ValueProperty="Id" @bind-Value="item.MatchedCategoryId"
+                                            Style="width: 100%; font-size: 0.85rem;" FilterCaseSensitivity="FilterCaseSensitivity.CaseInsensitive" AllowFiltering="true">
+                                <Template Context="c">
+                                    @(c.ParentCategoryId != null ? $"{c.ParentCategoryName} > {c.Name}" : c.Name)
+                                </Template>
+                            </RadzenDropDown>
+                        }
+                    </Template>
+                </RadzenDataGridColumn>
+                <RadzenDataGridColumn TItem="ReceiptItemDto" Width="40px">
+                    <Template Context="item">
+                        <RadzenButton Icon="close" ButtonStyle="ButtonStyle.Danger" Variant="Variant.Text" Size="ButtonSize.Small" Click="@(() => scanResult.Items.Remove(item))" />
+                    </Template>
+                </RadzenDataGridColumn>
+            </Columns>
+        </RadzenDataGrid>
+
+        <div style="border-top: 1px solid rgba(255,255,255,0.1); padding-top: 1rem; margin-top: 1rem;">
+            <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.SpaceBetween" AlignItems="AlignItems.Center">
+                <RadzenText TextStyle="TextStyle.H6" Style="color: #22c55e; margin: 0;">
+                    Total: @scanResult.Items.Sum(x => x.Price).ToString("N0") Ft
+                </RadzenText>
+                <RadzenStack Orientation="Orientation.Horizontal" Gap="1rem">
+                    <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Light" Click="@(() => DialogService.Close(null))" />
+                    <RadzenButton Text="@saveBtnText" Icon="save" ButtonStyle="ButtonStyle.Primary" Click="@ProcessAndSave" IsBusy="@isSaving" />
+                </RadzenStack>
+            </RadzenStack>
+        </div>
+    }
+</RadzenStack>
+
+@code {
+    private string? uploadedImageBase64;
+    private bool isScanning = false;
+    private bool isSaving = false;
+    private string saveBtnText = "Save All";
+
+    private ReceiptResultDto? scanResult;
+    private List<CategoryViewDto> allCategories = new();
+
+    // Payment Method Helper
+    public class PaymentMethodItem { public string Name { get; set; } public PaymentMethod Value { get; set; } }
+    private List<PaymentMethodItem> paymentMethods = Enum.GetValues(typeof(PaymentMethod))
+        .Cast<PaymentMethod>()
+        .Select(e => new PaymentMethodItem { Name = e.ToString(), Value = e })
+        .ToList();
+
+    private PaymentMethod selectedPaymentMethod = PaymentMethod.Card;
+
+    protected override async Task OnInitializedAsync()
+    {
+        allCategories = await Http.GetFromJsonAsync<List<CategoryViewDto>>("api/categories") ?? new();
+    }
+
+    private async Task OnUploadChange(string value)
+    {
+        if (string.IsNullOrEmpty(value)) return;
+        var base64 = value.Contains(",") ? value.Substring(value.IndexOf(",") + 1) : value;
+
+        isScanning = true;
+        try
+        {
+            var response = await Http.PostAsJsonAsync("api/aisuggestion/scan", new { ImageBase64 = base64 });
+            if (response.IsSuccessStatusCode)
+            {
+                scanResult = await response.Content.ReadFromJsonAsync<ReceiptResultDto>();
+
+                // Auto-select Payment Method from AI result
+                if (scanResult != null && !string.IsNullOrEmpty(scanResult.DetectedPaymentMethod))
+                {
+                    if (Enum.TryParse<PaymentMethod>(scanResult.DetectedPaymentMethod, true, out var parsedMethod))
+                    {
+                        selectedPaymentMethod = parsedMethod;
+                    }
+                }
+            }
+            else
+            {
+                NotificationService.Notify(NotificationSeverity.Error, "Error", "AI Scan Failed");
+            }
+        }
+        catch (Exception ex) { NotificationService.Notify(NotificationSeverity.Error, "Error", ex.Message); }
+        finally { isScanning = false; }
+    }
+
+    private async Task ProcessAndSave()
+    {
+        if (scanResult == null) return;
+        isSaving = true;
+        saveBtnText = "Creating Categories...";
+
+        try
+        {
+            // 1. Category Logic (Same as before, ensuring IDs exist)
+            var currentCategories = await Http.GetFromJsonAsync<List<CategoryViewDto>>("api/categories");
+
+            var bulkDto = new BulkTransactionCreateDto
+            {
+                Merchant = scanResult.Merchant,
+                TransactionDate = scanResult.Date ?? DateTime.Now,
+                PaymentMethod = selectedPaymentMethod, // USE THE SELECTED METHOD
+                Items = new List<TransactionItemDto>()
+            };
+
+            foreach (var item in scanResult.Items)
+            {
+                // --- (Existing Hierarchy Creation Logic from previous step) ---
+                Guid finalCatId = Guid.Empty;
+                // ... (Logic to find/create Main and Sub categories) ...
+
+                // Re-implementing brevity for the example:
+                if (!item.IsNewCategory && item.MatchedCategoryId.HasValue)
+                {
+                    finalCatId = item.MatchedCategoryId.Value;
+                }
+                else
+                {
+                    // Create Main if missing
+                    var mainCat = currentCategories.FirstOrDefault(c => c.Name.Equals(item.SuggestedMainCategory, StringComparison.OrdinalIgnoreCase) && c.ParentCategoryId == null);
+                    if (mainCat == null)
+                    {
+                        var res = await Http.PostAsJsonAsync("api/categories", new CategoryCreateDto { Name = item.SuggestedMainCategory });
+                        if (res.IsSuccessStatusCode)
+                        {
+                            // Hard refresh list to ensure we get the ID
+                            currentCategories = await Http.GetFromJsonAsync<List<CategoryViewDto>>("api/categories");
+                            mainCat = currentCategories.FirstOrDefault(c => c.Name.Equals(item.SuggestedMainCategory, StringComparison.OrdinalIgnoreCase));
+                        }
+                    }
+                    // Create Sub if missing
+                    if (mainCat != null)
+                    {
+                        var subCat = currentCategories.FirstOrDefault(c => c.Name.Equals(item.SuggestedSubCategory, StringComparison.OrdinalIgnoreCase) && c.ParentCategoryId == mainCat.Id);
+                        if (subCat == null)
+                        {
+                            var res = await Http.PostAsJsonAsync("api/categories", new CategoryCreateDto { Name = item.SuggestedSubCategory, ParentCategoryId = mainCat.Id });
+                            if (res.IsSuccessStatusCode)
+                            {
+                                // Hard refresh again
+                                currentCategories = await Http.GetFromJsonAsync<List<CategoryViewDto>>("api/categories");
+                                subCat = currentCategories.FirstOrDefault(c => c.Name.Equals(item.SuggestedSubCategory, StringComparison.OrdinalIgnoreCase) && c.ParentCategoryId == mainCat.Id);
+                            }
+                        }
+                        if (subCat != null) finalCatId = subCat.Id;
+                    }
+                }
+
+                if (finalCatId != Guid.Empty)
+                {
+                    bulkDto.Items.Add(new TransactionItemDto
+                    {
+                        Amount = item.Price,
+                        Description = item.ItemName,
+                        CategoryId = finalCatId,
+                        Type = TransactionType.Expense
+                    });
+                }
+            }
+
+            // 2. Save Transactions
+            saveBtnText = "Saving Transactions...";
+            var txResponse = await Http.PostAsJsonAsync("api/transaction/bulk", bulkDto);
+
+            if (txResponse.IsSuccessStatusCode)
+            {
+                NotificationService.Notify(NotificationSeverity.Success, "Success", "Receipt Saved!");
+                DialogService.Close(true);
+            }
+            else
+            {
+                // LOG THE ERROR TO UI
+                NotificationService.Notify(NotificationSeverity.Error, "Save Failed", await txResponse.Content.ReadAsStringAsync());
+            }
+        }
+        catch (Exception ex)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "Critical Error", ex.Message);
+        }
+        finally
+        {
+            isSaving = false;
+            saveBtnText = "Save All";
+        }
+    }
+}

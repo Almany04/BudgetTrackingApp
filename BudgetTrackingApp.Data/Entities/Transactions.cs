@@ -32,6 +32,7 @@ namespace BudgetTrackingApp.Data.Entities
         public string? Merchant { get; set; }
         [Required]
         public DateTime TransactionDate { get; set; }
+        public Guid? ReceiptId { get; set; }
         [Required]
         public string AppUserId { get; set; }
         public Guid CategoryId { get; set; }

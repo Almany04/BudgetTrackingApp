@@ -10,7 +10,6 @@
 
 <PageTitle>Dashboard</PageTitle>
 
-
 @if (isCriticalLoading)
 {
     <div style="height: 50vh; display: flex; justify-content: center; align-items: center;">
@@ -28,17 +27,21 @@ else
                     <h1 style="font-size: 1.8rem; margin: 0; color: white; font-weight: 800;">Dashboard</h1>
                     <span style="color: var(--text-secondary); font-size: 0.9rem;">Financial Overview</span>
                 </div>
-                <RadzenButton Text="Add Expense" Icon="add_circle" ButtonStyle="ButtonStyle.Primary" Click="@(() => Navigation.NavigateTo("transactions"))" />
+                <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem">
+                    @* NEW SCANNER BUTTON *@
+                    <RadzenButton Text="Scan Receipt" Icon="qr_code_scanner" ButtonStyle="ButtonStyle.Secondary" Click="@OpenScannerDialog" />
+                    <RadzenButton Text="Add Expense" Icon="add_circle" ButtonStyle="ButtonStyle.Primary" Click="@(() => Navigation.NavigateTo("transactions"))" />
+                </RadzenStack>
             </RadzenStack>
 
             @* --- ROW 1: DETAILS + AI --- *@
             <RadzenRow Gutter="1.5rem">
 
-                @* 1. CATEGORY DETAILS *@
+                @* 1. CATEGORY DETAILS (AGGREGATED BY MAIN CATEGORY) *@
                 <RadzenColumn Size="12" SizeMD="6">
                     <div class="xtract-card" style="padding: 1.5rem; height: 100%; min-height: 400px;">
                         <h3 style="margin: 0 0 0.5rem 0; font-size: 1.2rem; color: white; font-weight: 700;">What did I buy?</h3>
-                        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">Item breakdown</p>
+                        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">Breakdown by Main Category</p>
 
                         <div style="background: rgba(255,255,255,0.05); padding: 0.8rem; border-radius: 10px; margin-bottom: 1rem;">
                             <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
@@ -59,7 +62,6 @@ else
                                                    CategoryProperty="Label"
                                                    ValueProperty="Total"
                                                    Fills="@categoryColors">
-                                    @* REMOVED DATA LABELS FOR CLEANER LOOK *@
                                     <TitleTemplate>
                                         <div class="rz-donut-content" style="text-align: center;">
                                             <div style="color: var(--text-secondary); font-size: 0.8rem;">Total</div>
@@ -269,6 +271,20 @@ else
         }
     }
 
+    // --- FEATURE 1: AI SCANNER ---
+    private async Task OpenScannerDialog()
+    {
+        var result = await DialogService.OpenAsync<BudgetTrackingApp.Client.Shared.ReceiptScannerDialog>("Receipt Scanner",
+             null,
+             new DialogOptions() { Width = "700px", Height = "auto", CssClass = "xtract-card", Draggable = true, Resizable = false });
+
+        if (result == true)
+        {
+            // Reload everything to reflect new data (transactions, budget, categories)
+            await LoadMainDataAsync();
+        }
+    }
+
     private void RefreshBudgetCalculations()
     {
         if (budget != null && budget.LimitAmount > 0)
@@ -287,6 +303,7 @@ else
             .ToList();
 
         merchantNames = merchantData.OrderByDescending(x => x.Total).Select(m => m.Label).ToList();
+
         if (merchantNames.Any())
         {
             selectedMerchant = merchantNames.First();
@@ -297,17 +314,30 @@ else
     private void UpdateDetailChart()
     {
         if (string.IsNullOrEmpty(selectedMerchant)) { categoryData = new(); return; }
+
         var storeExpenses = allTransactions
             .Where(t => t.Type == TransactionType.Expense &&
                        (string.IsNullOrWhiteSpace(t.Merchant) ? "Unknown" : t.Merchant) == selectedMerchant);
 
+        // --- FEATURE UPDATE: Show SPECIFIC Sub-Categories ---
         categoryData = storeExpenses
             .GroupBy(t =>
             {
-                if (t.CategoryName.Contains(" > ")) return t.CategoryName.Split(" > ")[1];
-                return t.CategoryName;
+                var catName = t.CategoryName ?? "Unknown";
+                // Logic: If "Main > Sub", take "Sub" (the specific item type)
+                if (catName.Contains(" > "))
+                {
+                    // "Élelmiszer > Sajt" -> returns "Sajt"
+                    return catName.Split(new[] { " > " }, StringSplitOptions.RemoveEmptyEntries)[1].Trim();
+                }
+                // If no sub-category, return main (e.g. just "Élelmiszer")
+                return catName;
             })
-            .Select(g => new ChartItem { Label = g.Key, Total = (double)g.Sum(t => t.Amount) })
+            .Select(g => new ChartItem
+            {
+                Label = g.Key,
+                Total = (double)g.Sum(t => t.Amount)
+            })
             .OrderByDescending(x => x.Total)
             .ToList();
     }
@@ -318,7 +348,6 @@ else
             new Dictionary<string, object> { { "CurrentLimit", budget?.LimitAmount ?? 0 } },
             new DialogOptions() { Width = "400px", CssClass = "xtract-card" }
         );
-
         if (result == true)
         {
             budget = await Http.GetFromJsonAsync<BudgetViewDto>("api/budget");

@@ -32,7 +32,18 @@ namespace BudgetTrackingApp.Api.Controllers
         [HttpPost]
         public async Task<IActionResult> CreateCategory([FromBody] CategoryCreateDto dto)
         {
-            try { await _categoryLogic.CreateCategoryAsync(dto, GetUserId()); return StatusCode(201); }
+            try
+            {
+                await _categoryLogic.CreateCategoryAsync(dto, GetUserId());
+
+                // FIX: Return the created object (or at least the list) so client doesn't have to guess
+                // In a perfect world, CreateCategoryAsync returns the Guid. 
+                // For now, let's fetch the created item to return it.
+                var categories = await _categoryLogic.GetCategoriesByUserIdAsync(GetUserId());
+                var created = categories.FirstOrDefault(c => c.Name == dto.Name);
+
+                return StatusCode(201, created); // Return the DTO
+            }
             catch (Exception ex) { return BadRequest("Váratlan hiba történt."); }
         }
 
