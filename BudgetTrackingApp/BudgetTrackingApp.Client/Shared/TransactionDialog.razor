@@ -42,11 +42,18 @@
 
                     @if (TransactionModel.Type != TransactionType.Saving)
                     {
-                        <RadzenFormField Text="Main Category" Variant="Variant.Outlined">
-                            <RadzenDropDown Data="@mainCategories" TextProperty="Name" ValueProperty="Id"
-                                            @bind-Value="selectedMainCategoryId" Change="@OnMainCategoryChange"
-                                            Placeholder="Select Group..." Style="width: 100%" />
-                        </RadzenFormField>
+                        @* --- MODIFIED: Wrapped in Stack to add Button --- *@
+                        <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End" Gap="0.5rem">
+                            <RadzenFormField Text="Main Category" Variant="Variant.Outlined" Style="flex-grow: 1;">
+                                <RadzenDropDown Data="@mainCategories" TextProperty="Name" ValueProperty="Id"
+                                                @bind-Value="selectedMainCategoryId" Change="@OnMainCategoryChange"
+                                                Placeholder="Select Group..." Style="width: 100%" />
+                            </RadzenFormField>
+                            <RadzenButton Icon="add_circle_outline" ButtonStyle="ButtonStyle.Primary"
+                                          ToolTip="New Main Group"
+                                          Click="@OpenCreateMainCategoryDialog" />
+                        </RadzenStack>
+                        @* ------------------------------------------------ *@
 
                         <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End" Gap="0.5rem">
                             <RadzenFormField Text="Sub Item" Variant="Variant.Outlined" Style="flex-grow: 1;">
@@ -229,6 +236,20 @@
         if (result == true) await LoadCategoriesAsync();
     }
 
+    private async Task OpenCreateMainCategoryDialog()
+    {
+        // Opens the existing CategoryDialog but with ParentCategoryId = null (Main Category)
+        var model = new CategoryCreateDto { ParentCategoryId = null };
+        var result = await DialogService.OpenAsync<CategoryDialog>("New Main Group",
+            new Dictionary<string, object> { { "CategoryModel", model } },
+            new DialogOptions() { Width = "400px", CssClass = "xtract-card" });
+
+        if (result == true)
+        {
+            // Refresh categories to show the new one immediately
+            await LoadCategoriesAsync();
+        }
+    }
     // --- Bulk Operations ---
     private void AddBulkItem()
     {

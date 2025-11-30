@@ -1,0 +1,134 @@
+﻿@page "/statistics"
+@attribute [Authorize]
+@using BudgetTrackingApp.Shared.Dtos.Transactions
+@using BudgetTrackingApp.Shared.Enums
+@using System.Globalization
+@inject HttpClient Http
+
+<PageTitle>Statistics - UniBudget</PageTitle>
+
+<RadzenStack Gap="2rem" Class="animate-in">
+
+    @* Header *@
+    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
+        <div>
+            <h1 style="color: white; font-weight: 800; margin: 0;">Deep Dive Analytics</h1>
+            <span style="color: var(--text-secondary);">Trends, distribution, and history</span>
+        </div>
+        @* Simple Year Filter *@
+        <RadzenSelectBar @bind-Value="selectedYear" Change="@LoadData" TValue="int" Class="rz-shadow-3">
+            <Items>
+                <RadzenSelectBarItem Text="@((DateTime.Now.Year - 1).ToString())" Value="@(DateTime.Now.Year - 1)" />
+                <RadzenSelectBarItem Text="@DateTime.Now.Year.ToString()" Value="@DateTime.Now.Year" />
+            </Items>
+        </RadzenSelectBar>
+    </RadzenStack>
+
+    @* ROW 1: Monthly Trends (Bar/Line Combo) *@
+    <RadzenCard Class="xtract-card" Style="padding: 2rem;">
+        <h3 style="color: white;">Annual Cash Flow</h3>
+        <RadzenChart ColorScheme="ColorScheme.Monochrome" Style="height: 400px; background: transparent;">
+            <RadzenColumnSeries Data="@monthlyStats" CategoryProperty="MonthName" Title="Income" ValueProperty="Income" Fill="#10b981" />
+            <RadzenColumnSeries Data="@monthlyStats" CategoryProperty="MonthName" Title="Expense" ValueProperty="Expense" Fill="#ef4444" />
+            <RadzenLineSeries Data="@monthlyStats" CategoryProperty="MonthName" Title="Savings Rate" ValueProperty="Net" Stroke="#8b5cf6" Smooth="true" LineType="LineType.Dashed">
+                <RadzenSeriesDataLabels Visible="true" />
+            </RadzenLineSeries>
+            <RadzenCategoryAxis Padding="20" />
+            <RadzenValueAxis>
+                <RadzenGridLines Visible="true" Stroke="rgba(255,255,255,0.1)" />
+            </RadzenValueAxis>
+            <RadzenLegend Position="LegendPosition.Bottom" />
+        </RadzenChart>
+    </RadzenCard>
+
+    <RadzenRow Gutter="1.5rem">
+        @* ROW 2: Category Heatmap (Pie) *@
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenCard Class="xtract-card">
+                <h4 style="color: white;">Expense Distribution</h4>
+                <RadzenChart Style="height: 300px; background: transparent;">
+                    <RadzenPieSeries Data="@categoryStats" Title="Total" CategoryProperty="Category" ValueProperty="Amount">
+                        <RadzenSeriesDataLabels Visible="true" />
+                    </RadzenPieSeries>
+                </RadzenChart>
+            </RadzenCard>
+        </RadzenColumn>
+
+        @* ROW 3: Daily Average (Metric) *@
+        <RadzenColumn Size="12" SizeMD="6">
+            <RadzenCard Class="xtract-card" Style="height: 100%; display: flex; flex-direction: column; justify-content: center; align-items: center;">
+                <span style="color: var(--text-secondary); font-size: 1.2rem;">Daily Average Spending</span>
+                <strong style="font-size: 3rem; color: #f59e0b;">@dailyAverage.ToString("N0") Ft</strong>
+                <span style="color: rgba(255,255,255,0.3);">Based on @selectedYear data</span>
+            </RadzenCard>
+        </RadzenColumn>
+    </RadzenRow>
+
+</RadzenStack>
+
+@code {
+    private int selectedYear = DateTime.Now.Year;
+    private List<MonthlyStat> monthlyStats = new();
+    private List<CategoryStat> categoryStats = new();
+
+    // FIX: Changed from double to decimal
+    private decimal dailyAverage = 0;
+
+    protected override async Task OnInitializedAsync() => await LoadData();
+
+    private async Task LoadData()
+    {
+        var start = new DateTime(selectedYear, 1, 1).ToString("yyyy-MM-dd");
+        var end = new DateTime(selectedYear, 12, 31).ToString("yyyy-MM-dd");
+
+        var tx = await Http.GetFromJsonAsync<List<TransactionViewDto>>($"api/transaction?startDate={start}&endDate={end}");
+
+        if (tx != null)
+        {
+            // 1. Process Monthly Stats
+            monthlyStats = Enumerable.Range(1, 12).Select(month =>
+            {
+                var monthTx = tx.Where(t => t.TransactionDate.Month == month).ToList();
+                var inc = monthTx.Where(t => t.Type == TransactionType.Income).Sum(t => t.Amount);
+                var exp = monthTx.Where(t => t.Type == TransactionType.Expense).Sum(t => t.Amount);
+                return new MonthlyStat
+                {
+                    MonthName = CultureInfo.CurrentCulture.DateTimeFormat.GetAbbreviatedMonthName(month),
+                    Income = inc,
+                    Expense = exp,
+                    Net = inc - exp
+                };
+            }).ToList();
+
+            // 2. Process Categories (Top 5 + Others)
+            var catGroups = tx.Where(t => t.Type == TransactionType.Expense)
+                              .GroupBy(t => t.CategoryName.Split('>')[0].Trim())
+                              .Select(g => new CategoryStat { Category = g.Key, Amount = g.Sum(t => t.Amount) })
+                              .OrderByDescending(x => x.Amount)
+                              .ToList();
+
+            categoryStats = catGroups.Take(5).ToList();
+            if (catGroups.Count > 5)
+            {
+                categoryStats.Add(new CategoryStat { Category = "Others", Amount = catGroups.Skip(5).Sum(x => x.Amount) });
+            }
+
+            // 3. Daily Average (FIXED TYPE)
+            var daysPassed = selectedYear == DateTime.Now.Year ? DateTime.Now.DayOfYear : 365;
+            var totalExpense = tx.Where(t => t.Type == TransactionType.Expense).Sum(t => t.Amount);
+
+            // Now both are compatible (decimal / int = decimal)
+            if (daysPassed > 0)
+            {
+                dailyAverage = totalExpense / daysPassed;
+            }
+            else
+            {
+                dailyAverage = 0;
+            }
+        }
+    }
+
+    class MonthlyStat { public string MonthName { get; set; } public decimal Income { get; set; } public decimal Expense { get; set; } public decimal Net { get; set; } }
+    class CategoryStat { public string Category { get; set; } public decimal Amount { get; set; } }
+}
