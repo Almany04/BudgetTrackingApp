@@ -133,6 +133,8 @@
 
     protected override async Task OnInitializedAsync()
     {
+        scanResult = null; // Reset result
+        uploadedImageBase64 = null;
         allCategories = await Http.GetFromJsonAsync<List<CategoryViewDto>>("api/categories") ?? new();
     }
 
@@ -177,7 +179,12 @@
         if (scanResult == null) return;
         isSaving = true;
         saveBtnText = "Processing...";
-        UpdateRatio(); // Ensure correct ratio
+
+        // Force a UI update to ensure bindings are flushed
+        StateHasChanged();
+        await Task.Delay(50); // Small tick to allow Blazor binding to propagate if user just typed
+
+        UpdateRatio();
 
         try
         {
@@ -249,6 +256,11 @@
             }
         }
         catch (Exception ex) { NotificationService.Notify(NotificationSeverity.Error, "Critical Error", ex.Message); }
-        finally { isSaving = false; saveBtnText = "Save All"; }
+        finally
+        {
+            isSaving = false;
+            saveBtnText = "Save All";
+            StateHasChanged();
+        }
     }
 }

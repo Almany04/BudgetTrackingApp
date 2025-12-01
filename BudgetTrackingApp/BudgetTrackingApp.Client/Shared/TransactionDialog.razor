@@ -324,7 +324,6 @@
         {
             allCategories = cats;
             mainCategories = allCategories.Where(c => c.ParentCategoryId == null).OrderBy(c => c.Name).ToList();
-            // Flatten subcategories for bulk add
             allSubCategoriesFlat = allCategories.Where(c => c.ParentCategoryId != null).OrderBy(c => c.Name).ToList();
         }
     }
@@ -354,9 +353,22 @@
     private async Task OpenCreateSubCategoryDialog()
     {
         if (selectedMainCategoryId == null) return;
+
         var model = new CategoryCreateDto { ParentCategoryId = selectedMainCategoryId };
-        var result = await DialogService.OpenAsync<CategoryDialog>("New Sub Item", new Dictionary<string, object> { { "CategoryModel", model } }, new DialogOptions() { Width = "400px", CssClass = "xtract-card" });
-        if (result == true) await LoadCategoriesAsync();
+
+        var result = await DialogService.OpenAsync<CategoryDialog>("New Sub Item",
+            new Dictionary<string, object> { { "CategoryModel", model } },
+            new DialogOptions() { Width = "400px", CssClass = "xtract-card" });
+
+        if (result == true)
+        {
+            // 1. Reload all categories from API to get the new ID
+            await LoadCategoriesAsync();
+            // 2. Re-trigger the filter logic so the new item appears in "filteredSubCategories"
+            OnMainCategoryChange();
+            // 3. Update UI
+            StateHasChanged();
+        }
     }
 
     private async Task OnSubmitSingle(TransactionUpdateDto args)

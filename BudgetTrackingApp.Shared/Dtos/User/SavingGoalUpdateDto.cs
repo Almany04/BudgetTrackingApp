@@ -7,14 +7,17 @@ using System.Threading.Tasks;
 
 namespace BudgetTrackingApp.Shared.Dtos.User
 {
-    public class SavingGoalDto
+    public class SavingGoalUpdateDto
     {
-        public Guid Id { get; set; }
         [Required]
         public string Name { get; set; }
+
         [Required]
         [Range(1, double.MaxValue)]
         public decimal TargetAmount { get; set; }
-        public decimal CurrentAmount { get; set; } 
+
+        // Added to support updating the current saved amount manually
+        public decimal CurrentAmount { get; set; }
+
     }
 }

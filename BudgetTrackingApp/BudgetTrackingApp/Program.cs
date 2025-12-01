@@ -80,12 +80,14 @@ builder.Services.AddScoped<IUserRepository, UserRepository>();
 builder.Services.AddScoped<IBudgetRepository, BudgetRepository>();
 builder.Services.AddScoped<ICategoryRepository, CategoryRepository>();
 builder.Services.AddScoped<ITransactionRepository, TransactionRepository>();
+builder.Services.AddScoped<ISavingGoalRepository, SavingGoalRepository>();
 
 builder.Services.AddScoped<IUserLogic, UserLogic>();
 builder.Services.AddScoped<IBudgetLogic, BudgetLogic>();
 builder.Services.AddScoped<ICategoryLogic, CategoryLogic>();
 builder.Services.AddScoped<ITransactionLogic, TransactionLogic>();
 builder.Services.AddScoped<IAiSuggestionLogic, AiSuggestionLogic>();
+builder.Services.AddScoped<ISavingGoalLogic, SavingGoalLogic>();
 
 builder.Services.AddRateLimiter(options =>
 {

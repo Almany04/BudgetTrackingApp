@@ -2,13 +2,34 @@
 @using BudgetTrackingApp.Shared.Dtos.Budget
 @using BudgetTrackingApp.Shared.Dtos.Transactions
 @using BudgetTrackingApp.Shared.Dtos.AI
+@using BudgetTrackingApp.Shared.Dtos.User
 @using BudgetTrackingApp.Shared.Enums
+@using BudgetTrackingApp.Client.Shared
+@using BudgetTrackingApp.Shared.Dtos.Category
 @inject HttpClient Http
 @inject NavigationManager Navigation
 @inject DialogService DialogService
 @inject NotificationService NotificationService
 
 <PageTitle>Dashboard</PageTitle>
+
+<style>
+    @@media (max-width: 768px) {
+        .chart-container {
+            height: 280px !important;
+        }
+
+        .chart-legend {
+            display: none !important;
+        }
+    }
+
+    @@media (min-width: 769px) {
+        .chart-container {
+            height: 350px !important;
+        }
+    }
+</style>
 
 @if (isCriticalLoading)
 {
@@ -25,29 +46,27 @@ else
             <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween" Wrap="FlexWrap.Wrap" Gap="1rem">
                 <div>
                     <h1 style="font-size: 1.8rem; margin: 0; color: white; font-weight: 800;">Dashboard</h1>
-                    <span style="color: var(--text-secondary); font-size: 0.9rem;">Financial Overview</span>
+                    <span style="color: var(--text-secondary); font-size: 0.9rem;">Overview: Last 30 Days</span>
                 </div>
-                <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem">
-                    @* Small AI Button *@
-                    <RadzenButton Icon="psychology" ButtonStyle="ButtonStyle.Info" Variant="Variant.Outlined" Click="@OpenAiWindow" ToolTip="AI Analysis" Size="ButtonSize.Small" />
 
-                    <RadzenButton Text="Scan Receipt" Icon="qr_code_scanner" ButtonStyle="ButtonStyle.Secondary" Click="@OpenScannerDialog" />
-                    <RadzenButton Text="Add Expense" Icon="add_circle" ButtonStyle="ButtonStyle.Primary" Click="@(() => Navigation.NavigateTo("transactions"))" />
+                @* Fix 2: Working Action Buttons *@
+                <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem">
+                    <RadzenButton Icon="psychology" ButtonStyle="ButtonStyle.Info" Variant="Variant.Outlined" Click="@OpenAiWindow" ToolTip="AI" Size="ButtonSize.Medium" />
+                    <RadzenButton Text="Income" Icon="payments" ButtonStyle="ButtonStyle.Success" Click="@OpenAddIncomeDialog" />
+                    <RadzenButton Text="Saving" Icon="savings" ButtonStyle="ButtonStyle.Warning" Click="@OpenAddSavingDialog" />
+                    <RadzenButton Text="Expense" Icon="add_circle" ButtonStyle="ButtonStyle.Primary" Click="@(() => Navigation.NavigateTo("transactions"))" />
                 </RadzenStack>
             </RadzenStack>
 
-            @* --- ROW 1: CHARTS (50/50) --- *@
+            @* --- CHARTS --- *@
             <RadzenRow Gutter="1.5rem">
-
-                @* 1. MERCHANT BAR CHART *@
+                @* 1. TOP SHOPS *@
                 <RadzenColumn Size="12" SizeMD="6">
-                    <div class="xtract-card" style="padding: 1.5rem; height: 100%; min-height: 400px;">
+                    <div class="xtract-card" style="padding: 1.5rem; height: 100%;">
                         <h3 style="margin: 0 0 0.5rem 0; font-size: 1.2rem; color: white; font-weight: 700;">Top Shops</h3>
-                        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">Where do I spend?</p>
-
                         @if (merchantData.Any())
                         {
-                            <RadzenChart Style="height: 300px; background: transparent;">
+                            <RadzenChart Class="chart-container" Style="background: transparent;">
                                 <RadzenBarSeries Data="@merchantData" CategoryProperty="Label" ValueProperty="Total" Fills="@merchantColors">
                                     <TooltipTemplate Context="data">
                                         <div style="background: rgba(0,0,0,0.9); padding: 8px; border: 1px solid #8b5cf6; border-radius: 4px;">
@@ -58,6 +77,7 @@ else
                                 </RadzenBarSeries>
                                 <RadzenValueAxis Visible="false" />
                                 <RadzenLegend Visible="false" />
+                                <RadzenCategoryAxis Padding="20" />
                             </RadzenChart>
                         }
                         else
@@ -67,13 +87,10 @@ else
                     </div>
                 </RadzenColumn>
 
-                @* 2. CATEGORY BY MERCHANT DONUT *@
+                @* 2. WHAT DID I BUY *@
                 <RadzenColumn Size="12" SizeMD="6">
-                    <div class="xtract-card" style="padding: 1.5rem; height: 100%; min-height: 400px;">
+                    <div class="xtract-card" style="padding: 1.5rem; height: 100%;">
                         <h3 style="margin: 0 0 0.5rem 0; font-size: 1.2rem; color: white; font-weight: 700;">What did I buy?</h3>
-                        <p style="color: var(--text-secondary); font-size: 0.85rem; margin-bottom: 1rem;">Items at selected shop</p>
-
-                        @* Dropdown for Merchants *@
                         <div style="background: rgba(255,255,255,0.05); padding: 0.8rem; border-radius: 10px; margin-bottom: 1rem;">
                             <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" Gap="1rem">
                                 <span style="color: white; font-weight: 600; white-space: nowrap; font-size: 0.9rem;">Store:</span>
@@ -83,7 +100,7 @@ else
 
                         @if (categoryData.Any())
                         {
-                            <RadzenChart Style="height: 260px; background: transparent;">
+                            <RadzenChart Class="chart-container" Style="background: transparent;">
                                 <RadzenDonutSeries Data="@categoryData" CategoryProperty="Label" ValueProperty="Total"
                                                    Fills="@categoryColors" Title="Spending" InnerRadius="70">
                                     <TitleTemplate>
@@ -92,72 +109,33 @@ else
                                             <div style="color: white; font-size: 1.3rem; font-weight: 800; margin-top: 2px;">@categoryData.Sum(x => x.Total).ToString("N0")</div>
                                         </div>
                                     </TitleTemplate>
-                                    <TooltipTemplate Context="data">
-                                        <div style="background: rgba(0,0,0,0.9); padding: 8px; border: 1px solid #8b5cf6; border-radius: 4px;">
-                                            <div style="color: #fff; font-weight: 600;">@data.Label</div>
-                                            <div style="color: #a78bfa;">@data.Total.ToString("N0") HUF</div>
-                                        </div>
-                                    </TooltipTemplate>
                                 </RadzenDonutSeries>
-                                <RadzenLegend Visible="true" Position="LegendPosition.Right" />
+                                <RadzenLegend Position="LegendPosition.Right" Class="chart-legend" />
                             </RadzenChart>
                         }
                         else
                         {
                             <div style="height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center; color: var(--text-secondary); border: 2px dashed rgba(255,255,255,0.1); border-radius: 12px;">
-                                <RadzenIcon Icon="filter_list" Style="font-size: 2rem; margin-bottom: 0.5rem; opacity: 0.5;" />
                                 <span style="font-size: 0.9rem;">@(string.IsNullOrEmpty(selectedMerchant) ? "Select a store above." : "No details found.")</span>
                             </div>
                         }
                     </div>
                 </RadzenColumn>
-
             </RadzenRow>
-
-            @* --- ROW 2: BUDGET STATUS (100% WIDTH) --- *@
-            <RadzenColumn Size="12">
-                <div class="xtract-card" style="padding: 1.5rem; height: 100%; min-height: 200px; position: relative; overflow: hidden; display: flex; flex-direction: column; justify-content: center;">
-                    <div style="position: absolute; right: -40px; top: -40px; width: 180px; height: 180px; background: radial-gradient(circle, rgba(139, 92, 246, 0.15), transparent 70%); pointer-events: none;"></div>
-
-                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.Center" JustifyContent="JustifyContent.SpaceBetween">
-                        <div style="text-transform: uppercase; color: var(--text-secondary); font-size: 0.75rem; letter-spacing: 1px; font-weight: 700;">Monthly Budget</div>
-                        <RadzenButton Icon="edit" ButtonStyle="ButtonStyle.Light" Size="ButtonSize.ExtraSmall" Click="@OpenBudgetDialog" Text="Edit Limit" />
-                    </RadzenStack>
-
-                    <RadzenStack Orientation="Orientation.Horizontal" AlignItems="AlignItems.End" Gap="1rem" Class="rz-mt-2">
-                        <div style="font-size: 2.5rem; font-weight: 800; color: white; line-height: 1;">
-                            @((budget?.SpentAmount ?? 0).ToString("N0"))
-                        </div>
-                        <span style="font-size: 1.1rem; color: var(--text-secondary); margin-bottom: 6px;">/ @((budget?.LimitAmount ?? 0).ToString("N0")) HUF</span>
-                    </RadzenStack>
-
-                    <div class="rz-mt-3">
-                        <div style="display:flex; justify-content: space-between; margin-bottom: 5px;">
-                            <span style="color: #a78bfa; font-size: 0.9rem;">@budgetPercentage.ToString("0")% Used</span>
-                        </div>
-                        <RadzenProgressBar Value="@budgetPercentage" Max="100" ShowValue="false" Style="height: 12px; background: rgba(255,255,255,0.1); border-radius: 6px;" />
-                    </div>
-                </div>
-            </RadzenColumn>
-
         </RadzenStack>
     </div>
 }
 
 @code {
-    private BudgetViewDto? budget;
-    private double budgetPercentage = 0;
     private bool isCriticalLoading = true;
     private bool isAiLoading = false;
     private AiAdviceDto? aiAdvice = null;
     private List<TransactionViewDto> allTransactions = new();
 
-    // Chart Data
     private List<ChartItem> merchantData = new();
     private List<string> merchantNames = new();
     private List<ChartItem> categoryData = new();
     private string? selectedMerchant;
-
     private string[] merchantColors = new[] { "#8b5cf6", "#6366f1", "#a855f7", "#d946ef", "#ec4899", "#f43f5e", "#10b981", "#06b6d4", "#3b82f6", "#f59e0b" };
     private string[] categoryColors = new[] { "#10b981", "#06b6d4", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6" };
     class ChartItem { public string Label { get; set; } = ""; public double Total { get; set; } }
@@ -169,17 +147,9 @@ else
         isCriticalLoading = true;
         try
         {
-            var budgetTask = Http.GetFromJsonAsync<BudgetViewDto>("api/budget");
             var startDate = DateTime.Now.AddDays(-30);
             var endDate = DateTime.Now;
-            var transactionsTask = Http.GetFromJsonAsync<List<TransactionViewDto>>($"api/transaction?startDate={startDate:yyyy-MM-dd}&endDate={endDate:yyyy-MM-dd}");
-
-            await Task.WhenAll(budgetTask, transactionsTask);
-
-            budget = await budgetTask;
-            allTransactions = await transactionsTask ?? new();
-
-            RefreshBudgetCalculations();
+            allTransactions = await Http.GetFromJsonAsync<List<TransactionViewDto>>($"api/transaction?startDate={startDate:yyyy-MM-dd}&endDate={endDate:yyyy-MM-dd}") ?? new();
             PrepareCharts();
         }
         catch (Exception ex) { Console.WriteLine($"Err: {ex.Message}"); }
@@ -189,37 +159,18 @@ else
     private void PrepareCharts()
     {
         var expenses = allTransactions.Where(t => t.Type == TransactionType.Expense).ToList();
-
-        // 1. Top Shops Bar Chart
-        merchantData = expenses
-            .GroupBy(t => string.IsNullOrWhiteSpace(t.Merchant) ? "Unknown" : t.Merchant)
-            .Select(g => new ChartItem { Label = g.Key, Total = (double)g.Sum(t => t.Amount) })
-            .OrderByDescending(x => x.Total)
-            .Take(10)
-            .ToList();
-
-        // 2. Populate Dropdown
+        merchantData = expenses.GroupBy(t => string.IsNullOrWhiteSpace(t.Merchant) ? "Unknown" : t.Merchant)
+            .Select(g => new ChartItem { Label = g.Key, Total = (double)g.Sum(t => t.Amount) }).OrderByDescending(x => x.Total).Take(10).ToList();
         merchantNames = merchantData.Select(m => m.Label).ToList();
-        if (merchantNames.Any())
-        {
-            selectedMerchant = merchantNames.First();
-            UpdateDetailChart();
-        }
+        if (merchantNames.Any()) { selectedMerchant = merchantNames.First(); UpdateDetailChart(); }
     }
 
     private void UpdateDetailChart()
     {
         if (string.IsNullOrEmpty(selectedMerchant)) { categoryData = new(); return; }
-
-        var storeExpenses = allTransactions
-            .Where(t => t.Type == TransactionType.Expense &&
-                       (string.IsNullOrWhiteSpace(t.Merchant) ? "Unknown" : t.Merchant) == selectedMerchant);
-
-        categoryData = storeExpenses
-            .GroupBy(t => t.CategoryName.Contains(">") ? t.CategoryName.Split('>')[1].Trim() : t.CategoryName)
-            .Select(g => new ChartItem { Label = g.Key, Total = (double)g.Sum(t => t.Amount) })
-            .OrderByDescending(x => x.Total)
-            .ToList();
+        var storeExpenses = allTransactions.Where(t => t.Type == TransactionType.Expense && (string.IsNullOrWhiteSpace(t.Merchant) ? "Unknown" : t.Merchant) == selectedMerchant);
+        categoryData = storeExpenses.GroupBy(t => t.CategoryName.Contains(">") ? t.CategoryName.Split('>')[1].Trim() : t.CategoryName)
+            .Select(g => new ChartItem { Label = g.Key, Total = (double)g.Sum(t => t.Amount) }).OrderByDescending(x => x.Total).ToList();
     }
 
     private async Task OpenAiWindow()
@@ -228,33 +179,84 @@ else
         try
         {
             if (aiAdvice == null) aiAdvice = await Http.GetFromJsonAsync<AiAdviceDto>("api/aisuggestion");
-            await DialogService.OpenAsync<BudgetTrackingApp.Client.Shared.AiAdviceDialog>("Financial Analysis",
-                new Dictionary<string, object> { { "Advice", aiAdvice } },
-                new DialogOptions() { Width = "800px", Height = "600px", CssClass = "xtract-card", Resizable = true, Draggable = true }
-            );
+            await DialogService.OpenAsync<AiAdviceDialog>("Financial Analysis", new Dictionary<string, object> { { "Advice", aiAdvice } }, new DialogOptions() { Width = "800px", Height = "600px", CssClass = "xtract-card" });
         }
         catch (Exception) { NotificationService.Notify(NotificationSeverity.Error, "AI Error", "Service unavailable."); }
         finally { isAiLoading = false; }
     }
 
-    private async Task OpenScannerDialog()
+    // --- Fix 2: Add Income ---
+    private async Task OpenAddIncomeDialog()
     {
-        var result = await DialogService.OpenAsync<BudgetTrackingApp.Client.Shared.ReceiptScannerDialog>("Receipt Scanner", null,
-             new DialogOptions() { Width = "700px", Height = "auto", CssClass = "xtract-card" });
+        var result = await DialogService.OpenAsync<TransactionDialog>("Add Income",
+            new Dictionary<string, object> { { "IsIncomeMode", true } }, // Passing parameter to indicate income
+            new DialogOptions() { Width = "500px", CssClass = "xtract-card" });
+
         if (result == true) await LoadMainDataAsync();
     }
 
-    private void RefreshBudgetCalculations()
+    // --- Fix 2: Add Saving to Goal (Smart Dialog) ---
+    private async Task OpenAddSavingDialog()
     {
-        if (budget != null && budget.LimitAmount > 0)
-            budgetPercentage = Math.Min(100, (double)(budget.SpentAmount / budget.LimitAmount) * 100);
-    }
+        // 1. Fetch Goals
+        var goals = await Http.GetFromJsonAsync<List<SavingGoalDto>>("api/features/goals");
 
-    private async Task OpenBudgetDialog()
-    {
-        var result = await DialogService.OpenAsync<BudgetTrackingApp.Client.Shared.BudgetDialog>("Edit Limit",
-            new Dictionary<string, object> { { "CurrentLimit", budget?.LimitAmount ?? 0 } },
-            new DialogOptions() { Width = "400px", CssClass = "xtract-card" });
-        if (result == true) await LoadMainDataAsync();
+        // 2. Prepare Model
+        var goalsList = goals?.ToList() ?? new List<SavingGoalDto>();
+        // Ensure General Savings exists in option list even if not created yet (visual only)
+        if (!goalsList.Any(g => g.Name == "General Savings"))
+        {
+            goalsList.Insert(0, new SavingGoalDto { Id = Guid.Empty, Name = "General Savings", CurrentAmount = 0 });
+        }
+
+        // Default to General Savings
+        var selectedGoal = goalsList.FirstOrDefault(g => g.Name == "General Savings") ?? goalsList.First();
+        decimal amountToAdd = 0;
+
+        // 3. Open Dialog
+        var result = await DialogService.OpenAsync("Add to Savings", ds =>
+            @<RadzenStack Gap="1rem" Style="padding: 1rem;">
+    <RadzenText TextStyle="TextStyle.Body1">Select a goal to fund:</RadzenText>
+
+    <RadzenDropDown Data="@goalsList" @bind-Value="selectedGoal" TextProperty="Name" Style="width: 100%" />
+
+    <RadzenText TextStyle="TextStyle.Body2" Style="color: var(--text-secondary);">
+        Current Balance: @selectedGoal.CurrentAmount.ToString("N0")
+    </RadzenText>
+
+    <RadzenFormField Text="Amount to Add" Variant="Variant.Outlined">
+        <RadzenNumeric @bind-Value="amountToAdd" Format="c0" Style="width: 100%" />
+    </RadzenFormField>
+
+    <RadzenStack Orientation="Orientation.Horizontal" JustifyContent="JustifyContent.End" Gap="0.5rem" Class="rz-mt-2">
+        <RadzenButton Text="Cancel" ButtonStyle="ButtonStyle.Light" Click="() => ds.Close(false)" />
+        <RadzenButton Text="Confirm Saving" ButtonStyle="ButtonStyle.Success" Click="() => ds.Close(true)" />
+    </RadzenStack>
+</RadzenStack>
+        , new DialogOptions() { Width = "400px", CssClass = "xtract-card" });
+
+        // 4. Process Result
+        if (result == true && amountToAdd > 0)
+        {
+            if (selectedGoal.Id == Guid.Empty && selectedGoal.Name == "General Savings")
+            {
+                // Create General Savings Goal first
+                var newGoal = new SavingGoalDto { Name = "General Savings", TargetAmount = 1000000, CurrentAmount = amountToAdd };
+                await Http.PostAsJsonAsync("api/features/goals", newGoal);
+                NotificationService.Notify(NotificationSeverity.Success, "Success", "Started General Savings!");
+            }
+            else
+            {
+                // Update Existing Goal
+                var updateDto = new SavingGoalUpdateDto
+                {
+                    Name = selectedGoal.Name,
+                    TargetAmount = selectedGoal.TargetAmount,
+                    CurrentAmount = selectedGoal.CurrentAmount + amountToAdd // Add logic
+                };
+                await Http.PutAsJsonAsync($"api/features/goals/{selectedGoal.Id}", updateDto);
+                NotificationService.Notify(NotificationSeverity.Success, "Saved", $"{amountToAdd:N0} added to {selectedGoal.Name}");
+            }
+        }
     }
 }

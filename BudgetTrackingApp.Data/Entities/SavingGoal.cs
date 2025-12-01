@@ -18,6 +18,8 @@ namespace BudgetTrackingApp.Data.Entities
         public string Name { get; set; }
         [Column(TypeName = "decimal(18,2)")]
         public decimal TargetAmount { get; set; }
+        [Column(TypeName = "decimal(18,2)")]
+        public decimal CurrentAmount { get; set; }
         [Required]
         public string AppUserId { get; set; }
 

@@ -3,6 +3,7 @@
 @inject IJSRuntime JSRuntime
 @using Radzen
 @using Radzen.Blazor
+@implements IDisposable
 
 <RadzenComponents />
 <div class="ambient-glow"></div>
@@ -14,15 +15,15 @@
             @* Responsive Sidebar Toggle *@
             <RadzenSidebarToggle Click="@(() => sidebarExpanded = !sidebarExpanded)" Style="background: transparent; color: white;" />
 
-            @* Back Button *@
+            @* --- RESTORED: Back Button --- *@
             <RadzenButton Icon="arrow_back" ButtonStyle="ButtonStyle.Base" Variant="Variant.Text"
-                          Click="@GoBack" Style="color: white; padding: 0;" Tooltip="Go Back" />
+                          Click="@GoBack" Style="color: white; padding: 0;"
+                          Tooltip="Go Back" />
 
             <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem" AlignItems="AlignItems.Center">
                 <div style="width: 32px; height: 32px; background: linear-gradient(135deg, #8b5cf6, #6366f1); border-radius: 8px; display: flex; align-items: center; justify-content: center;">
                     <RadzenIcon Icon="account_balance_wallet" Style="color: white; font-size: 1.2rem;" />
                 </div>
-                @* FIX: Reverted name to UniBudget *@
                 <span class="text-gradient" style="font-weight: 800; font-size: 1.3rem;">UniBudget</span>
             </RadzenStack>
         </RadzenStack>
@@ -40,7 +41,6 @@
                 <RadzenPanelMenuItem Text="Statistics" Path="statistics" Icon="query_stats" />
                 <RadzenPanelMenuItem Text="Shopping List" Path="shopping" Icon="shopping_basket" />
                 <div style="margin: 1.5rem 1.5rem; border-top: 1px solid rgba(255,255,255,0.1);"></div>
-
                 <RadzenPanelMenuItem Text="Log Out" Path="logout" Icon="logout" Style="color: #ef4444;" />
             </RadzenPanelMenu>
         </RadzenStack>
@@ -53,6 +53,7 @@
     </RadzenBody>
 </RadzenLayout>
 
+@* --- RESTORED: JavaScript for History Back --- *@
 <script>
     window.goBack = () => {
         history.back();
@@ -62,8 +63,27 @@
 @code {
     bool sidebarExpanded = true;
 
+    protected override void OnInitialized()
+    {
+        // Subscribe to location changes to close menu on mobile (Fix 6)
+        Navigation.LocationChanged += OnLocationChanged;
+    }
+
+    // --- RESTORED: GoBack Method ---
     private async Task GoBack()
     {
         await JSRuntime.InvokeVoidAsync("goBack");
+    }
+
+    private void OnLocationChanged(object? sender, LocationChangedEventArgs e)
+    {
+        // Automatically close sidebar on navigation (Mobile UX)
+        sidebarExpanded = false;
+        StateHasChanged();
+    }
+
+    public void Dispose()
+    {
+        Navigation.LocationChanged -= OnLocationChanged;
     }
 }
