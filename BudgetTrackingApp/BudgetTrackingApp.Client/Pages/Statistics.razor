@@ -10,17 +10,20 @@
 <style>
     /* Chart Container Sizes */
     @@media (max-width: 768px) {
-        .stats-chart { height: 320px !important; }
-        /* Prevent axis label overlap on small screens by hiding alternating labels or reducing size if supported, 
-           Radzen handles rotation best. */
+        .stats-chart {
+            height: 320px !important;
+        }
     }
+
     @@media (min-width: 769px) {
-        .stats-chart { height: 450px !important; }
+        .stats-chart {
+            height: 450px !important;
+        }
     }
 </style>
 
 <RadzenStack Gap="1.5rem" Class="animate-in">
-    
+
     <RadzenCard Class="xtract-card" Style="padding: 1rem;">
         <RadzenStack Orientation="Orientation.Vertical" Gap="0.5rem">
             <h2 style="color: white; font-weight: 800; margin: 0; font-size: 1.5rem;">Analytics</h2>
@@ -39,20 +42,20 @@
             <RadzenCard Class="xtract-card" Style="padding: 1.5rem;">
                 <h4 style="color: white; font-size: 1.1rem; margin-bottom: 1rem;">Cash Flow Trend</h4>
                 <RadzenChart ColorScheme="ColorScheme.Monochrome" Class="stats-chart" Style="background: transparent;">
-                    @* Added explicit Step to ValueAxis to ensure readable numbers *@
-                    <RadzenColumnSeries Data="@monthlyStats" CategoryProperty="Label" Title="Income" ValueProperty="Income" Fill="#10b981" />
-                    <RadzenColumnSeries Data="@monthlyStats" CategoryProperty="Label" Title="Expense" ValueProperty="Expense" Fill="#ef4444" />
-                    
+                    @* Used Date object for smart axis scaling *@
+                    <RadzenColumnSeries Data="@monthlyStats" CategoryProperty="Date" Title="Income" ValueProperty="Income" Fill="#10b981" />
+                    <RadzenColumnSeries Data="@monthlyStats" CategoryProperty="Date" Title="Expense" ValueProperty="Expense" Fill="#ef4444" />
+
                     <RadzenLegend Position="LegendPosition.Bottom" Visible="true" />
                     <RadzenValueAxis Formatter="@FormatCurrencyCompact">
                         <RadzenGridLines Visible="true" Stroke="rgba(255,255,255,0.05)" />
                     </RadzenValueAxis>
-                    
-                    <RadzenCategoryAxis Padding="20">
-                         @* Rotate labels -45 degrees to fix overlapping/merging issue *@
-                         <RadzenTicks>
-                            <RadzenTickLabel Rotation="-45" Style="color: var(--text-secondary); font-size: 11px;" /> 
-                         </RadzenTicks>
+
+                    @* Dynamic Step and Format to prevent label overlap *@
+                    <RadzenCategoryAxis Padding="20" Step="@ChartStep" FormatString="@ChartFormatString">
+                        <RadzenTicks>
+                            <RadzenTickLabel Rotation="-45" Style="color: var(--text-secondary); font-size: 11px;" />
+                        </RadzenTicks>
                     </RadzenCategoryAxis>
                 </RadzenChart>
             </RadzenCard>
@@ -60,21 +63,21 @@
 
         @* 2. Net Savings Trend *@
         <RadzenColumn Size="12" SizeLG="4">
-             <RadzenCard Class="xtract-card" Style="padding: 1.5rem; height: 100%;">
+            <RadzenCard Class="xtract-card" Style="padding: 1.5rem; height: 100%;">
                 <h4 style="color: white; font-size: 1.1rem; margin-bottom: 1rem;">Net Savings</h4>
                 <RadzenChart Class="stats-chart" Style="background: transparent;">
-                    <RadzenLineSeries Data="@monthlyStats" CategoryProperty="Label" ValueProperty="Savings" Title="Net" Stroke="#f59e0b" Smooth="true">
+                    <RadzenLineSeries Data="@monthlyStats" CategoryProperty="Date" ValueProperty="Savings" Title="Net" Stroke="#f59e0b" Smooth="true">
                         <RadzenMarkers MarkerType="MarkerType.Circle" />
                         <RadzenSeriesDataLabels Visible="false" />
                     </RadzenLineSeries>
-                    
-                    <RadzenCategoryAxis Padding="20">
-                         <RadzenTicks>
+
+                    <RadzenCategoryAxis Padding="20" Step="@ChartStep" FormatString="@ChartFormatString">
+                        <RadzenTicks>
                             <RadzenTickLabel Rotation="-45" Style="color: var(--text-secondary); font-size: 11px;" />
-                         </RadzenTicks>
+                        </RadzenTicks>
                     </RadzenCategoryAxis>
                     <RadzenValueAxis Formatter="@FormatCurrencyCompact">
-                         <RadzenGridLines Visible="true" Stroke="rgba(255,255,255,0.05)" />
+                        <RadzenGridLines Visible="true" Stroke="rgba(255,255,255,0.05)" />
                     </RadzenValueAxis>
                     <RadzenLegend Visible="false" />
                 </RadzenChart>
@@ -89,12 +92,12 @@
                 <h4 style="color: white; font-size: 1.1rem;">Top Expenses</h4>
                 <RadzenChart Style="height: 300px; background: transparent;">
                     <RadzenPieSeries Data="@categoryStats" Title="HUF" CategoryProperty="Category" ValueProperty="Amount">
-                         <RadzenSeriesDataLabels Visible="true" /> 
+                        <RadzenSeriesDataLabels Visible="true" />
                     </RadzenPieSeries>
-                    <RadzenLegend Position="LegendPosition.Right" Visible="false" /> 
+                    <RadzenLegend Position="LegendPosition.Right" Visible="false" />
                 </RadzenChart>
                 <div style="margin-top: 10px;">
-                    @foreach(var c in categoryStats.Take(4))
+                    @foreach (var c in categoryStats.Take(4))
                     {
                         <div style="font-size: 0.85rem; color: var(--text-secondary); display: flex; justify-content: space-between; border-bottom: 1px solid rgba(255,255,255,0.05); padding: 4px 0;">
                             <span>@c.Category</span>
@@ -105,22 +108,37 @@
             </RadzenCard>
         </RadzenColumn>
 
-        @* 4. Busiest Days *@
+        @* 4. Spending by Payment Method (REPLACED Busiest Days) *@
         <RadzenColumn Size="12" SizeMD="6">
             <RadzenCard Class="xtract-card" Style="padding: 1.5rem; height: 100%;">
-                <h4 style="color: white; font-size: 1.1rem; margin-bottom: 1rem;">Busiest Days (Count)</h4>
-                 <RadzenChart Style="height: 300px; background: transparent;">
-                    <RadzenBarSeries Data="@dailyFrequency" CategoryProperty="Label" ValueProperty="Value" Title="Count" Fill="#3b82f6" />
-                    <RadzenValueAxis Min="0" Step="1">
-                        <RadzenGridLines Visible="false" />
-                    </RadzenValueAxis>
-                    <RadzenCategoryAxis>
-                         <RadzenTicks>
-                            <RadzenTickLabel Rotation="-45" Style="color: var(--text-secondary); font-size: 11px;" />
-                         </RadzenTicks>
-                    </RadzenCategoryAxis>
-                    <RadzenLegend Visible="false" />
-                </RadzenChart>
+                <h4 style="color: white; font-size: 1.1rem; margin-bottom: 1rem;">Spending by Payment</h4>
+                @if (paymentStats.Any())
+                {
+                    <RadzenChart Style="height: 300px; background: transparent;">
+                        <RadzenColumnSeries Data="@paymentStats" CategoryProperty="Label" ValueProperty="Value" Title="Total" Fill="#8b5cf6">
+                            <TooltipTemplate Context="data">
+                                <div style="background: rgba(0,0,0,0.9); padding: 5px; border: 1px solid #8b5cf6; border-radius: 4px;">
+                                    <span style="color: #fff">@data.Label</span>: <span style="color: #a78bfa">@(((decimal)data.Value).ToString("N0"))</span>
+                                </div>
+                            </TooltipTemplate>
+                        </RadzenColumnSeries>
+                        <RadzenValueAxis Formatter="@FormatCurrencyCompact">
+                            <RadzenGridLines Visible="false" />
+                        </RadzenValueAxis>
+                        <RadzenCategoryAxis>
+                            <RadzenTicks>
+                                <RadzenTickLabel Style="color: var(--text-secondary); font-size: 12px;" />
+                            </RadzenTicks>
+                        </RadzenCategoryAxis>
+                        <RadzenLegend Visible="false" />
+                    </RadzenChart>
+                }
+                else
+                {
+                    <div style="height: 250px; display: flex; align-items: center; justify-content: center; color: var(--text-secondary);">
+                        No expense data found.
+                    </div>
+                }
             </RadzenCard>
         </RadzenColumn>
     </RadzenRow>
@@ -130,10 +148,15 @@
     private string viewMode = "Year";
     private List<TimeStat> monthlyStats = new();
     private List<CategoryStat> categoryStats = new();
-    private List<ChartItem> dailyFrequency = new();
+    // Replaced dailyFrequency with paymentStats
+    private List<ChartItem> paymentStats = new();
 
     // FORCE ENGLISH CULTURE for charts
     private CultureInfo enCulture = new CultureInfo("en-US");
+
+    // Dynamic Axis Configuration
+    private object? ChartStep => viewMode == "Year" ? null : TimeSpan.FromDays(5);
+    private string ChartFormatString => viewMode == "Year" ? "{0:MMM}" : "{0:MM.dd}";
 
     string FormatCurrencyCompact(object value)
     {
@@ -158,56 +181,73 @@
         }
 
         var tx = await Http.GetFromJsonAsync<List<TransactionViewDto>>($"api/transaction?startDate={start:yyyy-MM-dd}&endDate={end:yyyy-MM-dd}");
-
         if (tx != null)
         {
-            if (viewMode == "Year") {
-                 monthlyStats = Enumerable.Range(1, 12).Select(m => {
+            var expenses = tx.Where(t => t.Type == TransactionType.Expense).ToList();
+
+            if (viewMode == "Year")
+            {
+                monthlyStats = Enumerable.Range(1, 12).Select(m =>
+                {
                     var monthTx = tx.Where(t => t.TransactionDate.Month == m).ToList();
-                    return new TimeStat { 
-                        // FORCE ENGLISH MONTH NAME
-                        Label = new DateTime(2025, m, 1).ToString("MMM", enCulture),
-                        Income = monthTx.Where(t => t.Type == TransactionType.Income).Sum(t => t.Amount),
-                        Expense = monthTx.Where(t => t.Type == TransactionType.Expense).Sum(t => t.Amount),
-                        Savings = monthTx.Where(t => t.Type == TransactionType.Income).Sum(t => t.Amount) - monthTx.Where(t => t.Type == TransactionType.Expense).Sum(t => t.Amount)
-                    };
-                 }).ToList();
-                 
-                 dailyFrequency = monthlyStats.Select(m => new ChartItem { 
-                     Label = m.Label, 
-                     Value = (decimal)tx.Count(t => t.TransactionDate.ToString("MMM", enCulture) == m.Label && t.Type == TransactionType.Expense) 
-                 }).ToList();
-
-            } else {
-                 var days = Enumerable.Range(0, 30).Select(i => start.AddDays(i)).ToList();
-                 monthlyStats = days.Select(d => {
-                     var dayTx = tx.Where(t => t.TransactionDate.Date == d.Date).ToList();
-                     return new TimeStat {
-                         Label = d.ToString("MMM dd", enCulture), 
-                         Income = dayTx.Where(t => t.Type == TransactionType.Income).Sum(t => t.Amount),
-                         Expense = dayTx.Where(t => t.Type == TransactionType.Expense).Sum(t => t.Amount),
-                         Savings = dayTx.Where(t => t.Type == TransactionType.Income).Sum(t => t.Amount) - dayTx.Where(t => t.Type == TransactionType.Expense).Sum(t => t.Amount)
-                     };
-                 }).ToList();
-
-                 dailyFrequency = monthlyStats.Select(m => new ChartItem { 
-                     Label = m.Label, 
-                     Value = (decimal)tx.Count(t => t.TransactionDate.ToString("MMM dd", enCulture) == m.Label && t.Type == TransactionType.Expense) 
-                 }).ToList();
+                    return new TimeStat
+                        {
+                            Date = new DateTime(DateTime.Now.Year, m, 1),
+                            Label = new DateTime(DateTime.Now.Year, m, 1).ToString("MMM", enCulture),
+                            Income = monthTx.Where(t => t.Type == TransactionType.Income).Sum(t => t.Amount),
+                            Expense = monthTx.Where(t => t.Type == TransactionType.Expense).Sum(t => t.Amount),
+                            Savings = monthTx.Where(t => t.Type == TransactionType.Income).Sum(t => t.Amount) - monthTx.Where(t => t.Type == TransactionType.Expense).Sum(t => t.Amount)
+                        };
+                }).ToList();
+            }
+            else
+            {
+                var days = Enumerable.Range(0, 30).Select(i => start.AddDays(i)).ToList();
+                monthlyStats = days.Select(d =>
+                {
+                    var dayTx = tx.Where(t => t.TransactionDate.Date == d.Date).ToList();
+                    return new TimeStat
+                        {
+                            Date = d.Date,
+                            Label = d.ToString("MMM dd", enCulture),
+                            Income = dayTx.Where(t => t.Type == TransactionType.Income).Sum(t => t.Amount),
+                            Expense = dayTx.Where(t => t.Type == TransactionType.Expense).Sum(t => t.Amount),
+                            Savings = dayTx.Where(t => t.Type == TransactionType.Income).Sum(t => t.Amount) - dayTx.Where(t => t.Type == TransactionType.Expense).Sum(t => t.Amount)
+                        };
+                }).ToList();
             }
 
-            categoryStats = tx.Where(t => t.Type == TransactionType.Expense)
+            // 3. Top Categories
+            categoryStats = expenses
                               .GroupBy(t => t.CategoryName.Split('>')[0].Trim())
                               .Select(g => new CategoryStat { Category = g.Key, Amount = g.Sum(t => t.Amount) })
                               .OrderByDescending(x => x.Amount)
                               .Take(5)
                               .ToList();
+
+            // 4. Spending by Payment Method (New Logic)
+            paymentStats = expenses
+                             .GroupBy(t => t.PaymentMethod)
+                             .Select(g => new ChartItem
+                                 {
+                                     Label = g.Key.ToString(),
+                                     Value = g.Sum(t => t.Amount)
+                                 })
+                             .OrderByDescending(x => x.Value)
+                             .ToList();
         }
     }
 
     protected override async Task OnInitializedAsync() => await LoadData();
 
-    class TimeStat { public string Label { get; set; } public decimal Income { get; set; } public decimal Expense { get; set; } public decimal Savings { get; set; } }
+    class TimeStat
+    {
+        public DateTime Date { get; set; }
+        public string Label { get; set; }
+        public decimal Income { get; set; }
+        public decimal Expense { get; set; }
+        public decimal Savings { get; set; }
+    }
     class CategoryStat { public string Category { get; set; } public decimal Amount { get; set; } }
     class ChartItem { public string Label { get; set; } public decimal Value { get; set; } }
 }

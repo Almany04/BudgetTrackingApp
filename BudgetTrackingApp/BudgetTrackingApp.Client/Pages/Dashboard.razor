@@ -49,9 +49,12 @@ else
                     <span style="color: var(--text-secondary); font-size: 0.9rem;">Overview: Last 30 Days</span>
                 </div>
 
-                @* Fix 2: Working Action Buttons *@
+                @* Actions *@
                 <RadzenStack Orientation="Orientation.Horizontal" Gap="0.5rem">
-                    <RadzenButton Icon="psychology" ButtonStyle="ButtonStyle.Info" Variant="Variant.Outlined" Click="@OpenAiWindow" ToolTip="AI" Size="ButtonSize.Medium" />
+                    @* RESTORED: Receipt Scanner Button *@
+                    <RadzenButton Icon="qr_code_scanner" ButtonStyle="ButtonStyle.Secondary" Variant="Variant.Outlined" Click="@OpenScanDialog" ToolTip="Scan Receipt" Size="ButtonSize.Medium" />
+
+                    <RadzenButton Icon="psychology" ButtonStyle="ButtonStyle.Info" Variant="Variant.Outlined" Click="@OpenAiWindow" ToolTip="AI Advice" Size="ButtonSize.Medium" />
                     <RadzenButton Text="Income" Icon="payments" ButtonStyle="ButtonStyle.Success" Click="@OpenAddIncomeDialog" />
                     <RadzenButton Text="Saving" Icon="savings" ButtonStyle="ButtonStyle.Warning" Click="@OpenAddSavingDialog" />
                     <RadzenButton Text="Expense" Icon="add_circle" ButtonStyle="ButtonStyle.Primary" Click="@(() => Navigation.NavigateTo("transactions"))" />
@@ -138,6 +141,7 @@ else
     private string? selectedMerchant;
     private string[] merchantColors = new[] { "#8b5cf6", "#6366f1", "#a855f7", "#d946ef", "#ec4899", "#f43f5e", "#10b981", "#06b6d4", "#3b82f6", "#f59e0b" };
     private string[] categoryColors = new[] { "#10b981", "#06b6d4", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6" };
+
     class ChartItem { public string Label { get; set; } = ""; public double Total { get; set; } }
 
     protected override async Task OnInitializedAsync() => await LoadMainDataAsync();
@@ -152,8 +156,14 @@ else
             allTransactions = await Http.GetFromJsonAsync<List<TransactionViewDto>>($"api/transaction?startDate={startDate:yyyy-MM-dd}&endDate={endDate:yyyy-MM-dd}") ?? new();
             PrepareCharts();
         }
-        catch (Exception ex) { Console.WriteLine($"Err: {ex.Message}"); }
-        finally { isCriticalLoading = false; }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Err: {ex.Message}");
+        }
+        finally
+        {
+            isCriticalLoading = false;
+        }
     }
 
     private void PrepareCharts()
@@ -161,13 +171,21 @@ else
         var expenses = allTransactions.Where(t => t.Type == TransactionType.Expense).ToList();
         merchantData = expenses.GroupBy(t => string.IsNullOrWhiteSpace(t.Merchant) ? "Unknown" : t.Merchant)
             .Select(g => new ChartItem { Label = g.Key, Total = (double)g.Sum(t => t.Amount) }).OrderByDescending(x => x.Total).Take(10).ToList();
+
         merchantNames = merchantData.Select(m => m.Label).ToList();
-        if (merchantNames.Any()) { selectedMerchant = merchantNames.First(); UpdateDetailChart(); }
+        if (merchantNames.Any())
+        {
+            selectedMerchant = merchantNames.First(); UpdateDetailChart();
+        }
     }
 
     private void UpdateDetailChart()
     {
-        if (string.IsNullOrEmpty(selectedMerchant)) { categoryData = new(); return; }
+        if (string.IsNullOrEmpty(selectedMerchant))
+        {
+            categoryData = new();
+            return;
+        }
         var storeExpenses = allTransactions.Where(t => t.Type == TransactionType.Expense && (string.IsNullOrWhiteSpace(t.Merchant) ? "Unknown" : t.Merchant) == selectedMerchant);
         categoryData = storeExpenses.GroupBy(t => t.CategoryName.Contains(">") ? t.CategoryName.Split('>')[1].Trim() : t.CategoryName)
             .Select(g => new ChartItem { Label = g.Key, Total = (double)g.Sum(t => t.Amount) }).OrderByDescending(x => x.Total).ToList();
@@ -181,41 +199,51 @@ else
             if (aiAdvice == null) aiAdvice = await Http.GetFromJsonAsync<AiAdviceDto>("api/aisuggestion");
             await DialogService.OpenAsync<AiAdviceDialog>("Financial Analysis", new Dictionary<string, object> { { "Advice", aiAdvice } }, new DialogOptions() { Width = "800px", Height = "600px", CssClass = "xtract-card" });
         }
-        catch (Exception) { NotificationService.Notify(NotificationSeverity.Error, "AI Error", "Service unavailable."); }
-        finally { isAiLoading = false; }
+        catch (Exception)
+        {
+            NotificationService.Notify(NotificationSeverity.Error, "AI Error", "Service unavailable.");
+        }
+        finally
+        {
+            isAiLoading = false;
+        }
     }
 
-    // --- Fix 2: Add Income ---
+    // --- RESTORED: Scan Receipt Dialog ---
+    private async Task OpenScanDialog()
+    {
+        var result = await DialogService.OpenAsync<ReceiptScannerDialog>("AI Receipt Scanner", null,
+            new DialogOptions() { Width = "700px", CssClass = "xtract-card" });
+
+        if (result == true) await LoadMainDataAsync();
+    }
+
+    // --- Add Income Button Logic (Fixed) ---
     private async Task OpenAddIncomeDialog()
     {
         var result = await DialogService.OpenAsync<TransactionDialog>("Add Income",
-            new Dictionary<string, object> { { "IsIncomeMode", true } }, // Passing parameter to indicate income
+            new Dictionary<string, object> { { "ForcedType", TransactionType.Income } },
             new DialogOptions() { Width = "500px", CssClass = "xtract-card" });
 
         if (result == true) await LoadMainDataAsync();
     }
 
-    // --- Fix 2: Add Saving to Goal (Smart Dialog) ---
+    // --- Add Saving to Goal (Smart Dialog) ---
     private async Task OpenAddSavingDialog()
     {
-        // 1. Fetch Goals
         var goals = await Http.GetFromJsonAsync<List<SavingGoalDto>>("api/features/goals");
-
-        // 2. Prepare Model
         var goalsList = goals?.ToList() ?? new List<SavingGoalDto>();
-        // Ensure General Savings exists in option list even if not created yet (visual only)
+
         if (!goalsList.Any(g => g.Name == "General Savings"))
         {
             goalsList.Insert(0, new SavingGoalDto { Id = Guid.Empty, Name = "General Savings", CurrentAmount = 0 });
         }
 
-        // Default to General Savings
         var selectedGoal = goalsList.FirstOrDefault(g => g.Name == "General Savings") ?? goalsList.First();
         decimal amountToAdd = 0;
 
-        // 3. Open Dialog
         var result = await DialogService.OpenAsync("Add to Savings", ds =>
-            @<RadzenStack Gap="1rem" Style="padding: 1rem;">
+    @<RadzenStack Gap="1rem" Style="padding: 1rem;">
     <RadzenText TextStyle="TextStyle.Body1">Select a goal to fund:</RadzenText>
 
     <RadzenDropDown Data="@goalsList" @bind-Value="selectedGoal" TextProperty="Name" Style="width: 100%" />
@@ -235,24 +263,21 @@ else
 </RadzenStack>
         , new DialogOptions() { Width = "400px", CssClass = "xtract-card" });
 
-        // 4. Process Result
         if (result == true && amountToAdd > 0)
         {
             if (selectedGoal.Id == Guid.Empty && selectedGoal.Name == "General Savings")
             {
-                // Create General Savings Goal first
                 var newGoal = new SavingGoalDto { Name = "General Savings", TargetAmount = 1000000, CurrentAmount = amountToAdd };
                 await Http.PostAsJsonAsync("api/features/goals", newGoal);
                 NotificationService.Notify(NotificationSeverity.Success, "Success", "Started General Savings!");
             }
             else
             {
-                // Update Existing Goal
                 var updateDto = new SavingGoalUpdateDto
                 {
                     Name = selectedGoal.Name,
                     TargetAmount = selectedGoal.TargetAmount,
-                    CurrentAmount = selectedGoal.CurrentAmount + amountToAdd // Add logic
+                    CurrentAmount = selectedGoal.CurrentAmount + amountToAdd
                 };
                 await Http.PutAsJsonAsync($"api/features/goals/{selectedGoal.Id}", updateDto);
                 NotificationService.Notify(NotificationSeverity.Success, "Saved", $"{amountToAdd:N0} added to {selectedGoal.Name}");
